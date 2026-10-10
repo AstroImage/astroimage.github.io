@@ -1,0 +1,3170 @@
+{
+ "schema_version": "1.0",
+ "note": "Layer astrofisico. Indipendente dalla strumentazione di chiunque. I budget orari sono espressi per la configurazione di riferimento dichiarata in setups.json (f/5.68 efficaci, pixel 3.76 um) e vengono riscalati a runtime.",
+ "archetypes": {
+  "hii_classic": {
+   "label": "Regione HII fotoionizzata classica",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Regione HII: la luce sta nelle righe di ricombinazione e di shock, e si misura in Rayleigh.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "possibile",
+    "SHO": "prima"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 799,
+    "RGB": 1767,
+    "HaRGB": 301,
+    "HOO": 924,
+    "SHO": 6448
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "logic": "Ha dominante, OIII presente solo dove l'eccitazione è alta (vicino alle O), SII debole (0.1-0.3 di Ha). Lo SHO è la tecnica di riferimento della classe: su AstroBin 6448 immagini contro 924 in HOO, sette a uno. Il budget però non si divide in parti uguali: il SII è quasi sempre la riga più debole, e uno SHO paritetico 1:1:1 spende in SII ore che l'immagine non restituisce. La HOO resta in menù accanto allo SHO, col suo prezzo: costa meno e consegna un'immagine finita. Se questo la renda preferibile sotto un certo budget la tabella non lo dice — quei conteggi non sono filtrati per ore di integrazione.",
+   "default_budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "OIII": {
+     "floor": 4,
+     "useful": 8,
+     "saturates": 14,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true
+    },
+    "SII": {
+     "floor": 8,
+     "useful": 12,
+     "saturates": 18,
+     "road": "sho"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "OIII per primo e nelle notti migliori: è il canale che decide e paga di più estinzione e Luna. Ha quando vuoi, è robusto. SII solo se ci arrivi sopra soglia, altrimenti non iniziarlo. RGB per le stelle basta un'ora con la Luna piena. Se hai una notte sola: tutta OIII.",
+   "expect": {
+    "4h": "Ha completo e leggibile, OIII presente ma fragile: regge una riduzione, non il 100%.",
+    "8h": "OIII diventa struttura invece che alone. E' il punto di miglior resa per ora spesa.",
+    "14h": "Guadagno sulle parti deboli e sul rumore cromatico. Reale ma non proporzionale."
+   },
+   "traps": [
+    "Il SII sotto soglia è peggio che assente: mette rumore colorato in una mappa che poi devi spegnere.",
+    "La palette SHO paritetica su una HII fotoionizzata produce il verde che tutti combattono in post: il problema nasce in ripresa, nel budget.",
+    "Le stelle in banda stretta diventano innaturali: meglio prenderle in RGB e reinserirle."
+   ],
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": false,
+     "when": "costa meno e consegna un'immagine finita; se sia preferibile sotto un certo budget la tabella non lo dice",
+     "pro": "Il budget va dove c'è segnale.",
+     "contro": "Perdi la mappa di shock, che però su una HII pura quasi non c'è."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "default": true,
+     "when": "la tecnica di riferimento della classe: su AstroBin 6448 immagini contro 924 in HOO",
+     "pro": "Massimo contenuto informativo.",
+     "contro": "Il SII costa più dell'OIII e rende molto meno: sotto soglia è attivamente dannoso."
+    }
+   ],
+   "peak_over_mean": 25,
+   "peak_source": "senza fonte. Il valore nasce con il repository e nessun commit lo giustifica o lo tara. Non e' verificabile alla fonte perche' la letteratura non pubblica brillanze superficiali di picco in banda V per le regioni HII: le misura in righe (O'Dell & Harris 2010, AJ 140, 985, e' in H-beta) e la banda V di una HII non e' un continuo. Confidenza bassa. Il solo confronto interno possibile e' M42, che porta un peak_over_mean proprio dieci volte piu' grande.",
+   "line_fraction": 0.15,
+   "sub_note": "media: nuclei tipo Trapezio molto più brillanti della media; OIII in V, Ha fuori banda"
+  },
+  "hii_faint_he": {
+   "label": "Regione HII debole ad alta eccitazione",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Regione HII debole: stessa fisica, flussi piu bassi.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "esclusa",
+    "HOO": "prima",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 194,
+    "RGB": 482,
+    "HaRGB": 12,
+    "HOO": 844,
+    "SHO": 375
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "logic": "Superficie molto bassa ma OIII relativamente forte grazie all'eccitazione. È il caso in cui la banda stretta ripaga davvero, ma serve molto tempo su OIII.",
+   "default_budget": {
+    "Ha": {
+     "floor": 2,
+     "useful": 4,
+     "saturates": 8,
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "OIII": {
+     "floor": 6,
+     "useful": 10,
+     "saturates": 16,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true
+    },
+    "SII": {
+     "floor": 10,
+     "useful": 15,
+     "saturates": 20,
+     "road": "sho"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Qui l'OIII non è solo il critico, è quasi tutto il soggetto: va fatto con l'oggetto alto e senza Luna, punto. Ha come struttura di supporto. SII quasi mai ripaga.",
+   "expect": {
+    "6h": "Si intuisce, non si mostra. Presentabile solo a scala ridotta.",
+    "10h": "L'OIII regge lo stretch e la struttura emerge. Sotto queste ore l'oggetto non esiste.",
+    "18h": "Le parti esterne si staccano dal fondo. Su questi soggetti le ore in più rendono più che altrove."
+   },
+   "traps": [
+    "E' l'archetipo in cui si sbaglia il preventivo: sembra una HII normale e costa il doppio.",
+    "Con brillanza così bassa i gradienti dominano il segnale: la correzione va fatta prima di ogni stretch, non dopo.",
+    "Il rumore di lettura torna a contare: pose troppo corte qui costano davvero."
+   ],
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "praticamente sempre",
+     "pro": "L'OIII qui è il soggetto e va tutto lì.",
+     "contro": "Nessuna informazione di shock."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "default": false,
+     "when": "raramente giustificato su questo archetipo",
+     "pro": "Completezza.",
+     "contro": "Il SII su una nebulosa già debole è quasi sempre tempo perso."
+    }
+   ],
+   "peak_over_mean": 15,
+   "peak_source": "senza fonte, come hii_classic e per la stessa ragione: la classe si misura in righe, non in banda larga. Confidenza bassa.",
+   "line_fraction": 0.1,
+   "sub_note": "bassa: classe poco concentrata"
+  },
+  "wr_bubble": {
+   "label": "Bolla di vento stellare / gas shockato",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Bolla di vento stellare: gas shockato, luce in riga.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "esclusa",
+    "HOO": "prima",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 482,
+    "RGB": 1131,
+    "HaRGB": 88,
+    "HOO": 1982,
+    "SHO": 1528
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "logic": "Shock + fotoionizzazione compresenti. Le tre righe tracciano strutture spazialmente DIVERSE, non la stessa immagine a SNR diverso. SII realmente informativo, ma solo sopra soglia.",
+   "default_budget": {
+    "Ha": {
+     "floor": 1.5,
+     "useful": 3,
+     "saturates": 5,
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "OIII": {
+     "floor": 4,
+     "useful": 8,
+     "saturates": 14,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true
+    },
+    "SII": {
+     "floor": 5,
+     "useful": 8,
+     "saturates": 14,
+     "road": "sho"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "OIII per primo e nelle notti migliori. Ha con la Luna, è robusto. SII è il più tollerante di tutti: notti compromesse. Se hai una notte sola, tutta OIII: l'Ha lo recuperi sempre.",
+   "expect": {
+    "5h": "La struttura in Ha c'è. L'OIII è un fantasma da tirare con stretch aggressivo.",
+    "12h": "Ha e OIII si separano spazialmente ed è quella separazione il soggetto dell'immagine.",
+    "20h": "I filamenti shockati emergono come tessitura. Guadagno reale, non proporzionale."
+   },
+   "traps": [
+    "Le tre righe tracciano strutture DIVERSE: trattarle come lo stesso soggetto a SNR diverso è l'errore che appiattisce l'immagine.",
+    "Il SII sotto soglia non entra nel finale: sono ore perse due volte.",
+    "Il campo stellare denso rende la riduzione stellare aggressiva molto visibile."
+   ],
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "sotto un budget ampio",
+     "pro": "Sfrutta la separazione spaziale Ha/OIII, che è la bellezza dell'oggetto.",
+     "contro": "Perdi i filamenti shockati."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB con budget sbilanciato sull'OIII",
+     "default": false,
+     "when": "con budget ampio: qui il SII è realmente informativo",
+     "pro": "I filamenti diventano struttura distinta, non colore.",
+     "contro": "Quasi il doppio del tempo."
+    }
+   ],
+   "peak_over_mean": 15,
+   "peak_source": "senza fonte. Un solo oggetto nel catalogo (NGC 6888) e nessuna magnitudine innestata per esso, quindi il valore non entra oggi in nessun calcolo. Confidenza bassa.",
+   "line_fraction": 0.2,
+   "sub_note": "media-bassa: gusci con filamenti brillanti"
+  },
+  "snr": {
+   "label": "Resto di supernova",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Resto di supernova: gas shockato, luce in riga.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "esclusa",
+    "HOO": "possibile",
+    "SHO": "prima"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 554,
+    "RGB": 1299,
+    "HaRGB": 148,
+    "HOO": 1706,
+    "SHO": 2700
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "logic": "Gas shockato: [SII]/Ha alto (>0.4), firma diagnostica dello shock. OIII spesso forte e in filamenti distinti. È l'archetipo in cui l'SHO ha più senso.",
+   "default_budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "road": [
+      "sho",
+      "hoo"
+     ]
+    },
+    "OIII": {
+     "floor": 2,
+     "useful": 5,
+     "saturates": 10,
+     "road": [
+      "sho",
+      "hoo"
+     ],
+     "critical": true
+    },
+    "SII": {
+     "floor": 5,
+     "useful": 9,
+     "saturates": 14,
+     "road": "sho"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "sho",
+      "hoo"
+     ]
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "OIII e SII sono entrambi informativi, ed è raro. OIII con l'oggetto alto, SII nelle notti mediocri, Ha quando capita. E' l'archetipo in cui vale la pena spendere sul SII.",
+   "expect": {
+    "3h": "I filamenti principali ci sono. Il rapporto SII/Ha non è ancora misurabile.",
+    "7h": "La firma di shock diventa leggibile e la palette SHO ha finalmente senso.",
+    "14h": "Filamenti deboli e struttura fine. Su questi soggetti la profondità paga."
+   },
+   "traps": [
+    "E' l'unico archetipo in cui l'SHO paritetico è spesso giusto: applicargli le regole delle HII lo impoverisce.",
+    "I resti estesi eccedono quasi sempre il campo: il mosaico va deciso prima, non dopo la prima notte.",
+    "I filamenti sono strutture sottili: la deconvoluzione qui aiuta più che altrove, ma amplifica anche il rumore."
+   ],
+   "roads": [
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "default": true,
+     "when": "con budget ampio: è l'archetipo dove il SII paga davvero",
+     "pro": "La firma di shock [SII]/Ha diventa leggibile.",
+     "contro": "Richiede di dare al SII le sue ore, che sono molte."
+    },
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": false,
+     "when": "con budget ridotto",
+     "pro": "Si porta a casa in metà tempo.",
+     "contro": "Perdi proprio l'informazione che rende speciale un resto di supernova."
+    }
+   ],
+   "peak_over_mean": 10,
+   "peak_source": "senza fonte. Quello che la letteratura pubblica sui resti sono brillanze di RIGA di singoli filamenti scelti per studi di shock (H-alpha, [O III], [S II]), non il picco del soggetto fotografico, e non sono convertibili in una brillanza V su un continuo. Il solo caso in cui il dato sarebbe per natura convertibile e' il continuo di sincrotrone del Granchio (Veron-Cetty & Woltjer 1993, A&A 270, 370, misurato anche a 5364 A), non verificato qui perche' su ADS esiste solo come scansione. Confidenza bassa.",
+   "line_fraction": 0.25,
+   "sub_note": "bassa: filamenti sottili, OIII forte in V"
+  },
+  "pn_bright": {
+   "label": "Nebulosa planetaria compatta luminosa",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Planetaria: gas ionizzato, luce in riga. Per quattordici oggetti il catalogo porta gia' la brillanza Ha misurata (Frew 2016).",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "prima",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 581,
+    "RGB": 955,
+    "HaRGB": 178,
+    "HOO": 1212,
+    "SHO": 878
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.4,
+   "logic": "OIII fortissimo, Ha forte, SII presente. Problema opposto al solito: dinamica, non segnale. Nucleo sovraesposto mentre l'alone è 100x più debole.",
+   "default_budget": {
+    "Ha": {
+     "floor": 0.5,
+     "useful": 1.5,
+     "saturates": 3,
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "OIII": {
+     "floor": 1,
+     "useful": 3,
+     "saturates": 7,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true
+    },
+    "SII": {
+     "floor": 4,
+     "useful": 7,
+     "saturates": 12,
+     "road": "sho"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ]
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Il problema non è quando, è quanto: pose corte per il nucleo e lunghe per l'alone, nella stessa notte. La Luna disturba poco perché il soggetto è brillante. Il seeing invece decide tutto.",
+   "expect": {
+    "1h": "Il nucleo c'è ed è già saturo. Dell'alone nessuna traccia.",
+    "3h": "Struttura interna leggibile. Alone accennato se hai fatto anche le pose lunghe.",
+    "7h": "Alone esterno e dettaglio fine. Oltre, il limite è il seeing, non il tempo."
+   },
+   "traps": [
+    "Nucleo saturato: se i pixel sono a fondo scala non c'è post che tenga. Serve una serie corta da fondere.",
+    "Oggetto piccolo: la focale lunga qui ripaga, ma solo se la guida regge — altrimenti si perde tutto in FWHM.",
+    "Lo stretch che rende visibile l'alone brucia il nucleo: servono due elaborazioni fuse, non una."
+   ],
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "quasi sempre",
+     "pro": "OIII fortissimo, l'immagine si chiude in poche ore.",
+     "contro": "Nessuna mappa di shock."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "default": false,
+     "when": "con budget ampio",
+     "pro": "Struttura interna più ricca.",
+     "contro": "Il SII costa il doppio dell'OIII per un guadagno modesto."
+    }
+   ],
+   "peak_over_mean": 4,
+   "peak_source": "van Hoof P.A.M. 2000, MNRAS 314, 99, eq. (41): per un guscio sferico a emissivita' costante il profilo proiettato da un rapporto picco/media pari a 1.5*sqrt(1-q^2)/(1-q^3), con q = raggio interno / raggio esterno. Vale 1.50 a q=0 (sfera piena), 1.84 a q=0.8, 2.41 a q=0.9, 3.28 a q=0.95. Il 4 corrisponde a q~0.96, cioe' un guscio piu' sottile di quelli reali: prudente, non sbagliato — e la morfologia, anello contro disco pieno, sposta il rapporto di meno di una magnitudine. ATTENZIONE ALLA PORTATA: questo numero descrive il CORPO PRINCIPALE. Il contrasto che motiva la serie corta e' un altro, fra il picco del rim e l'alone, e vale 10^-3 - 10^-4 (Corradi et al. 2003, MNRAS 340, 417, Tab. 3: M57 2e-4, M27 3e-4, NGC 6543 1e-4, NGC 7293 1e-2), cioe' 7.5-10 magnitudini. Un solo picco non puo' esprimere due regioni, e nessun valore di peak_over_mean lo fara' mai.",
+   "line_fraction": 0.55,
+   "sub_max_s": 180,
+   "sub_max_protegge": "picco_di_riga",
+   "sub_note": "alta: il guscio domina la V ed è quasi tutto [OIII] 4959/5007 + Hbeta. Pose brevi documentate (M57 in RGB a 25 s)",
+   "sub_source": "guscio interno brillante e colore da salvare; l'alone debole è una serie lunga a parte",
+   "hdr_short_s": 20,
+   "hdr_frames": 25,
+   "hdr_why": "il guscio interno e il colore si salvano solo con una serie corta"
+  },
+  "pn_faint": {
+   "label": "Nebulosa planetaria estesa debole",
+   "fotometria_di": "riga",
+   "fotometria_perche": "Planetaria debole: stessa fisica, flussi piu' bassi.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "possibile",
+    "HaRGB": "esclusa",
+    "HOO": "prima",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 76,
+    "RGB": 156,
+    "HaRGB": 0,
+    "HOO": 163,
+    "SHO": 51
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "banda_larga_tipica": "stelle",
+   "tecnica_tipica": "HOO",
+   "logic": "Evoluta: OIII dominante, Ha debole, SII trascurabile. HOO obbligato. Stelle da RGB perché in banda stretta il campo diventa innaturale.",
+   "default_budget": {
+    "Ha": {
+     "floor": 3,
+     "useful": 5,
+     "saturates": 9,
+     "road": "default"
+    },
+    "OIII": {
+     "floor": 8,
+     "useful": 15,
+     "saturates": 25,
+     "road": "default",
+     "critical": true
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": "default"
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "OIII senza Luna e con l'oggetto più alto possibile: è quasi l'unico canale. Ha come supporto strutturale. Stelle in RGB, sempre.",
+   "expect": {
+    "8h": "Il guscio si intuisce sul fondo. Non è ancora un'immagine.",
+    "15h": "L'OIII regge lo stretch e la forma si chiude. E' la soglia vera dell'oggetto.",
+    "25h": "Struttura fine e parti esterne. Qui le ore rendono ancora."
+   },
+   "traps": [
+    "Sono oggetti che si sottovalutano: il preventivo realistico è due o tre volte quello che sembra.",
+    "In HOO puro il campo stellare diventa innaturale: le stelle vanno da RGB.",
+    "Con OIII così dominante ogni riflesso del filtro diventa visibile e va escluso in ripresa, non mascherato dopo."
+   ],
+   "peak_over_mean": 3,
+   "peak_source": "stessa geometria di pn_bright (van Hoof 2000, eq. 41): 3 corrisponde a un guscio con q~0.93. Per le planetarie evolute e diffuse il corpo si avvicina alla sfera piena, il cui limite esatto e' 1.50: il 3 resta dalla parte prudente.",
+   "line_fraction": 0.45,
+   "sub_note": "media: guscio esteso, stessa fisica delle righe"
+  },
+  "reflection": {
+   "label": "Nebulosa a riflessione",
+   "fotometria_di": "continuo",
+   "fotometria_perche": "Nebulosa a riflessione: continuo stellare diffuso dalla polvere. La brillanza si deriva dal flusso della stella che illumina, per albedo e funzione di fase su distanza al quadrato: fisica vera con incertezza grande, quindi stima da modello dichiarata, mai un valore di classe travestito da misura.",
+   "tecniche": {
+    "LRGB": "prima",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "esclusa"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 2309,
+    "RGB": 1084,
+    "HaRGB": 227,
+    "HOO": 43,
+    "SHO": 249
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.5,
+   "banda_larga_tipica": "soggetto",
+   "tecnica_tipica": "LRGB",
+   "logic": "Continuo stellare riflesso: nessuna riga. La banda stretta è inutile per definizione. Solo banda larga, e il problema non è il segnale ma la dinamica delle stelle.",
+   "default_budget": {
+    "L": {
+     "floor": 1.5,
+     "useful": 4,
+     "saturates": 10,
+     "road": "default",
+     "critical": true
+    },
+    "RGB": {
+     "floor": 2,
+     "useful": 4.5,
+     "saturates": 9,
+     "scala": "soggetto",
+     "road": "default"
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Banda larga: serve cielo buio e Luna assente, non c'è filtro che aiuti. Da fare con l'oggetto alto. Se c'è la Luna, cambia soggetto.",
+   "expect": {
+    "2h": "Il nucleo brillante della riflessione c'è, il resto è rumore.",
+    "5h": "Le volute prendono forma e il blu si stacca dal fondo.",
+    "10h": "Le parti esterne e il contesto polveroso. Su questi oggetti la profondità paga molto."
+   },
+   "traps": [
+    "La banda stretta è inutile per definizione: è continuo riflesso, non emissione.",
+    "Il colore blu si perde con un'estrazione gradienti troppo aggressiva: è segnale, non gradiente.",
+    "Le stelle brillanti che illuminano la nebulosa saturano per prime e vanno gestite in ripresa."
+   ],
+   "peak_over_mean": 20,
+   "peak_source": "senza fonte, e INERTE: mu_da_magnitudine.valida = false su questa classe, quindi muCentrale restituisce null prima di leggere questo campo. Verificato: su tutti e nove gli oggetti reflection del catalogo il picco non viene calcolato. Il valore resta scritto per non cambiare la forma del record, ma non entra in nessun calcolo.",
+   "line_fraction": 0,
+   "sub_max_s": 240,
+   "sub_max_protegge": "alone_della_stella",
+   "sub_note": "media: alone della stella illuminante molto più brillante della media",
+   "sub_source": "l'alone della stella illuminante brucia in fretta",
+   "hdr_short_s": 20,
+   "hdr_frames": 20,
+   "hdr_why": "l'alone della stella illuminante",
+   "mu_da_magnitudine": {
+    "valida": false,
+    "perche": "Su una nebulosa a riflessione la magnitudine di catalogo e' spesso quella della stella che la illumina, non della nebulosa: verificato su NGC 7023 (7.2 = HD 200775) e IC 4592 (3.9 = nu Scorpii). E anche quando e' della nebulosa, la luce e' concentrata attorno alla stella illuminante, quindi la media sull'area catalogata non e' cio' che si riprende. Restano il tetto stellare e quello del cielo, che qui sono i due che contano davvero."
+   }
+  },
+  "dark_molecular": {
+   "label": "Nebulosa oscura / molecolare",
+   "fotometria_di": "continuo",
+   "fotometria_perche": "Nube oscura: si riprende il continuo del campo e il contrasto della polvere.",
+   "tecniche": {
+    "LRGB": "prima",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "esclusa"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 405,
+    "RGB": 125,
+    "HaRGB": 50,
+    "HOO": 26,
+    "SHO": 26
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.6,
+   "banda_larga_tipica": "soggetto",
+   "tecnica_tipica": "LRGB",
+   "logic": "Assorbimento, non emissione: line_fraction e zero, la nube non emette nulla. Il soggetto e il contrasto contro il fondo, quindi decide la banda larga profonda. L'Ha serve SOLO quando la nube si staglia contro una regione HII, e quello e un fatto del singolo oggetto, non della classe: si dichiara nella scheda, come per B33 davanti a IC 434. Mettere l'Ha nel budget di classe faceva prescrivere ore di banda stretta su oggetti che per definizione non emettono righe.",
+   "default_budget": {
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Fuori dal budget di classe: una nube oscura non emette righe (line_fraction 0). Dove esiste un fondo di emissione la cosa appartiene al singolo oggetto e va nella sua scheda con l'evidenza — il caso di riferimento e B33, che infatti sta in catalogo come hii_classic e non qui."
+    },
+    "L": {
+     "floor": 3,
+     "useful": 7.5,
+     "saturates": 15,
+     "road": "default",
+     "critical": true
+    },
+    "RGB": {
+     "floor": 2.5,
+     "useful": 4.5,
+     "saturates": 9,
+     "scala": "soggetto",
+     "road": "default"
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Serve il fondo, non l'oggetto: si riprende ciò che la nube oscura. La banda larga prima, e più a lungo di quanto sembri necessario: e il contrasto a costruire la sagoma, non il segnale della nube. Poi il colore, che qui racconta la polvere. Cielo buio e Luna assente non sono preferenze: senza fondo pulito non c'è contrasto da stirare. Se questa nube in particolare si staglia contro una regione HII, l'Ha diventa il fondo migliore e la Luna perdona — ma va dichiarato nella scheda dell'oggetto, non dedotto dalla classe.",
+   "expect": {
+    "3h": "La sagoma si distingue ma i bordi sono impastati.",
+    "6h": "Il contrasto fra nube e fondo regge lo stretch e la struttura filamentosa emerge.",
+    "12h": "Sfumature interne e polveri deboli. Serve un cielo davvero buono."
+   },
+   "traps": [
+    "E' l'unico archetipo dove il soggetto è l'ASSENZA di segnale: ogni gradiente residuo si legge come struttura della nube.",
+    "Il modello fotometrico del motore integra il flusso PROPRIO dell'oggetto, mentre qui il rapporto segnale-rumore vive sul contrasto col fondo. Le ore qui sotto sono quindi una convenzione calibrata sulla scala di 'cosa aspettarti' di questo stesso archetipo, non una derivazione dalla fisica dell'assorbimento: valgono per decidere se vale la nottata, non per pianificare al minuto.",
+    "La riduzione rumore aggressiva sul fondo cancella proprio il contrasto che rende visibile la nube.",
+    "Una calibrazione del colore sbagliata rende la nube grigia invece che bruna: è il colore che la racconta."
+   ],
+   "peak_over_mean": 3,
+   "mu_da_magnitudine": {
+    "valida": false,
+    "perche": "Una nube oscura non e' una sorgente: e' un assorbitore che si stacca su un fondo. La luce che ha davvero e' luce stellare interstellare diffusa dai grani, e Mattila et al. 2018 (A&A 617, A42) la tabulano in unita' fisiche fra 3500 e 8200 A: convertita in banda V per LDN 1780, che e' il caso favorevole perche' e' una nube traslucida ad alta latitudine, viene mu_V circa 24.1 — dieci volte piu' debole di un cielo Bortle 3 a 21.9. Barnard 150 e LDN 1251 sono opache e a bassa latitudine, dove il contrasto e' ancora minore. Non c'e' nessun picco da proteggere: a decidere la posa restano il fondo cielo e le stelle di campo. Fino a oggi il campo non entrava nel calcolo solo perche' i due oggetti non hanno una magnitudine innestata: era un'assenza accidentale, ora e' una scelta."
+   },
+   "peak_source": "senza fonte, e da oggi inerte per dichiarazione invece che per accidente (vedi mu_da_magnitudine qui sotto). Fino a ieri non entrava nel calcolo solo perche' Barnard 150 e LDN 1251 non hanno una magnitudine innestata.",
+   "line_fraction": 0,
+   "sub_note": "bassa"
+  },
+  "spiral_hii": {
+   "label": "Galassia a spirale con regioni HII",
+   "fotometria_di": "continuo",
+   "fotometria_perche": "Galassia a spirale: continuo stellare, con le regioni HII come dettaglio in riga.",
+   "tecniche": {
+    "LRGB": "prima",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 4016,
+    "RGB": 1848,
+    "HaRGB": 2791,
+    "HOO": 334,
+    "SHO": 489
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.6,
+   "logic": "Continuo stellare + regioni HII nei bracci. Banda larga come base, Hα come strato additivo sulle regioni HII. Lo SHO su una galassia e' raro — nella tabella AstroBin e' possibile, non escluso — e su questa classe non si genera, perche' la classe dichiara a zero sia l'OIII sia il SII.",
+   "default_budget": {
+    "L": {
+     "floor": 1.5,
+     "useful": 4,
+     "saturates": 8,
+     "road": [
+      "lrgb_ha",
+      "lrgb"
+     ],
+     "critical": true
+    },
+    "RGB": {
+     "floor": 1.5,
+     "useful": 3,
+     "saturates": 6,
+     "scala": "soggetto",
+     "road": [
+      "lrgb_ha",
+      "lrgb"
+     ]
+    },
+    "Ha": {
+     "floor": 2,
+     "useful": 4,
+     "saturates": 7,
+     "road": "lrgb_ha"
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "La banda larga vuole l'oggetto alto e niente Luna: è lei a portare il dettaglio. Dove profondità e colore si riprendono separatamente, l'esigente è la profondità — il colore regge anche una notte mediocre. Ha come strato additivo sulle regioni HII, e quello tollera la Luna.",
+   "expect": {
+    "3h": "La galassia c'è, i bracci si intuiscono, le parti esterne no.",
+    "7h": "Struttura dei bracci, colore stabile, regioni HII visibili se hai fatto l'Ha.",
+    "15h": "Alone esterno, maree, galassie di campo. Qui la profondità cambia davvero l'immagine."
+   },
+   "traps": [
+    "Lo SHO su una galassia è raro, e su questa classe non si genera: la classe dichiara a zero sia l'OIII sia il SII. Chi lo vuole lo scrive nella scheda dell'oggetto, con i suoi numeri.",
+    "La banda larga spinta troppo impasta il nucleo: la dinamica fra nucleo e bracci è ampia.",
+    "L'Ha va aggiunto come strato, non miscelato al rosso: miscelato falsa la calibrazione del colore."
+   ],
+   "roads": [
+    {
+     "id": "lrgb_ha",
+     "tecnica": "HaRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB + Ha additivo",
+     "nome_su_matrice": "RGB + Ha additivo",
+     "default": false,
+     "when": "con budget ampio e camera mono",
+     "pro": "Le regioni HII nei bracci diventano visibili.",
+     "contro": "L'Ha è additivo: su camera a colori costa quattro volte tanto e ruba ore alla banda larga, che qui è il soggetto."
+    },
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB puro",
+     "nome_su_matrice": "RGB puro",
+     "default": true,
+     "when": "con budget ridotto, o su camera a colori",
+     "pro": "Tutte le ore vanno dove sta il segnale.",
+     "contro": "Le regioni HII restano accennate."
+    }
+   ],
+   "peak_over_mean": 40,
+   "peak_source": "senza fonte, ed e' la costante che governa piu' oggetti derivati di ogni altra (36). Non e' verificabile per una ragione di forma prima che di dati: per una spirale il picco in banda larga puo' essere tre cose diverse — il bulge (esteso, descrivibile con una brillanza), un nucleo attivo o un ammasso stellare nucleare (puntiforme, la cui brillanza apparente dipende dal seeing e non dall'oggetto: e' il mestiere di starPeakRate, non di questo campo), o una regione HII gigante nei bracci (estesa ma decentrata, e con fisica di riga). M33 e M101 hanno il picco nelle regioni HII, M51 M81 M106 hanno un nucleo puntiforme, M104 e M64 hanno un bulge dominante. Una costante sola sta mediando tre fisiche. La letteratura in banda V per le spirali del nord esiste ma pubblica il disco (Baggett, Baggett & Anderson 1998, AJ 116, 1626, colonna mu0), non il picco; estrapolare il bulge fino a r=0 con la legge di de Vaucouleurs produce, sulle stesse 31 galassie, valori fino a mu 5, che sono artefatti del fit e non misure. Confidenza bassa.",
+   "nucleo_di_classe": "galassia",
+   "line_fraction": 0,
+   "sub_note": "media: nucleo contro media del disco"
+  },
+  "elliptical_group": {
+   "label": "Ellittica o gruppo compatto",
+   "fotometria_di": "continuo",
+   "fotometria_perche": "Galassia ellittica: continuo stellare puro.",
+   "tecniche": {
+    "LRGB": "prima",
+    "RGB": "possibile",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "possibile"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 904,
+    "RGB": 346,
+    "HaRGB": 213,
+    "HOO": 32,
+    "SHO": 119
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "guida_lrgb": 0.6,
+   "banda_larga_tipica": "soggetto",
+   "tecnica_tipica": "LRGB",
+   "logic": "Solo continuo, solo banda larga. Il problema è la profondità sui gusci deboli e sulle maree, non la banda.",
+   "default_budget": {
+    "L": {
+     "floor": 2,
+     "useful": 6,
+     "saturates": 12,
+     "road": "default",
+     "critical": true
+    },
+    "RGB": {
+     "floor": 2,
+     "useful": 4.5,
+     "saturates": 9,
+     "scala": "soggetto",
+     "road": "default"
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Banda larga pura: cielo buio, Luna assente, oggetto alto. Non c'è canale tollerante in questo archetipo, quindi le notti mediocri qui non servono.",
+   "expect": {
+    "4h": "Le galassie principali ci sono, tonde e pulite. Nessun guscio.",
+    "10h": "Gusci deboli e ponti di marea cominciano a staccarsi dal fondo.",
+    "20h": "La parte interessante: strutture diffuse a bassissima brillanza. Serve cielo buio."
+   },
+   "traps": [
+    "Il soggetto vero è spesso a brillanza estrema: un'estrazione gradienti aggressiva lo cancella insieme al gradiente.",
+    "Lo stretch che rende belle le galassie brillanti appiattisce tutto il resto: servono due trattamenti.",
+    "Con oggetti piccoli in campo largo si finisce a fotografare soprattutto cielo vuoto: verificare l'inquadratura prima."
+   ],
+   "peak_over_mean": 187,
+   "peak_source": "ricavato dalle otto ellittiche della Vergine per cui questo catalogo porta ora una mu_V misurata (Kormendy et al. 2009, vedi il registro fonti in catalog.json). Per ciascuna, il rapporto fra la media derivata da magnitudine e area e la mu misurata a r=1.0 arcsec vale 89 (M87), 104 (M60), 116 (M49), 172 (M59), 203 (M86), 219 (M85), 300 (M84), 361 (M89): mediana 187. Il 60 precedente sbagliava di 1.24 magnitudini, e nel verso PERMISSIVO — picco troppo debole, tetto troppo lungo. Portata: vale solo per le sei ellittiche senza misura (M32, M102, M104, M105, M110, NGC 5128); sulle otto misurate non entra, perche' la misura vince. Resta una costante su una classe il cui rapporto vero si sparpaglia su un fattore quattro, e va letta cosi'.",
+   "nucleo_di_classe": "galassia",
+   "line_fraction": 0,
+   "sub_note": "media: profilo de Vaucouleurs, molto concentrato"
+  },
+  "tidal_ifn": {
+   "label": "Maree stellari / cirri galattici (IFN)",
+   "fotometria_di": "continuo",
+   "fotometria_perche": "Code mareali e cirri galattici: continuo debolissimo.",
+   "tecniche": null,
+   "tecniche_nota": "Classe non misurata: l'IFN non si isola con la ricerca per oggetto su AstroBin (ripartenza.md §14). La generazione delle strade non aggiunge niente a questa classe, e lo dice.",
+   "guida_lrgb": 0.7,
+   "banda_larga_tipica": "soggetto",
+   "tecnica_tipica": "LRGB",
+   "logic": "Brillanza superficiale estrema (27-28 mag/arcsec2). Problema di segnale puro: solo banda larga profondissima e gestione maniacale dei gradienti.",
+   "default_budget": {
+    "L": {
+     "floor": 6,
+     "useful": 15,
+     "saturates": 30,
+     "road": "default",
+     "critical": true
+    },
+    "RGB": {
+     "floor": 3,
+     "useful": 6,
+     "saturates": 12,
+     "scala": "soggetto",
+     "road": "default"
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "default_confidence": "bassa",
+   "order": "Solo cielo davvero buio, e su questo non si tratta: l'IFN è polvere galattica illuminata dall'insieme della Galassia, e un cielo mediocre la cancella prima che la posa conti qualcosa. Niente Luna, niente foschia — e più ore di quante sembrino ragionevoli.",
+   "expect": {
+    "6h": "Niente di presentabile. Si vede che c'è qualcosa e basta.",
+    "15h": "Il segnale si stacca dal fondo e regge uno stretch controllato. E' la soglia vera.",
+    "30h": "Struttura e estensione reali. Su questi soggetti le ore rendono fino a molto tardi."
+   },
+   "traps": [
+    "Il segnale è allo stesso livello dei gradienti: qualunque errore di correzione fabbrica struttura che non esiste.",
+    "I flat qui non sono opzionali e nemmeno approssimabili: la vignettatura residua si legge come cirro.",
+    "La tentazione di credere al proprio stretch è il rischio principale: serve un confronto con un'immagine indipendente."
+   ],
+   "peak_over_mean": 30,
+   "peak_source": "senza fonte, e riferito a una grandezza che l'archetipo non definisce in modo univoco: il soggetto dichiarato sono le correnti mareali, misurate a mu_g 27.6 (van Dokkum et al. 2019 su NGC 5907), mentre cio' che satura in quel campo e' il nucleo della galassia ospite, che e' fisica di spiral_hii. Il valore approssima la concentrazione del disco di taglio, non la corrente. Confidenza bassa.",
+   "line_fraction": 0,
+   "sub_note": "bassa"
+  },
+  "cluster_globular": {
+   "label": "Ammasso globulare",
+   "fotometria_di": "stelle_risolte",
+   "fotometria_perche": "Ammasso globulare: la luce sta nelle stelle. La piu' brillante fissa la posa (tetto stellare), la piu' debole che si vuole registrare fissa le ore: la brillanza superficiale di picco non e' la grandezza giusta, perche' dipende da focale e seeing.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "prima",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "esclusa"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 724,
+    "RGB": 770,
+    "HaRGB": 31,
+    "HOO": 10,
+    "SHO": 74
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "logic": "Nessuna emissione: è luce stellare integrata. Il problema non è il segnale, che abbonda, ma la DINAMICA: il nucleo satura molte magnitudini prima che la periferia esca dal fondo. Si risolve in ripresa con pose corte, non in elaborazione. Banda stretta assolutamente controindicata.",
+   "default_budget": {
+    "RGB": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "scala": "soggetto",
+     "road": [
+      "rgb",
+      "lrgb"
+     ],
+     "critical": true,
+     "note": "Pose corte (60-120 s alla configurazione di riferimento) e tante: il totale conta meno della singola posa."
+    },
+    "L": {
+     "floor": 0.5,
+     "useful": 1.5,
+     "saturates": 3,
+     "road": "lrgb",
+     "warning": "La L satura il nucleo prima di tutti gli altri canali. Su un globulare compatto molti la saltano del tutto e lavorano in RGB puro: il colore delle stelle è il soggetto, la profondità no."
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "order": "Non c'è un ordine di canali che conti: la Luna quasi non tocca le stelle, che sono sorgenti puntiformi, quindi un globulare è il soggetto giusto per le notti che butteresti via. Conta invece l'ordine delle POSE: una serie corta per il nucleo e una più lunga per la periferia, da fondere dopo. E conta il seeing: qui la risoluzione è tutto, perché il pregio dell'immagine è quante stelle separi nel nucleo.",
+   "expect": {
+    "1h": "Il nucleo è una palla bianca satura e la periferia è granulosa. Riconoscibile, non risolto.",
+    "2.5h": "Il nucleo comincia a granularsi in stelle singole se il seeing ha collaborato. Colori stellari presenti. E' il punto in cui l'oggetto rende.",
+    "5h": "Guadagno soprattutto sulle stelle deboli di campo e sulla pulizia del colore. Sul nucleo non guadagni quasi niente: quello lo decide il seeing, non le ore."
+   },
+   "traps": [
+    "Il nucleo saturato non si recupera in post: se i pixel sono a fondo scala l'informazione non c'è. Va prevista in ripresa una serie di pose corte da fondere (HDRComposition o maschera).",
+    "Deconvoluzione aggressiva su un campo così denso genera anelli scuri fra le stelle. Meglio poca, o niente.",
+    "La riduzione stellare qui è controproducente: le stelle SONO il soggetto."
+   ],
+   "roads": [
+    {
+     "id": "rgb",
+     "tecnica": "RGB",
+     "banda_larga": "soggetto",
+     "name": "RGB",
+     "default": true,
+     "when": "Le stelle sono l'oggetto. Il colore si misura in R, G, B, e non c'è struttura estesa da scolpire che giustifichi una passata in più per la profondità.",
+     "pro": "",
+     "contro": ""
+    },
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB",
+     "default": false,
+     "when": "La L aggiunge segnale sulle membre più deboli ai bordi. Costa una passata in più e va dosata: sui nuclei densi tende a slavare il colore delle stelle. La usa il 42-53 % di chi riprende globulari — sconsigliata, non vietata.",
+     "pro": "",
+     "contro": ""
+    }
+   ],
+   "default_confidence": "bassa",
+   "stellar": true,
+   "peak_over_mean": 150,
+   "peak_source": "l'unico K nato con un conto scritto — «mu_V(0) ~ 14-17 (Harris) contro una media ~21 -> ~150x», cioe' Harris W.E. 1996 (edizione 2010), AJ 112, 1487, la stessa fonte gia' registrata in catalog.json — ma solo meta' dei termini e' attribuita: la media ~21 non viene da nessuna fonte. Ed e' smentito dai 29 valori di Harris che questo catalogo ha poi acquisito: calcolando il rapporto vero oggetto per oggetto, cioe' 10^(0.4*(mu_media - mu_V misurata)), viene da 0.5 (M71) a 1576 (M70), mediana 73, con 8.79 magnitudini fra i due estremi. La concentrazione strutturale che pure possediamo (r_meta_luce / r_nucleo) ne spiega solo la meta' (r^2 = 0.51). INERTE: su tutti e 29 gli ammassi vince la mu_V misurata, quindi questo numero non entra in nessun calcolo. Resta come promemoria di che cosa una costante di classe puo' e non puo' fare.",
+   "line_fraction": 0,
+   "sub_max_s": 60,
+   "sub_max_protegge": "giganti",
+   "sub_note": "alta: mu_V(0) ~ 14-17 (Harris) contro una media ~21 -> ~150x. Pratica documentata 20-60 s, fino a 120-180 s a f/ lenti",
+   "sub_source": "Cloudy Nights e Galactic Hunter: 20-60 s tipici, «30 s, forse 60, mai di più». Protegge le giganti più brillanti dell'ammasso, non il nucleo non risolto: quello Harris lo misura, e non va a fondo scala in un minuto (22 settembre 2026).",
+   "hdr_short_s": 10,
+   "hdr_frames": 25,
+   "hdr_why": "le giganti più brillanti vanno a fondo scala prima di tutto il resto: una serie corta da fondere è la cura"
+  },
+  "cluster_open": {
+   "label": "Ammasso aperto",
+   "fotometria_di": "stelle_risolte",
+   "fotometria_perche": "Ammasso aperto: la luce sta nelle stelle, come nei globulari. Il picco di brillanza dipende dal telescopio, non dall'oggetto.",
+   "tecniche": {
+    "LRGB": "possibile",
+    "RGB": "prima",
+    "HaRGB": "possibile",
+    "HOO": "esclusa",
+    "SHO": "esclusa"
+   },
+   "tecniche_conteggi": {
+    "LRGB": 219,
+    "RGB": 345,
+    "HaRGB": 103,
+    "HOO": 29,
+    "SHO": 58
+   },
+   "tecniche_conteggi_del": "2026-09-13",
+   "tecniche_fonte": "ripartenza.md §14: conteggi AstroBin del 13 settembre 2026 (31 oggetti, 12 classi), codificati da Alessandro a tre stati. «prima» e' la prima scelta, «esclusa» non si propone, «possibile» sta fra le alternative. La generazione delle strade non aggiunge mai una tecnica esclusa; una scheda che la porta la tiene, perche' la classe e' una generalizzazione e la scheda un'osservazione su quell'oggetto. I conteggi stanno in `tecniche_conteggi`, somma degli oggetti della classe, mono e colore insieme: quando un default di classe viene dalla tabella, il margine si legge accanto — un sette a uno e un 52 a 48 non sono la stessa prova.",
+   "logic": "Nessuna emissione, poche decine di stelle brillanti su campo largo. Il problema non è ne' il segnale ne' la dinamica del nucleo ma il COLORE e la qualità del campo: bordi, vignettatura, aloni sulle stelle più luminose. Si porta a casa in poche ore, ed è il soggetto giusto per le notti con la Luna. Banda stretta controindicata.",
+   "default_budget": {
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1.5,
+     "saturates": 3,
+     "scala": "soggetto",
+     "road": [
+      "rgb",
+      "lrgb"
+     ],
+     "critical": true,
+     "note": "Il colore delle stelle è il soggetto: meglio colore abbondante e profondità scarsa che il contrario."
+    },
+    "L": {
+     "floor": 0.3,
+     "useful": 1,
+     "saturates": 2,
+     "road": "lrgb",
+     "note": "Aggiunge stelle deboli di campo, non migliora l'ammasso in se'."
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo. Se l'ammasso è immerso in nebulosita' (M45, IC 1805) l'archetipo giusto è un altro."
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non previsto per questo archetipo."
+    }
+   },
+   "order": "Soggetto da nottata compromessa: la Luna alta e la trasparenza mediocre pesano poco su stelle luminose. Da fare invece con l'oggetto alto se il campo è largo, perché la rifrazione differenziale sporca il colore delle stelle a bassa altezza.",
+   "expect": {
+    "0.5h": "L'ammasso c'è ed è presentabile. Le stelle deboli di campo mancano.",
+    "1.5h": "Colori stellari puliti e campo profondo quanto serve. Oltre questo si guadagna poco.",
+    "3h": "Solo più stelle di campo. Se l'ammasso è il soggetto, sono ore meglio spese altrove."
+   },
+   "traps": [
+    "Le stelle più luminose danno aloni e microlenti: il colpevole di solito è il filtro o una superficie non trattata, e in post non si toglie.",
+    "Su campo largo la vignettatura falsa il colore ai bordi: i flat qui non sono opzionali.",
+    "Lo stretch aggressivo appiattisce le magnitudini e fa sembrare tutte le stelle uguali, che è il modo più rapido di rendere anonimo un ammasso."
+   ],
+   "roads": [
+    {
+     "id": "rgb",
+     "tecnica": "RGB",
+     "banda_larga": "soggetto",
+     "name": "RGB",
+     "default": true,
+     "when": "Stelle su fondo vuoto: il colore è tutto, e la profondità non ha struttura da servire. Nei dati AstroBin, fra chi riprende in banda larga, il solo colore batte la luminanza aggiunta: 345 contro 219.",
+     "pro": "",
+     "contro": ""
+    },
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB",
+     "default": false,
+     "when": "La L porta le stelle più deboli e la nebulosità residua del complesso. La usa il 36-49 % del campo — sconsigliata, non vietata.",
+     "pro": "",
+     "contro": ""
+    }
+   ],
+   "default_confidence": "bassa",
+   "stellar": true,
+   "peak_over_mean": 8,
+   "peak_source": "senza fonte, e INERTE: mu_da_magnitudine.valida = false su questa classe. La conclusione dell'archetipo ha pero' un riscontro bibliografico indiretto e solido: per i globulari esistono cataloghi di profili di BRILLANZA (Trager et al. 1995, McLaughlin & van der Marel 2005, le fonti primarie dietro l'Harris che gia' usiamo), per gli ammassi aperti la letteratura misura profili di DENSITA' STELLARE, stelle per unita' di area (Seleznev 2016, MNRAS 456, 3757). Chi studia questi oggetti ha abbandonato la grandezza che questo campo userebbe, per la stessa ragione scritta nel codice.",
+   "line_fraction": 0,
+   "sub_max_s": 120,
+   "sub_max_protegge": "membri_brillanti",
+   "sub_note": "bassa: pochi membri brillanti, nessun nucleo continuo. Pratica 30-120 s",
+   "sub_source": "stessa famiglia: il soggetto sono le stelle e il loro colore, 30-120 s",
+   "senza_serie_corta": {
+    "codice": "membri_brillanti_a_ogni_posa",
+    "perche": "le stelle più brillanti di un ammasso aperto bruciano a qualunque posa della scala — le Pleiadi sono di magnitudine 3 —: una serie corta non le salva, e la classe non la chiede"
+   },
+   "mu_da_magnitudine": {
+    "valida": false,
+    "perche": "La luce di un ammasso aperto non sta sull'area: sta in qualche decina di punti, e il resto e' cielo vuoto. Dividere il flusso per l'area non descrive niente che il sensore misuri. C'e' anche la prova formale: il picco di brillanza di una stella e' il suo flusso diviso l'area della PSF, quindi raddoppiando la focale crolla di quattro volte mentre quello di una nebulosa resta identico. E' una proprieta' del telescopio, non dell'oggetto. Qui a decidere la posa sono la stella piu' brillante del campo e il fondo cielo, non una media per unita' di area."
+   }
+  }
+ },
+ "targets": [
+  {
+   "id": "ngc6888",
+   "names": [
+    "NGC 6888",
+    "Crescent Nebula",
+    "Caldwell 27"
+   ],
+   "constellation": "Cygnus",
+   "archetype": "wr_bubble",
+   "ra_deg": 303.03,
+   "dec_deg": 38.35,
+   "size_arcmin": [
+    18,
+    12
+   ],
+   "ambiguity": "alta",
+   "ambiguity_note": "Su AstroBin lo trovi in HOO e SHO, con o senza le stelle a banda larga: tutte difendibili. È il segnale che serve una scheda vera.",
+   "physics": "Bolla di vento stellare attorno a WR 136 (HD 192163), una Wolf-Rayet di tipo WN6. Nella precedente fase di supergigante rossa la stella ha espulso lentamente il proprio inviluppo esterno; entrata in fase WR, il vento veloce (~1700 km/s) ha raggiunto quel materiale lento e lo ha compresso in un guscio in espansione. Nello stesso campo convivono quindi due meccanismi di eccitazione: shock dove il vento veloce impatta il materiale lento (i filamenti brillanti), e fotoionizzazione dal campo UV durissimo della WR e delle O circostanti (l'interno e il guscio esterno). È questa doppia natura a rendere l'oggetto ambiguo dal punto di vista della tecnica: non sono quattro modi di fotografare la stessa cosa, sono quattro oggetti diversi che occupano lo stesso pezzo di cielo.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "forte",
+     "morphology": "Mezzaluna e rete filamentare interna",
+     "confidence": "alta",
+     "source": "mappato (Finkbeiner / IPHAS)"
+    },
+    {
+     "band": "OIII",
+     "strength": "genuinamente forte",
+     "morphology": "Guscio/bolla completa, chiusa. NON coincide con l'Ha: è la struttura che l'Ha non mostra",
+     "confidence": "media-alta",
+     "source": "spettroscopia in letteratura su questo oggetto specifico, caso raro"
+    },
+    {
+     "band": "SII",
+     "strength": "presente ma localizzato",
+     "morphology": "Solo nei filamenti shockati; [SII]/Ha localmente elevato, integrato ben sotto 1",
+     "confidence": "media",
+     "source": "analogia con gas shockato + riscontri fotografici"
+    }
+   ],
+   "key_insight": "Le tre righe non si sovrappongono. Non stai raccogliendo tre versioni della stessa immagine a SNR diverso: stai raccogliendo tre strutture fisiche diverse. È ciò che rende il SII potenzialmente prezioso (aggiunge informazione, non colore) e simultaneamente pericoloso: se è sotto soglia aggiunge rumore proprio dove non hai nient'altro con cui mascherarlo.",
+   "field_notes": "Campo del Cigno: Ha diffuso di fondo (segnale vero, non gradiente strumentale) e densità stellare estrema. Il fondo non sarà mai nero, e le stelle sono un problema di elaborazione, non di ripresa.",
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO puro + stelle RGB",
+     "default": true,
+     "when": "sotto le 12h disponibili nella finestra stagionale",
+     "pro": "Veloce e pulito. L'OIII qui è genuinamente forte, quindi l'immagine regge da sola. Sfrutta la separazione spaziale Ha/OIII, che è la vera bellezza dell'oggetto.",
+     "contro": "Perdi completamente l'informazione di shock nei filamenti."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO con budget sbilanciato sull'OIII + stelle RGB",
+     "when": "sopra le 18h, e solo con la disciplina di dare al SII le sue ore",
+     "pro": "Massimo contenuto informativo: i filamenti shockati diventano una struttura distinta, non un colore.",
+     "contro": "Richiede quasi il doppio del tempo. Sotto soglia il SII è attivamente dannoso."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1.5,
+     "useful": 3,
+     "saturates": 5,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 4,
+     "useful": 8,
+     "saturates": 14,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 5,
+     "useful": 8,
+     "saturates": 14,
+     "road": "sho",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "note": "15-20 min per canale, solo per le stelle",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    }
+   },
+   "order": "OIII per primo e nelle notti migliori: a 500 nm l'estinzione atmosferica è circa il doppio che a 656 nm, e lo scattering lunare (Rayleigh) lo colpisce ~3x più dell'Ha. Ha con la Luna o a bassa altezza, è robusto. SII è il canale più tollerante di tutti: notti compromesse. RGB con la Luna piena, un'ora e hai finito. Se hai una notte sola: tutta OIII, l'Ha lo recuperi sempre.",
+   "expect": {
+    "5h": "La mezzaluna c'è. L'OIII è un fantasma che devi tirare con stretch aggressivo e che si sfalda in rumore appena saturi. Presentabile a scala ridotta, non a piena risoluzione.",
+    "12h": "Il guscio OIII interno diventa struttura, non alone. La separazione spaziale Ha/OIII diventa il soggetto dell'immagine. È il miglior rapporto resa/ore dell'oggetto.",
+    "20h": "I filamenti shockati emergono come tessitura distinta e l'immagine acquista profondità. Guadagno reale ma non proporzionale: +8h per circa +15% di contenuto."
+   },
+   "traps": [
+    "Star removal prima di ogni stretch aggressivo sull'OIII: altrimenti l'OIII stellare residuo genera aloni azzurri che poi non togli più.",
+    "L'Ha diffuso di fondo NON è un gradiente, è segnale. Un DBE con troppi campioni te lo mangia e l'immagine perde il contesto. Meglio MARS o Multiscale Gradient Correction.",
+    "Rumore cromatico dell'OIII sotto soglia: SCNR e chrominance NR ti mangiano proprio il guscio interno per cui avevi ripreso l'oggetto. La cura è in ripresa, non in elaborazione.",
+    "WR 136 è luminosa, satura e centrale: serve gestione dell'alone.",
+    "In SHO, non saturare un SII debole: diventa rumore arancio sui filamenti. Meglio un SHO onesto e poco saturo che un Hubble palette forzato."
+   ],
+   "validated": "Verificato sui master di Alessandro (RC8 nativo, 2600MM, bin 1, sub 300s): il SII a 1.5h è rumore con un accenno di arco e non è entrato nell'immagine finale (HOO), quindi perdita secca; l'Ha è ottimo; la separazione spaziale Ha/OIII è visibile e spiega perché l'immagine finale funziona.",
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "s0_ha_R",
+      "valore": 596.3,
+      "fonte": "finkbeiner2003",
+      "controllo": "la diluizione non supera quattro",
+      "ragione": "il beam su questo pixel vale 60′ (survey WHAM) contro un diametro efficace di 14.7′: la diluizione e' ×16.7, oltre il quattro. Un numero corretto per un fattore cosi' grande non e' piu' un limite inferiore utile, e rumore con un'etichetta: entrerebbe in un merito o in una classifica e deciderebbe qualcosa.",
+      "grezzi": {
+       "centro_R": 175.69,
+       "fondo_R": 139.92,
+       "survey": "WHAM",
+       "beam_arcmin": 60,
+       "diametro_efficace_arcmin": 14.7
+      }
+     }
+    ]
+   },
+   "name": "NGC 6888"
+  },
+  {
+   "id": "ngc7000",
+   "names": [
+    "NGC 7000",
+    "North America Nebula"
+   ],
+   "constellation": "Cygnus",
+   "archetype": "hii_classic",
+   "ra_deg": 314.82,
+   "dec_deg": 44.52,
+   "size_arcmin": [
+    120,
+    100
+   ],
+   "ambiguity": "media",
+   "ambiguity_note": "La community è abbastanza concorde su HOO o HaRGB. La divergenza vera è sull'inquadratura, non sulla tecnica.",
+   "physics": "Regione HII classica ionizzata dalla stella nascosta dietro la banda oscura LDN 935 (candidata principale: J205551.3+435224, una O5V oscurata da ~9 magnitudini di estinzione). È fotoionizzazione pura: nessuno shock significativo. La forma a continente non è la nebulosa, è la sagoma della polvere davanti: il famoso 'Golfo del Messico' è assorbimento, non assenza di gas.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "molto forte",
+     "morphology": "Diffusa su tutto il campo, con creste brillanti al bordo della Cygnus Wall",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "debole-moderato",
+     "morphology": "Confinato alla Cygnus Wall e alle zone più vicine alla sorgente ionizzante",
+     "confidence": "media",
+     "source": "analogia di classe + riscontri fotografici concordi"
+    },
+    {
+     "band": "SII",
+     "strength": "debole",
+     "morphology": "Segue l'Ha ma con rapporto tipico 0.1-0.2",
+     "confidence": "media",
+     "source": "analogia di classe HII fotoionizzata"
+    }
+   ],
+   "key_insight": "È l'archetipo su cui l'SHO paritetico fallisce più spesso. Con [SII]/Ha intorno a 0.15 e OIII confinato, dedicare un terzo del tempo al SII significa raccogliere rumore. Chi ottiene bei SHO su questo oggetto ci ha messo 30+ ore, non 12.",
+   "field_notes": "Enorme: serve mosaico su qualunque configurazione sopra i 600mm. La polvere oscura è parte del soggetto, quindi non spingere lo stretch fino ad appiattirla.",
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "budget normale, 10-15h",
+     "pro": "L'OIII sulla Cygnus Wall regala la separazione cromatica che fa l'immagine.",
+     "contro": "Fuori dalla Wall l'OIII è quasi assente: il resto del campo resterà monocromo."
+    },
+    {
+     "id": "hargb",
+     "tecnica": "HaRGB",
+     "banda_larga": "soggetto",
+     "name": "Ha come luminanza + RGB",
+     "when": "poco tempo, o se vuoi il campo stellare del Cigno reso naturale",
+     "pro": "Risultato sicuro in poche ore, stelle e colori credibili.",
+     "contro": "Nessuna informazione di eccitazione: è una bella immagine, non un'indagine."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "when": "solo sopra le 30h reali",
+     "pro": "Su questo campo il SII, se ben integrato, separa le creste dal diffuso.",
+     "contro": "Sotto le 30h è il modo classico di ottenere un Hubble palette fangoso."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "road": [
+      "hoo",
+      "hargb",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 4,
+     "useful": 8,
+     "saturates": 14,
+     "critical": true,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 10,
+     "useful": 14,
+     "saturates": 20,
+     "road": "sho",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "hargb",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa",
+     "soggetto": {
+      "floor": 1.5,
+      "useful": 3,
+      "saturates": 6,
+      "source": "scelta del regista (Alessandro, 14 settembre 2026), interpolata fra le due ancore dichiarate — le stelle delle schede a emissione, 0,5/1/1,5, e il soggetto a riflessione, 2/4,5/9 —; nessuna misura propria"
+     }
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "L'Ha si porta a casa in una notte qualunque, anche con Luna. Tutto il buio vero va sull'OIII. Se fai mosaico, completa un pannello per canale prima di passare al successivo: un pannello con OIII incompleto è peggio di un pannello mancante.",
+   "expect": {
+    "5h": "Ha completo e bello, OIII appena accennato sulla Wall. In HOO il risultato è quasi monocromo.",
+    "12h": "La Cygnus Wall acquista il contrasto blu-verde che la stacca dal resto. Questo è il punto in cui l'immagine diventa interessante.",
+    "20h": "Diffuso OIII debole recuperabile anche fuori dalla Wall, e margine per uno stretch meno aggressivo, quindi più pulito."
+   },
+   "traps": [
+    "Gradienti: il campo è così esteso che qualunque gradiente strumentale si confonde con la struttura reale. Flat impeccabili obbligatori.",
+    "Non appiattire LDN 935: la polvere è il soggetto tanto quanto il gas.",
+    "Su mosaico, la normalizzazione fra pannelli è più critica del solito perché il fondo Ha varia realmente da pannello a pannello.",
+    "Stelle: campo densissimo, in banda stretta diventano puntini innaturali. RGB o niente."
+   ],
+   "fotometria": {
+    "s0_ha_R": {
+     "valore": 260.6,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
+     "confidenza": "misurata",
+     "stato": "misura",
+     "derivazione": "eccesso sul fondo locale (331.4 meno 70.9 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×1.0, che vale (beam/diametro)² con beam 60′ e diametro efficace 109.5′.",
+     "fonte": "finkbeiner2003",
+     "id_fonte": "HEALPix 1024 pixel alla posizione dell'oggetto",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "diluizione": 1,
+     "eccesso_R": 260.59,
+     "fondo_R": 70.85,
+     "diametro_efficace_arcmin": 109.5,
+     "bordo": {
+      "valore_R": 172.17,
+      "stato": "non_risolto",
+      "corona_R": 243.02,
+      "fondo_R": 70.85,
+      "raggio_arcmin": 54.77,
+      "fascio_arcmin": 60,
+      "derivazione": "mediana della corona fra 0,9 e 1,0 del raggio catalogato (54.8′, 4 corone per 72 angoli), 243.0 R, meno la mediana dell'anello fra due e tre raggi, 70.9 R, con la geometria dell'ingestione e il fascio della maschera, 60′ (WHAM+VTSS).",
+      "regola": "misura se il raggio catalogato e' almeno un fascio e il bordo sta fra il fondo e la media; se no l'utile resta al fondo locale",
+      "stima": {
+       "valore_R": 29.26,
+       "rapporto": 0.112,
+       "rapporto_minimo": 0.031,
+       "rapporto_massimo": 0.404,
+       "da": [
+        "M8",
+        "M16",
+        "M17",
+        "M42",
+        "NGC 2024",
+        "NGC 2237",
+        "NGC 6357",
+        "IC 1805"
+       ],
+       "sopra_il_fondo": false,
+       "derivazione": "la media, 260.6 R, per il rapporto bordo / media mediano delle 8 regioni col bordo misurato, 0.112 (da 0.031 a 0.404): 29.3 R, sotto il fondo locale di 70.85 R: resta il fondo."
+      }
+     }
+    }
+   },
+   "name": "NGC 7000"
+  },
+  {
+   "id": "veil",
+   "names": [
+    "Velo",
+    "Veil Nebula",
+    "Cygnus Loop"
+   ],
+   "constellation": "Cygnus",
+   "archetype": "snr",
+   "ra_deg": 312.75,
+   "dec_deg": 30.6667,
+   "size_arcmin": [
+    230,
+    160
+   ],
+   "ambiguity": "media",
+   "ambiguity_note": "Quasi tutti fanno HOO e hanno ragione. La divergenza è se aggiungere SII, e la risposta è 'si', ma solo con molto tempo.",
+   "physics": "Resto di supernova di circa 10-20.000 anni, in fase radiativa. L'emissione viene interamente da shock: il fronte d'onda comprime e ionizza il mezzo interstellare, e il gas si raffredda emettendo righe proibite. Non c'è una stella ionizzante: la sorgente di energia è cinetica. Questo cambia tutto rispetto a una HII region, e in particolare rende il [SII] fisicamente informativo invece che decorativo.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "forte",
+     "morphology": "Filamenti sottili, spesso in coppia con l'OIII ma spazialmente offset di pochi arcsec (fronte di shock vs zona di raffreddamento)",
+     "confidence": "alta",
+     "source": "mappato + spettroscopia estesa"
+    },
+    {
+     "band": "OIII",
+     "strength": "molto forte",
+     "morphology": "Filamenti nettissimi, tipicamente sul lato esterno rispetto all'Ha: è la zona immediatamente post-shock, più calda",
+     "confidence": "alta",
+     "source": "spettroscopia in letteratura, oggetto molto studiato"
+    },
+    {
+     "band": "SII",
+     "strength": "moderato ma diagnostico",
+     "morphology": "[SII]/Ha > 0.4, la firma canonica dello shock. Traccia la zona di raffreddamento",
+     "confidence": "alta",
+     "source": "il criterio [SII]/Ha > 0.4 è letteralmente il test standard per identificare gli SNR"
+    }
+   ],
+   "key_insight": "È l'unico archetipo in cui l'offset spaziale fra Ha e OIII è di pochi arcsec ed è visibile. A campionamento fine (sotto 1\"/px) quella separazione diventa il dettaglio più spettacolare dell'oggetto. Sotto 2\"/px la perdi e l'immagine diventa generica.",
+   "field_notes": "Il complesso intero copre ~3 gradi: quasi sempre si riprende una porzione (Scopa della Strega, Triangolo di Pickering, NGC 6992). Il Triangolo di Pickering è la parte più debole e la più premiata.",
+   "roads": [
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "sempre, salvo abbondanza di tempo",
+     "pro": "L'OIII è forte quanto l'Ha: è uno dei rari oggetti in cui l'HOO da' due canali di pari dignità e la separazione dei filamenti è spettacolare.",
+     "contro": "Perdi la zona di raffreddamento tracciata dal SII."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "when": "sopra le 20h",
+     "pro": "Qui il SII è fisica, non colore: separa fronte di shock da zona di raffreddamento. È uno dei pochi oggetti dove l'SHO è scientificamente giustificato.",
+     "contro": "Serve tempo vero sul SII, altrimenti il vantaggio evapora."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 2,
+     "useful": 5,
+     "saturates": 10,
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 5,
+     "useful": 9,
+     "saturates": 14,
+     "road": "sho",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "OIII con oggetto alto: qui l'OIII è il canale più bello, non solo il più fragile. Ha e SII tollerano Luna e bassa altezza. Se punti al Triangolo di Pickering, tutto il buio migliore va lì.",
+   "expect": {
+    "5h": "Scopa e NGC 6992 già buone: sono le parti brillanti. Pickering appena accennato.",
+    "12h": "Filamenti puliti a piena risoluzione, offset Ha/OIII visibile. Pickering presente e strutturato.",
+    "20h": "Con SII, la tessitura interna dei filamenti si sdoppia. È il livello a cui l'oggetto smette di essere una cartolina."
+   },
+   "traps": [
+    "Sovracampionamento apparente: qui NON è uno spreco. L'offset Ha/OIII è a scala di pochi arcsec, quindi il campionamento fine ripaga davvero.",
+    "Star removal delicato: i filamenti sono sottili quanto le stelle e gli algoritmi tendono a mangiarli. Verificare sempre il residuo.",
+    "Il fondo attorno ai filamenti non è nero: c'è emissione diffusa reale. Non azzerarlo.",
+    "Attenzione a 52 Cygni, dentro NGC 6960: satura e piena di aloni."
+   ],
+   "fotometria": {
+    "s0_ha_R": {
+     "valore": 33.3,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
+     "confidenza": "misurata",
+     "stato": "misura",
+     "derivazione": "eccesso sul fondo locale (42.9 meno 9.6 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×1.0, che vale (beam/diametro)² con beam 60′ e diametro efficace 191.8′. Il primo termine e' il 90° percentile dei pixel del guscio, non il pixel centrale: vedi `misurata_a`.",
+     "fonte": "finkbeiner2003",
+     "id_fonte": "HEALPix 1024, 90° percentile di 1728 punti sul guscio fra 48′ e 96′ dal centro di Green, 20h51m00s +30°40′",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "diluizione": 1,
+     "eccesso_R": 33.28,
+     "fondo_R": 9.58,
+     "diametro_efficace_arcmin": 191.8,
+     "misurata_a": {
+      "regola": "guscio: il 90° percentile dei pixel fra meta' raggio e il bordo, meno la mediana di un anello fra due e tre raggi",
+      "perche": "il centro di un resto a guscio e' vuoto, e non e' una misura dell'oggetto (regia, 24 settembre 2026): al centro di Green lo stesso metodo da' 6,6 R. La regola del guscio e' quella di Simeis 147, e la regia l'ha estesa al Velo lo stesso giorno. Fino a qui la scheda portava 40,9 R, un pixel sul filamento occidentale su NGC 6960 (20h45m38s +30°43′): una misura della parte piu' brillante, non del guscio. La regola sta in docs/cosa-resta-aperto.md, nel capitolo delle ore."
+     }
+    }
+   },
+   "name": "Velo",
+   "pa_deg": 0,
+   "geometria_fonte": "Green 2019, G74.0-8.5 (Cygnus Loop): centro 20h51m00s +30°40′, 230′×160′. L'angolo di posizione Green non lo da': 0° dice l'allungamento nord-sud che i filamenti catalogati mostrano, da NGC 6960 e IC 1340 a sud fino al nord di NGC 6992."
+  },
+  {
+   "id": "ngc7635",
+   "names": [
+    "NGC 7635",
+    "Bubble Nebula",
+    "Caldwell 11"
+   ],
+   "constellation": "Cassiopeia",
+   "archetype": "wr_bubble",
+   "ra_deg": 350.2,
+   "dec_deg": 61.2,
+   "size_arcmin": [
+    15,
+    8
+   ],
+   "ambiguity": "alta",
+   "ambiguity_note": "SHO e HOO sono entrambi molto rappresentati, e la scelta cambia davvero l'oggetto che si vede.",
+   "physics": "Bolla di vento stellare soffiata da SAO 20575 (BD+60 2522), una O6.5 molto massiccia, dentro la nube molecolare adiacente. La bolla è asimmetrica perché la stella non è al centro: sta espandendosi contro una densità disomogenea. La zona dove la bolla tocca la nube è shockata; il resto è fotoionizzato. Come NGC 6888 è un oggetto a doppio meccanismo, ma con una geometria molto più compatta.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "molto forte",
+     "morphology": "Guscio della bolla + tutto il complesso circostante",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "moderato",
+     "morphology": "Concentrato sul guscio della bolla e vicino alla stella; assente nel complesso esterno",
+     "confidence": "media",
+     "source": "riscontri fotografici concordi + analogia con bolle O"
+    },
+    {
+     "band": "SII",
+     "strength": "moderato",
+     "morphology": "Sulla zona di compressione contro la nube molecolare: è lì che [SII]/Ha sale",
+     "confidence": "media",
+     "source": "analogia con gas shockato"
+    }
+   ],
+   "key_insight": "Il campo contiene due oggetti fisicamente diversi: la bolla (compatta, ad alta brillanza, con OIII) e il complesso HII circostante (esteso, solo Ha). Un solo stretch non li serve entrambi. È un oggetto che chiede HDR o maschere di luminanza, non più ore.",
+   "field_notes": "Piccola: a focale corta diventa un dettaglio nel campo. È uno dei rari target che premia davvero le lunghe focali. Vicinissima a M52, componibile in un unico campo a focale corta.",
+   "roads": [
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "default": true,
+     "when": "sopra le 12h; qui il SII c'è davvero",
+     "pro": "Separa la zona di compressione dal resto. Su questo oggetto l'Hubble palette ha una giustificazione fisica.",
+     "contro": "Il complesso esterno resta comunque quasi solo Ha: aspettati un'immagine a due regimi."
+    },
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "when": "sotto le 12h",
+     "pro": "Il guscio con OIII è comunque bellissimo e si ottiene in fretta.",
+     "contro": "Perdi la compressione contro la nube, che è la parte interessante."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2,
+     "saturates": 4,
+     "road": [
+      "sho",
+      "hoo"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 3,
+     "useful": 6,
+     "saturates": 11,
+     "road": [
+      "sho",
+      "hoo"
+     ],
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 4,
+     "useful": 7,
+     "saturates": 12,
+     "road": "sho",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "sho",
+      "hoo"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Cassiopea è circumpolare da 46 gradi: hai finestre lunghissime tutto l'autunno e l'inverno. Nessuna urgenza stagionale, quindi conviene aspettare le notti migliori per l'OIII invece di forzare.",
+   "expect": {
+    "5h": "Bolla presente e ben definita, complesso esterno rumoroso.",
+    "12h": "Bolla con struttura interna, complesso esterno pulito. In SHO la zona di compressione inizia a distinguersi.",
+    "20h": "Margine per una gestione HDR seria fra bolla e complesso, che è il vero limite dell'oggetto."
+   },
+   "traps": [
+    "SAO 20575 è dentro la bolla, luminosa e satura: aloni garantiti. Va gestita prima dello stretch, non dopo.",
+    "Il salto di brillanza fra bolla e complesso richiede HDRMultiscaleTransform o maschere di luminanza. Più ore non risolvono un problema di dinamica.",
+    "In SHO il rischio è che la bolla diventi arancione uniforme: proteggerla con maschera durante la saturazione."
+   ],
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "s0_ha_R",
+      "valore": 829,
+      "fonte": "finkbeiner2003",
+      "controllo": "la diluizione non supera quattro",
+      "ragione": "il beam su questo pixel vale 60′ (survey WHAM) contro un diametro efficace di 11.0′: la diluizione e' ×30.0, oltre il quattro. Un numero corretto per un fattore cosi' grande non e' piu' un limite inferiore utile, e rumore con un'etichetta: entrerebbe in un merito o in una classifica e deciderebbe qualcosa.",
+      "grezzi": {
+       "centro_R": 70.89,
+       "fondo_R": 43.26,
+       "survey": "WHAM",
+       "beam_arcmin": 60,
+       "diametro_efficace_arcmin": 11
+      }
+     }
+    ]
+   },
+   "name": "NGC 7635"
+  },
+  {
+   "id": "sh2_155",
+   "names": [
+    "Sh2-155",
+    "Cave Nebula",
+    "Caldwell 9"
+   ],
+   "constellation": "Cepheus",
+   "archetype": "hii_faint_he",
+   "ra_deg": 344.2,
+   "dec_deg": 62.62,
+   "size_arcmin": [
+    50,
+    30
+   ],
+   "ambiguity": "alta",
+   "ambiguity_note": "Due immagini di Sh2-155 possono non somigliarsi per niente, secondo che chi l'ha ripresa abbia inseguito il fronte di ionizzazione o la polvere. Entrambe legittime: la scheda non sceglie per te.",
+   "physics": "Regione di ionizzazione al bordo della nube molecolare di Cepheus B, eccitata dall'associazione Cep OB3. La 'caverna' è un fronte di ionizzazione che sta erodendo la nube: quello che vedi come bordo brillante è letteralmente la superficie in evaporazione. Attorno c'è polvere che riflette, quindi l'oggetto è misto emissione + riflessione, cosa rara e che complica la scelta.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "moderato",
+     "morphology": "Bordo del fronte di ionizzazione, brillante e sottile; diffuso debole all'interno",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "debole",
+     "morphology": "Molto localizzato sul fronte, praticamente assente altrove",
+     "confidence": "bassa-media",
+     "source": "stima per analogia di classe; potrebbe essere fuori di un fattore 3"
+    },
+    {
+     "band": "SII",
+     "strength": "debole",
+     "morphology": "Segue l'Ha",
+     "confidence": "bassa",
+     "source": "analogia di classe"
+    }
+   ],
+   "key_insight": "Accanto all'emissione c'è una componente di riflessione azzurra che la banda stretta cancella del tutto, ed è metà dell'oggetto. In bicolore Hα-OIII ottieni il fronte di ionizzazione netto e perdi la polvere; in banda larga ottieni un oggetto molto più ricco e meno contrastato. È una scelta estetica informata, non un errore in nessuna delle due direzioni — e le due si possono anche comporre.",
+   "field_notes": "Cepheus è circumpolare da 46 gradi. Il campo attorno è pieno di nebulosità debole e di polvere: inquadrature larghe premiano.",
+   "roads": [
+    {
+     "id": "hoo_stelle",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB",
+     "default": true,
+     "when": "Quando la ruota ha Hα e OIII e vuoi l'oggetto in bicolore con le stelle di colore vero. È la strada normale su questa nebulosa: l'emissione porta la caverna, l'RGB porta soltanto le stelle.",
+     "pro": "L'Hα regge con la Luna e col cielo cittadino; le stelle a colori tolgono l'aria artificiale che la banda stretta pura lascia sul campo.",
+     "contro": "L'OIII qui è debole e stimato per analogia: è il canale che detta le ore, ed è quello che non chiude se il cielo è cattivo. La componente di riflessione della nebulosa questa strada non la porta."
+    },
+    {
+     "id": "hoo",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO",
+     "when": "cielo compromesso o Luna presente",
+     "pro": "Contrasto altissimo sul fronte, risultato sicuro anche in condizioni mediocri.",
+     "contro": "La polvere sparisce, e con lei metà dell'oggetto. L'OIII qui è incerto: potresti spendere 8h per pochissimo."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 2,
+     "useful": 4,
+     "saturates": 8,
+     "road": [
+      "hoo_stelle",
+      "hoo"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 6,
+     "useful": 10,
+     "saturates": 16,
+     "critical": true,
+     "road": [
+      "hoo",
+      "hoo_stelle"
+     ],
+     "warning": "L'OIII qui è stimato per analogia, non misurato. Se dopo 4h non vedi nulla oltre il fronte, non è un problema di integrazione: è l'oggetto.",
+     "source": "stima editoriale della scheda per analogia di classe, senza riscontri — la nota di questo canale lo avverte —, calibrata sulla configurazione di riferimento",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 12,
+     "useful": 18,
+     "saturates": 24,
+     "road": [],
+     "note": "Sconsigliato: fotoionizzazione pura, resa attesa molto bassa",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo_stelle"
+     ],
+     "source": "i numeri delle stelle delle schede a emissione (0,5/1/1,5, come NGC 6888 e M27), decisi da Alessandro il 14 settembre 2026 convertendo la HaRGB in «HOO + stelle RGB»; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa",
+     "soggetto": {
+      "floor": 2,
+      "useful": 4.5,
+      "saturates": 9,
+      "source": "l'ancora della riflessione applicata tale e quale (Alessandro, 14 settembre 2026): la meta' a riflessione di Sh2-155 e' polvere illuminata come M45, e non costa meno perche' accanto c'e' dell'emissione; nessuna misura propria"
+     }
+    }
+   },
+   "order": "Circumpolare, nessuna urgenza. La passata a banda larga va fatta senza Luna, e questo rovescia la logica abituale: qui è la banda larga a essere fragile, non la banda stretta. L'Hα e l'OIII si prendono anche con la Luna alta.",
+   "expect": {
+    "5h": "Il fronte di ionizzazione c'è ed è netto. La polvere azzurra resta appena accennata: in bicolore non compare affatto, in banda larga è un velo.",
+    "12h": "La polvere e la nebulosità diffusa cominciano a reggere lo stretch. È il minimo perché la componente a riflessione ripaghi la passata a banda larga.",
+    "20h": "Il campo attorno si riempie di struttura debole. È un oggetto che continua a dare fino a molto tardi."
+   },
+   "traps": [
+    "In banda larga i gradienti sono il nemico principale, molto più del rumore.",
+    "La componente di riflessione è azzurra e debole: qualunque eccesso di SCNR o di saturation la spegne.",
+    "Non usare l'Ha come luminanza piena: schiaccia la polvere. Usarlo additivo, con maschera."
+   ],
+   "fotometria": {
+    "s0_ha_R": {
+     "valore": 118.3,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
+     "confidenza": "limite inferiore",
+     "stato": "limite_inferiore",
+     "derivazione": "eccesso sul fondo locale (75.6 meno 26.3 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×2.4, che vale (beam/diametro)² con beam 60′ e diametro efficace 38.7′. LIMITE INFERIORE: la diluizione sta fra 2 e 4, quindi il valore vero e' almeno questo — e le ore che ne escono sono al piu' quelle. Sopra 4 il numero non entrerebbe affatto.",
+     "fonte": "finkbeiner2003",
+     "id_fonte": "HEALPix 1024 pixel alla posizione dell'oggetto",
+     "survey": "WHAM",
+     "beam_arcmin": 60,
+     "diluizione": 2.4,
+     "eccesso_R": 49.31,
+     "fondo_R": 26.27,
+     "diametro_efficace_arcmin": 38.7,
+     "bordo": {
+      "valore_R": 37.73,
+      "stato": "non_risolto",
+      "corona_R": 64,
+      "fondo_R": 26.27,
+      "raggio_arcmin": 19.36,
+      "fascio_arcmin": 60,
+      "derivazione": "mediana della corona fra 0,9 e 1,0 del raggio catalogato (19.4′, 4 corone per 72 angoli), 64.0 R, meno la mediana dell'anello fra due e tre raggi, 26.3 R, con la geometria dell'ingestione e il fascio della maschera, 60′ (WHAM).",
+      "regola": "misura se il raggio catalogato e' almeno un fascio e il bordo sta fra il fondo e la media; se no l'utile resta al fondo locale",
+      "stima": {
+       "valore_R": 13.28,
+       "rapporto": 0.112,
+       "rapporto_minimo": 0.031,
+       "rapporto_massimo": 0.404,
+       "da": [
+        "M8",
+        "M16",
+        "M17",
+        "M42",
+        "NGC 2024",
+        "NGC 2237",
+        "NGC 6357",
+        "IC 1805"
+       ],
+       "sopra_il_fondo": false,
+       "derivazione": "la media, 118.3 R, per il rapporto bordo / media mediano delle 8 regioni col bordo misurato, 0.112 (da 0.031 a 0.404): 13.3 R, sotto il fondo locale di 26.27 R: resta il fondo."
+      }
+     }
+    }
+   },
+   "name": "Sh2-155"
+  },
+  {
+   "id": "m27",
+   "names": [
+    "M27",
+    "Dumbbell Nebula",
+    "NGC 6853"
+   ],
+   "constellation": "Vulpecula",
+   "archetype": "pn_bright",
+   "record_del_catalogo": "M27",
+   "ra_deg": 299.9,
+   "dec_deg": 22.72,
+   "size_arcmin": [
+    8,
+    5.6
+   ],
+   "halo_arcmin": 15,
+   "ambiguity": "alta",
+   "ambiguity_note": "Il vero dibattito non è sulla tecnica ma su quanto spingere l'alone. Sono due immagini diverse.",
+   "physics": "Nebulosa planetaria vicina (~1200 anni luce) ed evoluta, con nana bianca centrale a ~85.000 K, una delle più calde conosciute. Il nucleo brillante è il toro di gas visto quasi di taglio; l'alone esterno è materiale espulso in una fase precedente ed è circa 100 volte più debole. La temperatura estrema della centrale mantiene l'OIII fortissimo su tutta la struttura.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "forte",
+     "morphology": "Nucleo + nodi filamentari; presente anche nell'alone",
+     "confidence": "alta",
+     "source": "spettroscopia, catalogo Frew flussi Ha integrati"
+    },
+    {
+     "band": "OIII",
+     "strength": "dominante",
+     "morphology": "Nucleo brillantissimo, e domina anche l'alone esterno",
+     "confidence": "alta",
+     "source": "rapporti di riga misurati (Acker/Strasbourg)"
+    },
+    {
+     "band": "SII",
+     "strength": "moderato",
+     "morphology": "Concentrato nei nodi densi e nei knot cometari, non nel diffuso",
+     "confidence": "media-alta",
+     "source": "spettroscopia su PN evolute"
+    }
+   ],
+   "key_insight": "È l'archetipo in cui il problema NON è il segnale ma la dinamica. Il nucleo satura in pochi minuti mentre l'alone richiede ore. Chi va lungo sulle pose per prendere l'alone brucia il nucleo, chi va corto perde l'alone. La risposta corretta è due set di pose diverse e una fusione HDR, non un compromesso.",
+   "field_notes": "Piccola: premia le lunghe focali. Con RC8 a piena focale riempie il campo in modo soddisfacente. L'alone è il vero soggetto avanzato.",
+   "roads": [
+    {
+     "id": "hoo_hdr",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO a doppia esposizione + HDR + stelle RGB",
+     "default": true,
+     "when": "sempre, se vuoi anche l'alone",
+     "pro": "L'unico modo di avere nucleo non bruciato e alone presente nella stessa immagine.",
+     "contro": "Richiede disciplina in acquisizione (due set per canale) e HDRMultiscaleTransform in elaborazione."
+    },
+    {
+     "id": "sho",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB",
+     "when": "sopra le 15h e se ti interessano i nodi",
+     "pro": "I knot cometari con SII elevato diventano una struttura distinta.",
+     "contro": "Su un oggetto già spettacolare in HOO, il guadagno è marginale rispetto al costo."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 0.5,
+     "useful": 1.5,
+     "saturates": 3,
+     "road": [
+      "hoo_hdr",
+      "sho"
+     ],
+     "note": "Pose corte per il nucleo: 60-120s",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "OIII": {
+     "floor": 1,
+     "useful": 3,
+     "saturates": 7,
+     "road": [
+      "hoo_hdr",
+      "sho"
+     ],
+     "critical": true,
+     "note": "Serve un set corto (nucleo) e uno lungo (alone)",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "SII": {
+     "floor": 4,
+     "useful": 7,
+     "saturates": 12,
+     "road": "sho",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo_hdr",
+      "sho"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "L'alone è la parte fragile: va raccolto con oggetto alto e senza Luna. Il nucleo si porta a casa in qualunque condizione, Luna piena compresa: è uno dei pochi target davvero Luna-proof.",
+   "expect": {
+    "5h": "Nucleo splendido, alone assente. È già un'immagine finita per la maggior parte delle persone.",
+    "12h": "Alone presente e strutturato, con la doppia esposizione. È qui che l'oggetto diventa raro.",
+    "20h": "Estensione dell'alone fino ai limiti misurabili e nodi cometari risolti."
+   },
+   "traps": [
+    "Saturazione del nucleo: è il problema numero uno e non si risolve con più ore, ma con pose più corte.",
+    "Non usare uno stretch unico: HDRMultiscaleTransform o GHS a due passate con maschera.",
+    "L'alone è talmente debole che qualunque DBE aggressivo lo cancella. Trattarlo come segnale, non come gradiente.",
+    "Star removal su un oggetto piccolo e brillante tende a mangiare i nodi: verificare il residuo."
+   ]
+  },
+  {
+   "id": "abell61",
+   "names": [
+    "Abell 61",
+    "PK 077+14.1"
+   ],
+   "constellation": "Cygnus",
+   "archetype": "pn_faint",
+   "ra_deg": 289.79,
+   "dec_deg": 46.25,
+   "size_arcmin": [
+    3.5,
+    3.5
+   ],
+   "ambiguity": "bassa",
+   "ambiguity_note": "Oggetto univoco: OIII dominante, Ha debole, SII trascurabile, campo denso. Una sola risposta possibile. È il tipo di target che si azzecca anche senza app.",
+   "physics": "Planetaria di Abell: evoluta, estesa e molto debole. La nana bianca centrale è calda ma il gas si è espanso al punto che la brillanza superficiale è crollata. In questo stadio l'OIII domina largamente sull'Ha, e il SII è sostanzialmente scomparso. È l'opposto esatto di M27: stesso tipo di oggetto, fase evolutiva molto più avanzata.",
+   "lines": [
+    {
+     "band": "OIII",
+     "strength": "dominante",
+     "morphology": "Guscio quasi circolare, diffuso, senza struttura ad alto contrasto",
+     "confidence": "media-alta",
+     "source": "HASH DB + riscontri fotografici concordi"
+    },
+    {
+     "band": "Ha",
+     "strength": "debole",
+     "morphology": "Traccia debole del guscio, più compatta dell'OIII",
+     "confidence": "media",
+     "source": "catalogo Frew (flussi Ha integrati PNe)"
+    },
+    {
+     "band": "SII",
+     "strength": "trascurabile",
+     "morphology": "Non rilevabile con strumentazione amatoriale",
+     "confidence": "media-alta",
+     "source": "analogia con PNe evolute + assenza di riscontri"
+    }
+   ],
+   "key_insight": "Il caso di scuola in cui l'OIII è TUTTO. Un budget paritetico Ha/OIII è uno spreco del 40% del tempo. E in un campo come quello del Cigno le stelle in banda stretta sono innaturali: le stelle DEVONO venire da RGB, non è una preferenza estetica.",
+   "field_notes": "Declinazione +46: da 46 gradi di latitudine culmina praticamente allo zenit, airmass minima possibile, ed è CIRCUMPOLARE. Sta sopra i 30 gradi per oltre 12 ore consecutive. Alla latitudine italiana settentrionale è geometricamente il target ideale, ed è per questo che una campagna da un mese è realmente sostenibile.",
+   "roads": [
+    {
+     "id": "hoo_rgbstars",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO con budget sbilanciato su OIII + stelle RGB",
+     "default": true,
+     "when": "sempre",
+     "pro": "L'unica configurazione che ha senso su questo oggetto.",
+     "contro": "Nessuno: è semplicemente ciò che l'oggetto è."
+    }
+   ],
+   "budget": {
+    "OIII": {
+     "floor": 8,
+     "useful": 15,
+     "saturates": 25,
+     "road": "hoo_rgbstars",
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "Ha": {
+     "floor": 3,
+     "useful": 5,
+     "saturates": 9,
+     "road": "hoo_rgbstars",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non riprenderlo. Non c'è.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": "hoo_rgbstars",
+     "note": "Obbligatorio per le stelle: campo del Cigno",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Circumpolare: puoi lavorarci tutta la notte e tutto l'anno. Concentra ogni novilunio sull'OIII. L'Ha e le stelle RGB falli nelle notti con Luna, che altrimenti butteresti.",
+   "expect": {
+    "5h": "Un anello appena percettibile che devi tirare oltre il ragionevole. Non è un'immagine.",
+    "12h": "Il guscio c'è e regge lo stretch. Immagine presentabile.",
+    "20h": "Guscio pulito, con la struttura interna debole che comincia a distinguersi. È il livello a cui l'oggetto merita.",
+    "30h": "Territorio raro. Qui l'oggetto restituisce anche il diffuso esterno."
+   },
+   "traps": [
+    "Stelle: in banda stretta nel Cigno diventano puntiformi e innaturali. RGB obbligatorio, poi ricomposizione.",
+    "Con l'OIII appena sopra il fondo, lo stretch è tutto: GHS con controllo fine è preferibile a un HistogramTransformation.",
+    "Rumore cromatico: con Ha debole e OIII dominante il bilanciamento HOO tende al verde-azzurro innaturale. SCNR misurato, non a manetta.",
+    "Il campo è così denso che qualunque star removal lascia residui: fare più passate leggere invece di una aggressiva."
+   ],
+   "validated": "Progetto completato da Alessandro (HOO + stelle RGB, circa un mese di raccolta). Conferma il modello: la durata non era sfortuna, era strutturale.",
+   "fotometria": {
+    "s0_ha": {
+     "valore": -5.19,
+     "incertezza": 0.12,
+     "unita": "log10(erg cm^-2 s^-1 sr^-1)",
+     "banda": "H-alpha 6563, corretta per il rossore",
+     "grandezza": "brillanza superficiale media H-alpha, derossata",
+     "confidenza": "misurata",
+     "derivazione": "nessuna: valore pubblicato in Tab. A4",
+     "fonte": "frew2016",
+     "id_fonte": "PN G077.6+14.7"
+    },
+    "oiii_ha": {
+     "valore": 1.6964,
+     "unita": "adimensionale",
+     "grandezza": "rapporto fra le intensita delle righe [O III] 5007 e H-alpha 6563",
+     "confidenza": "misurata al limite del caso B",
+     "derivazione": "I(5007)/I(6563) dalla stessa voce, dove LineRef = «b» e le intensita' sono relative a H-beta = 100: dentro una voce la normalizzazione si cancella nel rapporto. Una voce sola per questo oggetto in tutto V/84. Il decremento di Balmer osservato che ne esce, I6563/100 = 5.6, e' il controllo di fisica interna del dato.",
+     "fonte": "acker1992",
+     "id_fonte": "PN G077.6+14.7",
+     "nota": "Sopra uno: la misura conferma la scheda, che gia da all OIII la quota maggiore. Il dato serve proprio a saperlo invece di presumerlo.",
+     "i5007": 950,
+     "i6563": 560,
+     "line_ref": "b",
+     "obs": "OHP-CAR+CCD 1989-10-07",
+     "u_i5007": ":",
+     "ha_hb": 5.6,
+     "margine_caso_b": 2.737
+    }
+   }
+  },
+  {
+   "id": "ic1805_1848",
+   "names": [
+    "IC 1805",
+    "Heart Nebula",
+    "Melotte 15"
+   ],
+   "constellation": "Cassiopeia",
+   "archetype": "hii_classic",
+   "ra_deg": 38.18,
+   "dec_deg": 61.45,
+   "size_arcmin": [
+    150,
+    150
+   ],
+   "ambiguity": "alta",
+   "ambiguity_note": "L'SHO qui è il più fotografato e anche il più spesso sbagliato. Serve una scheda proprio per questo.",
+   "physics": "Due regioni HII adiacenti ionizzate dall'associazione Cas OB6. Il cuore contiene l'ammasso Melotte 15, le cui stelle O stanno scavando le colonne di polvere al centro: quelle colonne sono la parte fotograficamente più interessante e sono zone di compressione, quindi con firma di shock. Il resto è fotoionizzazione pura.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "molto forte",
+     "morphology": "Diffusa su entrambe le nebulose",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "debole",
+     "morphology": "Localizzato attorno a Melotte 15 e alle O più calde; quasi assente nel diffuso",
+     "confidence": "media",
+     "source": "riscontri fotografici concordi"
+    },
+    {
+     "band": "SII",
+     "strength": "moderato nelle colonne, debole altrove",
+     "morphology": "Sale nelle colonne compresse di Melotte 15",
+     "confidence": "media",
+     "source": "analogia con gas compresso + riscontri"
+    }
+   ],
+   "key_insight": "Questo è il caso in cui l'SHO paritetico produce il classico fango arancione. L'OIII è debole ovunque tranne che attorno a Melotte 15: se non dedichi almeno 10h all'OIII non avrai nessuna variazione cromatica e otterrai un'immagine monocroma dipinta di tre colori. Il SII invece, concentrato nelle colonne, ripaga prima.",
+   "field_notes": "Enorme. Su focali sopra i 500mm serve mosaico, oppure si inquadra solo Melotte 15, che è un ottimo target a se stante e premia le lunghe focali. Circumpolare da 46 gradi.",
+   "roads": [
+    {
+     "id": "sho_melotte",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB su Melotte 15 (campo stretto)",
+     "default": true,
+     "when": "focali medio-lunghe, 15-20h",
+     "pro": "Le colonne compresse sono il soggetto migliore del complesso e sono proprio dove SII e OIII hanno qualcosa da dire.",
+     "contro": "Rinunci al campo largo, che è l'immagine iconica."
+    },
+    {
+     "id": "hoo_wide",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO + stelle RGB sul complesso intero",
+     "when": "focali corte, mosaico o Askar",
+     "pro": "L'immagine iconica, e con l'OIII attorno alle O si ottiene comunque separazione.",
+     "contro": "Serve tanto OIII per non ottenere un monocromo colorato."
+    },
+    {
+     "id": "hargb",
+     "tecnica": "HaRGB",
+     "banda_larga": "soggetto",
+     "name": "Ha + RGB",
+     "when": "poco tempo, cielo mediocre",
+     "pro": "Risultato sicuro e stelle naturali in un campo densissimo.",
+     "contro": "Nessuna informazione di eccitazione."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2,
+     "saturates": 4,
+     "road": [
+      "sho_melotte",
+      "hoo_wide",
+      "hargb"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 6,
+     "useful": 11,
+     "saturates": 18,
+     "road": [
+      "sho_melotte",
+      "hoo_wide"
+     ],
+     "critical": true,
+     "warning": "Sotto le 6h l'OIII qui non produce variazione cromatica: otterrai un SHO monocromo. È il classico errore su questo oggetto.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "SII": {
+     "floor": 4,
+     "useful": 7,
+     "saturates": 12,
+     "road": "sho_melotte",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "sho_melotte",
+      "hoo_wide",
+      "hargb"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa",
+     "soggetto": {
+      "floor": 1.5,
+      "useful": 3,
+      "saturates": 6,
+      "source": "scelta del regista (Alessandro, 14 settembre 2026), interpolata fra le due ancore dichiarate — le stelle delle schede a emissione, 0,5/1/1,5, e il soggetto a riflessione, 2/4,5/9 —; nessuna misura propria"
+     }
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Circumpolare: nessuna urgenza, quindi conviene essere selettivi. Tutti i novilunii sull'OIII, il resto su Ha e SII. Le stelle RGB con la Luna.",
+   "expect": {
+    "5h": "Ha ricco, ma in SHO nessuna vera separazione cromatica. Sembra un'immagine colorata a mano.",
+    "12h": "Il SII separa le colonne. L'OIII inizia a comparire attorno a Melotte 15.",
+    "20h": "Le tre bande raccontano tre cose diverse. È il livello a cui l'SHO su questo oggetto ha senso."
+   },
+   "traps": [
+    "Campo stellare estremo: in SHO le stelle diventano macchie colorate. Rimozione e ricomposizione praticamente obbligatorie.",
+    "L'Ha è così forte da tentare stretch aggressivi che schiacciano le colonne di polvere. Sono il soggetto: proteggerle.",
+    "Non saturare per compensare l'OIII mancante: si ottiene solo rumore colorato. Se manca OIII, la risposta è riprenderne di più o passare a HaRGB.",
+    "Su mosaico, il fondo Ha varia realmente fra pannelli: normalizzazione locale attenta."
+   ],
+   "fotometria": {
+    "s0_ha_R": {
+     "valore": 267.5,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
+     "confidenza": "misurata",
+     "stato": "misura",
+     "derivazione": "eccesso sul fondo locale (277.6 meno 10.2 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×1.0, che vale (beam/diametro)² con beam 60′ e diametro efficace 150.0′.",
+     "fonte": "finkbeiner2003",
+     "id_fonte": "HEALPix 1024 pixel alla posizione dell'oggetto",
+     "survey": "WHAM",
+     "beam_arcmin": 60,
+     "diluizione": 1,
+     "eccesso_R": 267.45,
+     "fondo_R": 10.19,
+     "diametro_efficace_arcmin": 150,
+     "bordo": {
+      "valore_R": 54.73,
+      "stato": "misura",
+      "corona_R": 64.92,
+      "fondo_R": 10.19,
+      "raggio_arcmin": 75,
+      "fascio_arcmin": 60,
+      "derivazione": "mediana della corona fra 0,9 e 1,0 del raggio catalogato (75.0′, 4 corone per 72 angoli), 64.9 R, meno la mediana dell'anello fra due e tre raggi, 10.2 R, con la geometria dell'ingestione e il fascio della maschera, 60′ (WHAM).",
+      "regola": "misura se il raggio catalogato e' almeno un fascio e il bordo sta fra il fondo e la media; se no l'utile resta al fondo locale"
+     }
+    }
+   },
+   "name": "IC 1805"
+  },
+  {
+   "id": "ic1396",
+   "names": [
+    "IC 1396",
+    "Elephant Trunk",
+    "IC 1396A"
+   ],
+   "constellation": "Cepheus",
+   "archetype": "dark_molecular",
+   "ra_deg": 324.75,
+   "dec_deg": 57.5,
+   "size_arcmin": [
+    170,
+    170
+   ],
+   "ambiguity": "media",
+   "ambiguity_note": "La divergenza è quasi tutta sull'inquadratura: complesso intero contro solo la Proboscide.",
+   "physics": "Enorme regione HII ionizzata dalla binaria HD 206267. La Proboscide (IC 1396A) è un globulo cometario: una concentrazione densa di gas e polvere che resiste all'erosione del fronte di ionizzazione e si allunga in direzione opposta alla sorgente. Il bordo brillante è il fronte di fotoevaporazione, quindi compresso: è lì che il SII sale. All'interno c'è formazione stellare in corso.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "molto forte",
+     "morphology": "Diffusa su tutto il complesso; bordo brillante sulla testa della Proboscide",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "debole",
+     "morphology": "Vicino a HD 206267, praticamente assente sulla Proboscide",
+     "confidence": "media",
+     "source": "analogia di classe + riscontri"
+    },
+    {
+     "band": "SII",
+     "strength": "moderato sul bordo",
+     "morphology": "Sul fronte di fotoevaporazione, dove il gas è compresso",
+     "confidence": "media",
+     "source": "analogia con globuli cometari"
+    }
+   ],
+   "key_insight": "L'OIII qui è quasi inutile sulla Proboscide, e questo ribalta il consiglio abituale: è il SII a produrre la separazione, non l'OIII. Un budget standard sbilanciato sull'OIII su questo oggetto è tempo buttato. È l'esempio migliore del perché una regola generale non basta.",
+   "field_notes": "Il complesso è enorme (quasi 3 gradi), la Proboscide da sola è circa 20 arcmin. Due target diversi con esigenze opposte: uno da Askar, l'altro da RC8. Cepheus circumpolare da 46 gradi.",
+   "roads": [
+    {
+     "id": "sho_trunk",
+     "tecnica": "SHO",
+     "banda_larga": "stelle",
+     "name": "SHO + stelle RGB sulla Proboscide",
+     "nome_senza_rgb": "SHO sulla Proboscide",
+     "default": true,
+     "when": "focali medio-lunghe, 12-18h",
+     "pro": "Il SII sul fronte di fotoevaporazione da' la separazione che l'OIII non può dare. Struttura tridimensionale.",
+     "contro": "L'OIII renderà poco: aspettatelo e non insistere."
+    },
+    {
+     "id": "hargb_wide",
+     "tecnica": "HaRGB",
+     "banda_larga": "soggetto",
+     "name": "Ha + RGB sul complesso",
+     "when": "focali corte, campo largo",
+     "pro": "Il complesso intero con stelle naturali e la polvere resa. Immagine di contesto molto efficace.",
+     "contro": "Il dettaglio della Proboscide si perde."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 1,
+     "useful": 2.5,
+     "saturates": 5,
+     "road": [
+      "sho_trunk",
+      "hargb_wide"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 4,
+     "useful": 8,
+     "saturates": 13,
+     "road": "sho_trunk",
+     "critical": true,
+     "note": "Su questo oggetto il canale critico è il SII, non l'OIII. Caso raro.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "OIII": {
+     "floor": 5,
+     "useful": 9,
+     "saturates": 15,
+     "road": "sho_trunk",
+     "warning": "Resa attesa bassa sulla Proboscide. Se dopo 4h non vedi nulla, è l'oggetto, non la tua integrazione.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "sho_trunk",
+      "hargb_wide"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa",
+     "soggetto": {
+      "floor": 1.5,
+      "useful": 3,
+      "saturates": 6,
+      "source": "scelta del regista (Alessandro, 14 settembre 2026), interpolata fra le due ancore dichiarate — le stelle delle schede a emissione, 0,5/1/1,5, e il soggetto a riflessione, 2/4,5/9 —; nessuna misura propria"
+     }
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Circumpolare. Ha e SII tollerano la Luna, quindi questo è un ottimo oggetto da lavorare nelle notti che altrimenti scarteresti. I novilunii tienili per altri target che ne hanno più bisogno.",
+   "expect": {
+    "5h": "Proboscide presente e riconoscibile, senza tessitura.",
+    "12h": "Il bordo compresso si separa dal corpo. Struttura tridimensionale evidente.",
+    "20h": "Globuli interni e dettaglio fine della testa. L'OIII resta comunque marginale."
+   },
+   "traps": [
+    "Non forzare l'OIII in post: se non c'è, saturarlo produce solo rumore ciano sul bordo.",
+    "L'Ha diffuso di fondo è fortissimo: il rischio è schiacciare la Proboscide nello stretch. Maschera di luminanza.",
+    "Campo ricchissimo di stelle rosse: attenzione a non renderle arancioni uniformi nella palette SHO."
+   ]
+  },
+  {
+   "id": "sh2_129_ou4",
+   "names": [
+    "Sh2-129",
+    "Flying Bat",
+    "Ou4",
+    "Giant Squid Nebula"
+   ],
+   "constellation": "Cepheus",
+   "archetype": "hii_faint_he",
+   "ra_deg": 317.75,
+   "dec_deg": 59.95,
+   "size_arcmin": [
+    140,
+    90
+   ],
+   "ambiguity": "bassa",
+   "ambiguity_note": "Tecnica univoca (HOO), ma il budget è così estremo che quasi tutti sbagliano: è l'oggetto in cui la soglia conta più di ogni altra cosa.",
+   "physics": "Due oggetti sovrapposti. Sh2-129 è una regione HII debole in Cepheus. Ou4 è un flusso bipolare gigantesco scoperto solo nel 2011 da un astrofilo francese, probabilmente espulso dal sistema triplo HR 8119 e fisicamente dentro Sh2-129. L'emissione di Ou4 è quasi esclusivamente [OIII] a bassissima brillanza superficiale: è uno degli oggetti più deboli alla portata dell'amatore.",
+   "lines": [
+    {
+     "band": "Ha",
+     "strength": "moderato (Sh2-129)",
+     "morphology": "La 'ala di pipistrello', diffusa",
+     "confidence": "alta",
+     "source": "mappato"
+    },
+    {
+     "band": "OIII",
+     "strength": "estremamente debole (Ou4)",
+     "morphology": "Il calamaro bipolare, quasi 1 grado di estensione, brillanza superficiale al limite",
+     "confidence": "media-alta",
+     "source": "misurato dalla scoperta e da campagne amatoriali documentate"
+    },
+    {
+     "band": "SII",
+     "strength": "trascurabile",
+     "morphology": "Non rilevabile",
+     "confidence": "media",
+     "source": "assenza di riscontri"
+    }
+   ],
+   "key_insight": "È il caso limite che giustifica l'esistenza di questa app. L'OIII di Ou4 richiede 20-30 ore con una banda passante stretta, 3 nm o giù di lì, da un cielo buono. Sotto le 15h non compare affatto, e non parzialmente: proprio non compare. Chiunque ci provi con 6h conclude di avere sbagliato qualcosa in elaborazione, mentre ha semplicemente sbagliato il progetto.",
+   "field_notes": "Molto esteso: serve campo largo (Askar o Tecnosky ridotto). Circumpolare da 46 gradi, quindi il tempo c'è: il vincolo è la pazienza, non la stagione.",
+   "roads": [
+    {
+     "id": "hoo_extreme",
+     "tecnica": "HOO",
+     "banda_larga": "stelle",
+     "name": "HOO con budget estremo su OIII + stelle RGB",
+     "default": true,
+     "when": "solo se puoi impegnare 25h+ nella stagione",
+     "pro": "Uno degli oggetti più rari e riconoscibili che un amatore possa ottenere.",
+     "contro": "Se non hai il tempo, non iniziare: non c'è una versione ridotta dell'oggetto."
+    },
+    {
+     "id": "ha_only",
+     "tecnica": "Ha",
+     "banda_larga": "stelle",
+     "name": "Solo Ha su Sh2-129",
+     "when": "se non puoi impegnare il tempo per Ou4",
+     "pro": "Sh2-129 da sola è un bel target Ha in 4-6h.",
+     "contro": "Il calamaro non ci sarà. Ed è il motivo per cui l'oggetto è famoso."
+    }
+   ],
+   "budget": {
+    "Ha": {
+     "floor": 2,
+     "useful": 4,
+     "saturates": 8,
+     "road": [
+      "hoo_extreme",
+      "ha_only"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "OIII": {
+     "floor": 15,
+     "useful": 25,
+     "saturates": 40,
+     "critical": true,
+     "warning": "SOGLIA ESTREMA. Sotto le 15h Ou4 non compare, non compare debolmente: non compare. Verifica di poter impegnare il tempo prima di aprire il progetto.",
+     "road": "hoo_extreme",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non riprenderlo.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "RGB": {
+     "floor": 0.5,
+     "useful": 1,
+     "saturates": 1.5,
+     "scala": "stelle",
+     "road": [
+      "hoo_extreme"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "L": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Ogni ora di buio senza Luna va sull'OIII, senza eccezioni. L'Ha e le stelle si fanno con la Luna. Su un oggetto così, sprecare un novilunio su un altro canale è l'errore più costoso possibile.",
+   "expect": {
+    "10h": "Sh2-129 bella. Di Ou4 nessuna traccia. È normale, non hai sbagliato niente.",
+    "20h": "Il calamaro comincia a emergere come struttura riconoscibile ma fragile allo stretch.",
+    "30h": "Ou4 pieno, con entrambi i lobi e la struttura interna. È il risultato per cui vale la pena."
+   },
+   "traps": [
+    "Con l'OIII a questi livelli i flat devono essere impeccabili: qualunque residuo di vignettatura è più forte del segnale.",
+    "Il gradiente è il nemico assoluto. Multiscale Gradient Correction o MARS, mai un DBE con molti campioni: cancellerebbe Ou4 insieme al gradiente.",
+    "Non aggiungere ore di Ha sperando che aiutino: non aiutano, l'oggetto è OIII.",
+    "Resistere alla tentazione di denoise aggressivo: a questi SNR il denoise inventa struttura."
+   ],
+   "fotometria": {
+    "s0_ha_R": {
+     "valore": 24.2,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
+     "confidenza": "misurata",
+     "stato": "misura",
+     "derivazione": "eccesso sul fondo locale (35.4 meno 11.1 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×1.0, che vale (beam/diametro)² con beam 60′ e diametro efficace 112.2′.",
+     "fonte": "finkbeiner2003",
+     "id_fonte": "HEALPix 1024 pixel alla posizione dell'oggetto",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "diluizione": 1,
+     "eccesso_R": 24.25,
+     "fondo_R": 11.1,
+     "diametro_efficace_arcmin": 112.2,
+     "bordo": {
+      "valore_R": 19.29,
+      "stato": "non_risolto",
+      "corona_R": 30.4,
+      "fondo_R": 11.1,
+      "raggio_arcmin": 56.12,
+      "fascio_arcmin": 60,
+      "derivazione": "mediana della corona fra 0,9 e 1,0 del raggio catalogato (56.1′, 4 corone per 72 angoli), 30.4 R, meno la mediana dell'anello fra due e tre raggi, 11.1 R, con la geometria dell'ingestione e il fascio della maschera, 60′ (WHAM+VTSS).",
+      "regola": "misura se il raggio catalogato e' almeno un fascio e il bordo sta fra il fondo e la media; se no l'utile resta al fondo locale",
+      "stima": {
+       "valore_R": 2.72,
+       "rapporto": 0.112,
+       "rapporto_minimo": 0.031,
+       "rapporto_massimo": 0.404,
+       "da": [
+        "M8",
+        "M16",
+        "M17",
+        "M42",
+        "NGC 2024",
+        "NGC 2237",
+        "NGC 6357",
+        "IC 1805"
+       ],
+       "sopra_il_fondo": false,
+       "derivazione": "la media, 24.2 R, per il rapporto bordo / media mediano delle 8 regioni col bordo misurato, 0.112 (da 0.031 a 0.404): 2.7 R, sotto il fondo locale di 11.1 R: resta il fondo."
+      }
+     }
+    }
+   },
+   "name": "Sh2-129"
+  },
+  {
+   "id": "m31",
+   "names": [
+    "M31",
+    "Galassia di Andromeda",
+    "NGC 224"
+   ],
+   "constellation": "Andromeda",
+   "archetype": "spiral_hii",
+   "record_del_catalogo": "M31",
+   "ra_deg": 10.68,
+   "dec_deg": 41.27,
+   "size_arcmin": [
+    190,
+    60
+   ],
+   "ambiguity": "media",
+   "ambiguity_note": "Quasi tutti la fanno in banda larga e basta. La divergenza è se aggiungere Ha, e la risposta è sì, ed è il salto di qualità più grande disponibile su questo oggetto.",
+   "physics": "Galassia a spirale del Gruppo Locale, a ~2.5 milioni di anni luce. Emissione dominata dal continuo stellare, ma i bracci contengono centinaia di regioni HII, molte delle quali risolte a scale amatoriali. Il nucleo è un bulge molto brillante con una barra; i bracci contengono corsie di polvere marcatissime.",
+   "lines": [
+    {
+     "band": "L/RGB",
+     "strength": "dominante",
+     "morphology": "Continuo stellare: bulge brillantissimo, bracci, corsie di polvere",
+     "confidence": "alta",
+     "source": "fotometria RC3/HyperLEDA"
+    },
+    {
+     "band": "Ha",
+     "strength": "presente e risolvibile",
+     "morphology": "Centinaia di regioni HII puntiformi e ad anello nei bracci, in particolare l'anello a 10 kpc",
+     "confidence": "alta",
+     "source": "survey Ha dedicate su M31"
+    },
+    {
+     "band": "OIII",
+     "strength": "trascurabile per uso fotografico",
+     "morphology": "Solo nelle HII più eccitate, sotto la soglia amatoriale",
+     "confidence": "media",
+     "source": "analogia"
+    },
+    {
+     "band": "SII",
+     "strength": "trascurabile",
+     "morphology": "Non utilizzabile",
+     "confidence": "media",
+     "source": "analogia"
+    }
+   ],
+   "key_insight": "L'errore più comune non è la tecnica ma la dinamica: il bulge è migliaia di volte più brillante delle periferie. Un'immagine con il nucleo bianco bruciato è un problema di pose, non di elaborazione. E l'Ha additivo sulle regioni HII è il singolo intervento che distingue una M31 qualunque da una M31 memorabile: costa 3-4h e cambia l'immagine.",
+   "field_notes": "Enorme e allungata: 190 arcmin. Con RC8 serve mosaico. Con Tecnosky ridotto entra a fatica, con Askar entra comodamente col contesto. Ottimo in autunno da 46 gradi, alta in cielo.",
+   "roads": [
+    {
+     "id": "lrgb_ha",
+     "tecnica": "HaRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB + Ha additivo",
+     "nome_su_matrice": "RGB + Ha additivo",
+     "default": true,
+     "when": "Quando la banda larga è già a posto e vuoi le regioni HII dei bracci: l'Hα le tira fuori senza toccare il resto. Sotto le 8 ore non ha senso — prima si finisce il colore.",
+     "pro": "Le regioni HII rosse nei bracci sono ciò che rende l'immagine tridimensionale.",
+     "contro": "Richiede gestione della dinamica del bulge."
+    },
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB puro",
+     "nome_su_matrice": "RGB puro",
+     "when": "sotto le 8h o cielo mediocre",
+     "pro": "Risultato sicuro e veloce: M31 è luminosa.",
+     "contro": "Bracci piatti, niente regioni HII."
+    }
+   ],
+   "budget": {
+    "L": {
+     "floor": 1.5,
+     "useful": 4,
+     "saturates": 8,
+     "road": [
+      "lrgb_ha",
+      "lrgb"
+     ],
+     "critical": true,
+     "note": "Set doppio: pose corte per il bulge, lunghe per le periferie",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "RGB": {
+     "floor": 1.5,
+     "useful": 3,
+     "saturates": 6,
+     "scala": "soggetto",
+     "road": [
+      "lrgb_ha",
+      "lrgb"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; sui banchi mono le ore dell'RGB vengono dalla fotometria dal 24 settembre 2026, e questo numero resta per dove le ore sono di famiglia",
+     "confidence": "bassa"
+    },
+    "Ha": {
+     "floor": 2,
+     "useful": 4,
+     "saturates": 7,
+     "note": "L'Hα su M31 va come strato additivo sul rosso, per le regioni HII dei bracci, e col continuo sottratto prima di comporlo. Non va messo al posto della banda larga: è quella a portare la struttura della galassia — bulge, bracci, polveri — e nel fotogramma Hα quella struttura non c'è.",
+     "road": "lrgb_ha",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non riprenderlo.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Non riprenderlo.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    }
+   },
+   "order": "La banda larga va fatta senza Luna: è la parte fragile. Con la Luna alta, se hai il filtro, fai l'Hα — sui bracci lavora lo stesso.",
+   "expect": {
+    "4h": "Galassia bella e pulita, bracci lisci, alone esterno assente.",
+    "10h": "Corsie di polvere incise, regioni HII visibili con l'Ha, alone esterno che comincia a comparire.",
+    "20h": "Alone esteso, ammassi globulari di M31 risolti, dettaglio nelle corsie di polvere."
+   },
+   "traps": [
+    "Bulge bruciato: si risolve con un set di pose corte, non in post.",
+    "L'Ha va mescolato nel canale rosso in modo controllato (PixelMath con coefficiente), mai usato come luminanza: renderebbe la galassia innaturale.",
+    "Gradienti: l'oggetto è così grande che riempie il campo, quindi DBE ha pochi punti di fondo veri. Attenzione a non sottrarre l'alone.",
+    "Il colore del bulge è giallo-arancio: se esce bianco, è saturo."
+   ]
+  },
+  {
+   "id": "ngc7331",
+   "names": [
+    "NGC 7331",
+    "Caldwell 30"
+   ],
+   "constellation": "Pegasus",
+   "archetype": "elliptical_group",
+   "ra_deg": 339.27,
+   "dec_deg": 34.42,
+   "size_arcmin": [
+    10.5,
+    3.7
+   ],
+   "ambiguity": "bassa",
+   "ambiguity_note": "Banda larga e basta. La divergenza è solo su quanta profondità cercare e se includere il Quintetto nel campo.",
+   "physics": "Spirale vista molto inclinata, a ~40 milioni di anni luce, spesso definita gemella della Via Lattea. Nello stesso campo, a mezzo grado, c'è il Quintetto di Stephan: un gruppo compatto in interazione con code mareali e uno shock intergalattico. Continuo stellare puro in entrambi i casi: nessuna riga sfruttabile.",
+   "lines": [
+    {
+     "band": "L/RGB",
+     "strength": "dominante",
+     "morphology": "Disco inclinato con corsie di polvere; le galassie di fondo del gruppo attorno",
+     "confidence": "alta",
+     "source": "fotometria HyperLEDA"
+    },
+    {
+     "band": "Ha",
+     "strength": "marginale",
+     "morphology": "Regioni HII nei bracci, molto piccole a questa distanza",
+     "confidence": "media",
+     "source": "analogia"
+    }
+   ],
+   "key_insight": "È un target di risoluzione, non di banda. La domanda giusta non è quale filtro ma quanto fine campionare: è esattamente il caso in cui il regime punto-sorgente comanda e conta l'apertura, non il rapporto focale. Con seeing sotto 1.5 arcsec l'RC8 a piena focale è lo strumento giusto e il sovracampionamento apparente è un investimento, non uno spreco.",
+   "field_notes": "Piccolo: premia le lunghe focali. Con RC8 a 1624mm sia NGC 7331 sia il Quintetto entrano nello stesso campo APS-C, ed è una delle inquadrature più eleganti disponibili a quella focale.",
+   "roads": [
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB profondo",
+     "nome_su_matrice": "RGB",
+     "default": true,
+     "when": "sempre",
+     "pro": "L'unica tecnica sensata. La profondità porta le galassie di fondo e le code mareali del Quintetto.",
+     "contro": "Richiede cielo buono e nessuna Luna: è l'opposto del narrowband."
+    }
+   ],
+   "budget": {
+    "L": {
+     "floor": 2,
+     "useful": 6,
+     "saturates": 12,
+     "road": "lrgb",
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 2,
+     "useful": 4.5,
+     "saturates": 9,
+     "scala": "soggetto",
+     "road": "lrgb",
+     "note": "1.5h per canale come minimo utile",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Opzionale e marginale a questa distanza",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    }
+   },
+   "order": "Tutto va fatto senza Luna: è banda larga pura. È il target da riservare ai novilunii con seeing buono, non quello da riempire nelle notti mediocri. Se la notte non è buona, questo oggetto non è il candidato giusto.",
+   "expect": {
+    "5h": "NGC 7331 pulita, Quintetto presente ma piatto.",
+    "12h": "Code mareali del Quintetto visibili, galassie di fondo a decine, polvere incisa in NGC 7331.",
+    "20h": "Alone esterno di NGC 7331 e struttura fine nel Quintetto. Territorio da cielo davvero buono."
+   },
+   "traps": [
+    "Il seeing comanda: su questo oggetto la selezione dei sub per FWHM vale più di ore aggiuntive.",
+    "Non usare denoise aggressivo: mangia le galassie di fondo, che sono metà del valore dell'immagine.",
+    "Il colore del nucleo di NGC 7331 va protetto dalla saturazione.",
+    "Deconvoluzione utile qui, ma solo con PSF ben misurata e maschera stretta."
+   ]
+  },
+  {
+   "id": "m45",
+   "names": [
+    "M45",
+    "Pleiadi",
+    "Sette Sorelle"
+   ],
+   "constellation": "Taurus",
+   "archetype": "reflection",
+   "record_del_catalogo": "M45",
+   "ra_deg": 56.75,
+   "dec_deg": 24.12,
+   "size_arcmin": [
+    110,
+    110
+   ],
+   "ambiguity": "bassa",
+   "ambiguity_note": "Nessuna ambiguità di tecnica. È incluso perché è l'archetipo in cui la risposta corretta è 'niente banda stretta', e serve che l'app lo dica esplicitamente.",
+   "physics": "Ammasso aperto giovane immerso in una nube di polvere interstellare che sta attraversando per caso. La nebulosità è PURA RIFLESSIONE: la polvere diffonde la luce blu delle stelle B calde, con la classica dipendenza di Rayleigh che la rende azzurra. Non c'è ionizzazione, non c'è emissione, non ci sono righe. Nessun filtro a banda stretta può registrare nulla, per costruzione.",
+   "lines": [
+    {
+     "band": "L/RGB",
+     "strength": "dominante",
+     "morphology": "Nebulosità azzurra striata attorno alle stelle brillanti, con filamenti sottilissimi",
+     "confidence": "alta",
+     "source": "fisica della riflessione, nessuna incertezza"
+    },
+    {
+     "band": "Ha",
+     "strength": "nulla",
+     "morphology": "Nessuna emissione",
+     "confidence": "alta",
+     "source": "assenza di meccanismo di ionizzazione"
+    }
+   ],
+   "key_insight": "L'archetipo della domanda che l'app deve porre per prima: l'oggetto emette per righe o per continuo? Qui la risposta è continuo, e questo esclude in un colpo solo metà dell'arsenale. Il problema reale sono gli aloni attorno a stelle di magnitudine 3: è un problema ottico e di dinamica, che nessuna quantità di ore risolve.",
+   "field_notes": "Grande e con stelle molto luminose. Premia le focali corte. Ottima in inverno da 46 gradi. Il cirro galattico attorno (IFN) è un target avanzato nello stesso campo, e richiede un budget completamente diverso.",
+   "roads": [
+    {
+     "id": "lrgb",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB con gestione aloni",
+     "nome_su_matrice": "RGB con gestione aloni",
+     "default": true,
+     "when": "sempre",
+     "pro": "L'unica tecnica possibile. Con buona ottica e flat impeccabili la nebulosità striata è spettacolare.",
+     "contro": "Gli aloni delle stelle brillanti sono il vero limite, e dipendono dall'ottica, non dal tempo."
+    },
+    {
+     "id": "lrgb_ifn",
+     "tecnica": "LRGB",
+     "banda_larga": "soggetto",
+     "name": "LRGB profondo con cirri galattici",
+     "when": "sopra le 15h e cielo molto buono",
+     "pro": "Il campo attorno è pieno di IFN a 27-28 mag/arcsec2: un livello di difficoltà completamente diverso.",
+     "contro": "Richiede flat perfetti e gestione dei gradienti maniacale.",
+     "same_budget": "profondità",
+     "same_budget_why": "stessi canali, ma la banda larga va spinta molto oltre la saturazione dichiarata"
+    }
+   ],
+   "budget": {
+    "L": {
+     "floor": 1.5,
+     "useful": 4,
+     "saturates": 10,
+     "road": [
+      "lrgb",
+      "lrgb_ifn"
+     ],
+     "critical": true,
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "RGB": {
+     "floor": 2,
+     "useful": 4.5,
+     "saturates": 9,
+     "scala": "soggetto",
+     "road": [
+      "lrgb",
+      "lrgb_ifn"
+     ],
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "confidence": "bassa"
+    },
+    "Ha": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Nessuna emissione. Non riprenderlo, per nessun motivo.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "OIII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Nessuna emissione.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    },
+    "SII": {
+     "floor": 0,
+     "useful": 0,
+     "saturates": 0,
+     "note": "Nessuna emissione.",
+     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "confidence": "media"
+    }
+   },
+   "order": "Banda larga pura: serve buio vero. Con la Luna questo oggetto è semplicemente da evitare, non c'è un canale di ripiego.",
+   "expect": {
+    "4h": "Nebulosità principale attorno a Merope e Maia, aloni evidenti sulle stelle.",
+    "10h": "Filamenti sottili e striature nella polvere. Immagine matura.",
+    "20h": "Cirri galattici deboli attorno all'ammasso, se il cielo e i flat lo permettono."
+   },
+   "traps": [
+    "Aloni: sono un problema OTTICO. Cambiano con il filtro e con il tubo, non con le ore. Se il tuo setup fa aloni, si vedranno.",
+    "Le stelle sono così brillanti che saturano in pochi secondi: serve un set di pose molto corte per il colore stellare.",
+    "I flat devono essere perfetti: la nebulosità è diffusa e a basso contrasto, quindi qualunque residuo la imita.",
+    "Non spingere il blu per far sembrare la nebulosità più forte: è già azzurra per fisica, e l'eccesso si vede."
+   ]
+  }
+ ],
+ "archetypes_sub_note": "peak_over_mean: quanto la parte più brillante dell'oggetto supera la sua brillanza superficiale MEDIA (lineare). line_fraction: quanta della luce in banda V passa attraverso un filtro a banda stretta centrato su una riga che quella classe emette davvero. sub_max_s: tetto alla posa che viene dalla pratica documentata della comunita', non dal modello. Tutti e tre servono SOLO al calcolo della posa: non entrano nelle ore per canale, nelle ratio, nelle soglie o in qualunque altra parte del motore. Confidenza dichiarata bassa o media: sono stime di classe, si correggono guardando i propri sub. Da oggi ogni peak_over_mean porta un peak_source che dice da dove viene, sullo stesso modello di sub_source, e in piu' di un caso quel campo dice «senza fonte»: e' l'informazione piu' utile che possa dare. Due cose vanno sapute prima di leggere questi numeri. La prima e' che il campo entra SOLO nel ramo derivato di muCentrale: dove esiste una brillanza misurata sull'oggetto, e dove mu_da_magnitudine.valida e' false, non viene nemmeno letto — oggi resta attivo su 78 oggetti su 169. La seconda e' quanto una costante di classe possa valere, e lo dice il solo posto dove si puo' verificare: sui 29 globulari, per cui possediamo insieme la mu_V misurata e la magnitudine integrata, il rapporto vero va da 0.5 a 1576, cioe' 8.79 magnitudini fra i due estremi della classe piu' omogenea del catalogo. Un numero solo non puo' rappresentarla, e la conclusione non riguarda il valore ma la forma: dove serve precisione si acquisisce la misura sull'oggetto, e questo campo resta il ripiego dichiarato."
+}

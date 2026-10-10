@@ -1,0 +1,2710 @@
+{
+ "schema_version": "1.0",
+ "note": "Layer strumentale. Non contiene dati astrofisici: quelli stanno in targets.json. Tutti i valori derivati (scala, f/ efficace, tasso di segnale) sono calcolati a runtime dall'app.",
+ "cameras": [
+  {
+   "id": "asi2600mm",
+   "name": "ZWO ASI 2600MM Pro",
+   "sensor": "IMX571 mono",
+   "pixel_um": 3.76,
+   "width_px": 6248,
+   "height_px": 4176,
+   "read_noise_e": 1.5,
+   "gain_note": "gain 100 (HCG)",
+   "full_well_e": 4600,
+   "qe": {
+    "400": 0.72,
+    "450": 0.88,
+    "500": 0.9,
+    "550": 0.87,
+    "600": 0.78,
+    "650": 0.63,
+    "656": 0.62,
+    "672": 0.58,
+    "700": 0.5
+   },
+   "gain_modes": [
+    {
+     "name": "LCG",
+     "gain": 0,
+     "offset": 50,
+     "read_noise_e": 3.3,
+     "full_well_e": 50000,
+     "use": "banda larga",
+     "confidence": "media-alta",
+     "source": "specifica ZWO ASI2600: pozzetto 50 ke, rumore di lettura 1.0-3.3 e-"
+    },
+    {
+     "name": "HCG",
+     "gain": 100,
+     "offset": 50,
+     "read_noise_e": 1.5,
+     "full_well_e": 16000,
+     "use": "banda stretta",
+     "confidence": "media",
+     "source": "soglia HCG a gain 100; pozzetto derivato da 65535 ADU x ~0.25 e-/ADU, da confermare sui propri dark"
+    }
+   ],
+   "full_well_note": "il campo full_well_e qui sopra e' un valore ereditato e non usato dal motore: per la posa fa fede gain_modes, dove il pozzetto e' dichiarato per modo di guadagno"
+  },
+  {
+   "id": "asi2600mc",
+   "name": "ZWO ASI 2600MC Pro",
+   "vetrino": "taglio_ir",
+   "vetrino_source": "manuale ZWO dell'ASI2600MC Pro: davanti al sensore c'e' una finestra di protezione IR cut, 60 mm di diametro e 2 mm di spessore",
+   "sensor": "IMX571 colore (CFA Bayer)",
+   "pixel_um": 3.76,
+   "width_px": 6248,
+   "height_px": 4176,
+   "read_noise_e": 1.5,
+   "gain_note": "gain 100 (HCG)",
+   "full_well_e": 4600,
+   "cfa_penalty": 0.25,
+   "cfa_note": "In banda stretta su OSC solo ~1/4 (OIII: pixel B) o ~1/2 (Ha: pixel R) dei fotositi raccoglie la riga. Penalità applicata come frazione di fotositi utili per banda.",
+   "gain_modes": [
+    {
+     "name": "LCG",
+     "gain": 0,
+     "offset": 50,
+     "read_noise_e": 3.3,
+     "full_well_e": 50000,
+     "use": "banda larga",
+     "confidence": "media-alta",
+     "source": "specifica ZWO ASI2600: pozzetto 50 ke, rumore di lettura 1.0-3.3 e-"
+    },
+    {
+     "name": "HCG",
+     "gain": 100,
+     "offset": 50,
+     "read_noise_e": 1.5,
+     "full_well_e": 16000,
+     "use": "banda stretta",
+     "confidence": "media",
+     "source": "soglia HCG a gain 100; pozzetto derivato da 65535 ADU x ~0.25 e-/ADU, da confermare sui propri dark"
+    }
+   ],
+   "full_well_note": "il campo full_well_e qui sopra e' un valore ereditato e non usato dal motore: per la posa fa fede gain_modes, dove il pozzetto e' dichiarato per modo di guadagno",
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto. — Ha 0.357 · OIII 0.641 · SII 0.393 — ricavate dalla carta QE per canale della ASI2600MC (letture di terzi a 656.3 / 500.7 / 672.4 nm) con la definizione eta = (R + 2G + B)/4 / max(R,G,B). Verificate contro il modello spettrale indipendente costruito su IMX219: le due fonti concordano entro il 6% fra loro. Sostituiscono i valori 0.29 / 0.71 / 0.28, derivati a mano da curve tipiche di sensore, che sottostimavano Ha (-22%) e SII (-32%) e sopravvalutavano OIII (+11%). Le altre camere a matrice conservano i valori generici: per i loro sensori non esiste alcun dato per canale, e sostituirli con questi sarebbe trasferire una misura da un sensore a un altro senza titolo.",
+   "qe_ereditata": {
+    "400": 0.55,
+    "450": 0.8,
+    "500": 0.82,
+    "550": 0.8,
+    "600": 0.7,
+    "650": 0.55,
+    "656": 0.54,
+    "672": 0.5,
+    "700": 0.42
+   },
+   "qe_ereditata_note": "FUORI DAL PERCORSO OPERATIVO come tabella della CAMERA: la stessa curva vive ora sul SENSORE (imx571.qe_cfa), dove appartiene, e vale per ogni marca che monta quel silicio. Il motore ne usa la FORMA e ne corregge il LIVELLO sulle misure EMVA."
+  },
+  {
+   "id": "asi294mm",
+   "name": "ZWO ASI 294MM Pro (bin 2)",
+   "sensor": "IMX492 mono",
+   "pixel_um": 4.63,
+   "width_px": 4144,
+   "height_px": 2822,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.9,
+   "gain_note": "modo bin 2, il piu' usato"
+  },
+  {
+   "id": "asi294mc",
+   "name": "ZWO ASI 294MC Pro",
+   "sensor": "IMX294 colore",
+   "pixel_um": 4.63,
+   "width_px": 4144,
+   "height_px": 2822,
+   "read_noise_e": 1.6,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.75,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "asi533mm",
+   "name": "ZWO ASI 533MM Pro",
+   "sensor": "IMX533 mono",
+   "pixel_um": 3.76,
+   "width_px": 3008,
+   "height_px": 3008,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.002,
+   "qe_peak": 0.91
+  },
+  {
+   "id": "asi533mc",
+   "name": "ZWO ASI 533MC Pro",
+   "sensor": "IMX533 colore",
+   "pixel_um": 3.76,
+   "width_px": 3008,
+   "height_px": 3008,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.002,
+   "qe_peak": 0.8,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "asi6200mm",
+   "name": "ZWO ASI 6200MM Pro",
+   "sensor": "IMX455 mono full frame",
+   "pixel_um": 3.76,
+   "width_px": 9576,
+   "height_px": 6388,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.91
+  },
+  {
+   "id": "asi6200mc",
+   "name": "ZWO ASI 6200MC Pro",
+   "sensor": "IMX455 colore full frame",
+   "pixel_um": 3.76,
+   "width_px": 9576,
+   "height_px": 6388,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.8,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "asi1600mm",
+   "name": "ZWO ASI 1600MM Pro",
+   "sensor": "MN34230 mono",
+   "pixel_um": 3.8,
+   "width_px": 4656,
+   "height_px": 3520,
+   "read_noise_e": 1.7,
+   "dark_e_s": 0.01,
+   "qe_peak": 0.6
+  },
+  {
+   "id": "asi183mm",
+   "name": "ZWO ASI 183MM Pro",
+   "sensor": "IMX183 mono",
+   "pixel_um": 2.4,
+   "width_px": 5496,
+   "height_px": 3672,
+   "read_noise_e": 1.6,
+   "dark_e_s": 0.008,
+   "qe_peak": 0.84
+  },
+  {
+   "id": "asi183mc",
+   "name": "ZWO ASI 183MC Pro",
+   "sensor": "IMX183 colore",
+   "pixel_um": 2.4,
+   "width_px": 5496,
+   "height_px": 3672,
+   "read_noise_e": 1.6,
+   "dark_e_s": 0.008,
+   "qe_peak": 0.78,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "asi071mc",
+   "name": "ZWO ASI 071MC Pro",
+   "sensor": "IMX071 colore APS-C",
+   "pixel_um": 4.78,
+   "width_px": 4944,
+   "height_px": 3284,
+   "read_noise_e": 2.3,
+   "dark_e_s": 0.005,
+   "qe_peak": 0.5,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "asi2400mc",
+   "name": "ZWO ASI 2400MC Pro",
+   "sensor": "IMX410 colore full frame",
+   "pixel_um": 5.94,
+   "width_px": 6072,
+   "height_px": 4042,
+   "read_noise_e": 1.5,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.8,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto."
+  },
+  {
+   "id": "qhy268m",
+   "name": "QHY 268M",
+   "sensor": "IMX571 mono",
+   "pixel_um": 3.76,
+   "width_px": 6280,
+   "height_px": 4210,
+   "read_noise_e": 1.4,
+   "qe_peak": 0.9
+  },
+  {
+   "id": "qhy600m",
+   "name": "QHY 600M",
+   "sensor": "IMX455 mono full frame",
+   "pixel_um": 3.76,
+   "width_px": 9600,
+   "height_px": 6422,
+   "read_noise_e": 1.4,
+   "dark_e_s": 0.003,
+   "qe_peak": 0.9
+  },
+  {
+   "id": "dslr_apsc",
+   "name": "Reflex/mirrorless APS-C (generica)",
+   "sensor": "CMOS colore APS-C",
+   "pixel_um": 4.3,
+   "width_px": 6000,
+   "height_px": 4000,
+   "read_noise_e": 3.0,
+   "dark_e_s": 0.02,
+   "qe_peak": 0.45,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto.",
+   "sensore_generico": true,
+   "sensore_generico_note": "Archetipo di classe, non un modello reale: non ha un sensore da riconoscere, e il riconoscimento automatico e disattivato su questa scheda."
+  },
+  {
+   "id": "dslr_ff",
+   "name": "Reflex/mirrorless full frame (generica)",
+   "sensor": "CMOS colore full frame",
+   "pixel_um": 5.9,
+   "width_px": 6240,
+   "height_px": 4160,
+   "read_noise_e": 3.0,
+   "dark_e_s": 0.02,
+   "qe_peak": 0.45,
+   "cfa_penalty": 0.25,
+   "cfa_fraction_ereditato": {
+    "Ha": 0.29,
+    "SII": 0.28,
+    "OIII": 0.71,
+    "HaOIII": 0.5,
+    "R": 0.29,
+    "G": 0.62,
+    "B": 0.3,
+    "L": 1.0,
+    "RGB": 0.62
+   },
+   "cfa_fraction_ereditato_note": "FUORI DAL PERCORSO OPERATIVO. Valore congelato da una derivazione precedente su curve tipiche di sensore: e l'uscita di un modello, non una misura, e quindi non puo battere per regola il modello attuale, che e rieseguibile e coperto da test. Resta qui per memoria e per il confronto.",
+   "sensore_generico": true,
+   "sensore_generico_note": "Archetipo di classe, non un modello reale: non ha un sensore da riconoscere, e il riconoscimento automatico e disattivato su questa scheda."
+  }
+ ],
+ "cameras_note": "Le camere con 'qe_peak' invece della curva completa usano una forma CMOS retroilluminata tipica normalizzata su quel picco: errore di qualche punto percentuale, ben sotto l'incertezza sul dato dell'oggetto. Read noise ai gain di uso comune. Tutti i valori sono modificabili dall'interfaccia. | gain_modes: modi di guadagno usati SOLO dal calcolo della posa (sommersione del rumore di lettura e saturazione stellare). Non entrano nei fattori di tempo ne' in nessun'altra parte del motore.",
+ "telescopes": [
+  {
+   "id": "askar71f",
+   "name": "Askar 71F",
+   "type": "rifrattore apocromatico 4 elementi",
+   "aperture_mm": 71,
+   "focal_mm": 490,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 490
+    },
+    {
+     "factor": 0.75,
+     "label": "riduttore 0.75x",
+     "focal_mm": 367
+    }
+   ]
+  },
+  {
+   "id": "tecnosky115",
+   "name": "Tecnosky 115/800 tripletto",
+   "type": "rifrattore apocromatico tripletto",
+   "aperture_mm": 115,
+   "focal_mm": 800,
+   "obstruction_linear": 0.0,
+   "throughput": 0.96,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 800
+    },
+    {
+     "factor": 0.8,
+     "label": "riduttore 0.80x",
+     "focal_mm": 640
+    }
+   ]
+  },
+  {
+   "id": "rc8",
+   "name": "Ritchey-Chretien 8\"",
+   "type": "riflettore RC",
+   "aperture_mm": 203.2,
+   "focal_mm": 1624,
+   "obstruction_linear": 0.45,
+   "throughput": 0.884,
+   "throughput_note": "due specchi, riflettività ~94% ciascuno",
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1624
+    },
+    {
+     "factor": 0.8,
+     "label": "riduttore 0.80x",
+     "focal_mm": 1300
+    }
+   ]
+  },
+  {
+   "id": "redcat51",
+   "name": "William Optics RedCat 51",
+   "optic_type": "rifrattore",
+   "aperture_mm": 51,
+   "focal_mm": 250,
+   "obstruction_linear": 0.0,
+   "throughput": 0.96,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 250
+    }
+   ]
+  },
+  {
+   "id": "sw72ed",
+   "name": "Sky-Watcher Evostar 72ED",
+   "optic_type": "rifrattore",
+   "aperture_mm": 72,
+   "focal_mm": 420,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 420
+    },
+    {
+     "factor": 0.85,
+     "label": "riduttore 0.85x",
+     "focal_mm": 357
+    }
+   ]
+  },
+  {
+   "id": "askar_fra400",
+   "name": "Askar FRA400",
+   "optic_type": "rifrattore",
+   "aperture_mm": 72,
+   "focal_mm": 400,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 400
+    },
+    {
+     "factor": 0.7,
+     "label": "riduttore 0.70x",
+     "focal_mm": 280
+    }
+   ]
+  },
+  {
+   "id": "wo_gt81",
+   "name": "William Optics GT81",
+   "optic_type": "rifrattore",
+   "aperture_mm": 81,
+   "focal_mm": 478,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 478
+    },
+    {
+     "factor": 0.8,
+     "label": "riduttore 0.80x",
+     "focal_mm": 382
+    }
+   ]
+  },
+  {
+   "id": "sw80ed",
+   "name": "Sky-Watcher Evostar 80ED",
+   "optic_type": "rifrattore",
+   "aperture_mm": 80,
+   "focal_mm": 600,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 600
+    },
+    {
+     "factor": 0.85,
+     "label": "riduttore 0.85x",
+     "focal_mm": 510
+    }
+   ]
+  },
+  {
+   "id": "sw_esprit80",
+   "name": "Sky-Watcher Esprit 80ED",
+   "optic_type": "rifrattore",
+   "aperture_mm": 80,
+   "focal_mm": 400,
+   "obstruction_linear": 0.0,
+   "throughput": 0.96,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 400
+    }
+   ]
+  },
+  {
+   "id": "tak_fsq85",
+   "name": "Takahashi FSQ-85EDX",
+   "optic_type": "rifrattore",
+   "aperture_mm": 85,
+   "focal_mm": 450,
+   "obstruction_linear": 0.0,
+   "throughput": 0.97,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 450
+    },
+    {
+     "factor": 0.73,
+     "label": "riduttore 0.73x",
+     "focal_mm": 328
+    }
+   ]
+  },
+  {
+   "id": "askar_fra500",
+   "name": "Askar FRA500",
+   "optic_type": "rifrattore",
+   "aperture_mm": 90,
+   "focal_mm": 500,
+   "obstruction_linear": 0.0,
+   "throughput": 0.95,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 500
+    },
+    {
+     "factor": 0.7,
+     "label": "riduttore 0.70x",
+     "focal_mm": 350
+    }
+   ]
+  },
+  {
+   "id": "sw_esprit100",
+   "name": "Sky-Watcher Esprit 100ED",
+   "optic_type": "rifrattore",
+   "aperture_mm": 100,
+   "focal_mm": 550,
+   "obstruction_linear": 0.0,
+   "throughput": 0.96,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 550
+    }
+   ]
+  },
+  {
+   "id": "tak_fsq106",
+   "name": "Takahashi FSQ-106EDX4",
+   "optic_type": "rifrattore",
+   "aperture_mm": 106,
+   "focal_mm": 530,
+   "obstruction_linear": 0.0,
+   "throughput": 0.97,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 530
+    },
+    {
+     "factor": 0.73,
+     "label": "riduttore 0.73x",
+     "focal_mm": 387
+    }
+   ]
+  },
+  {
+   "id": "sw_esprit120",
+   "name": "Sky-Watcher Esprit 120ED",
+   "optic_type": "rifrattore",
+   "aperture_mm": 120,
+   "focal_mm": 840,
+   "obstruction_linear": 0.0,
+   "throughput": 0.96,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 840
+    }
+   ]
+  },
+  {
+   "id": "sw150n",
+   "name": "Sky-Watcher Newton 150/750",
+   "optic_type": "newton",
+   "aperture_mm": 150,
+   "focal_mm": 750,
+   "obstruction_linear": 0.25,
+   "throughput": 0.85,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 750
+    }
+   ]
+  },
+  {
+   "id": "sw_quattro8",
+   "name": "Sky-Watcher Quattro 8\" f/4",
+   "optic_type": "newton",
+   "aperture_mm": 200,
+   "focal_mm": 800,
+   "obstruction_linear": 0.28,
+   "throughput": 0.85,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 800
+    }
+   ]
+  },
+  {
+   "id": "sw200n",
+   "name": "Sky-Watcher Newton 200/1000",
+   "optic_type": "newton",
+   "aperture_mm": 200,
+   "focal_mm": 1000,
+   "obstruction_linear": 0.25,
+   "throughput": 0.85,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1000
+    }
+   ]
+  },
+  {
+   "id": "sw_quattro10",
+   "name": "Sky-Watcher Quattro 10\" f/4",
+   "optic_type": "newton",
+   "aperture_mm": 250,
+   "focal_mm": 1000,
+   "obstruction_linear": 0.28,
+   "throughput": 0.85,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1000
+    }
+   ]
+  },
+  {
+   "id": "rc6",
+   "name": "Ritchey-Chretien 6\"",
+   "optic_type": "rc",
+   "aperture_mm": 152,
+   "focal_mm": 1370,
+   "obstruction_linear": 0.45,
+   "throughput": 0.884,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1370
+    },
+    {
+     "factor": 0.8,
+     "label": "riduttore 0.80x",
+     "focal_mm": 1096
+    }
+   ]
+  },
+  {
+   "id": "rc10",
+   "name": "Ritchey-Chretien 10\"",
+   "optic_type": "rc",
+   "aperture_mm": 254,
+   "focal_mm": 2000,
+   "obstruction_linear": 0.45,
+   "throughput": 0.884,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2000
+    },
+    {
+     "factor": 0.8,
+     "label": "riduttore 0.80x",
+     "focal_mm": 1600
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "name": "Celestron C6 (SC 150)",
+   "optic_type": "sct",
+   "aperture_mm": 150,
+   "focal_mm": 1500,
+   "obstruction_linear": 0.34,
+   "throughput": 0.82,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1500
+    },
+    {
+     "factor": 0.63,
+     "label": "riduttore 0.63x",
+     "focal_mm": 945
+    }
+   ]
+  },
+  {
+   "id": "c8",
+   "name": "Celestron C8 (SC 203)",
+   "optic_type": "sct",
+   "aperture_mm": 203.2,
+   "focal_mm": 2032,
+   "obstruction_linear": 0.34,
+   "throughput": 0.82,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2032
+    },
+    {
+     "factor": 0.63,
+     "label": "riduttore 0.63x",
+     "focal_mm": 1280
+    }
+   ]
+  },
+  {
+   "id": "edgehd8",
+   "name": "Celestron EdgeHD 8\"",
+   "optic_type": "sct",
+   "aperture_mm": 203.2,
+   "focal_mm": 2032,
+   "obstruction_linear": 0.34,
+   "throughput": 0.83,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2032
+    },
+    {
+     "factor": 0.7,
+     "label": "riduttore 0.70x",
+     "focal_mm": 1422
+    }
+   ]
+  },
+  {
+   "id": "c925",
+   "name": "Celestron C9.25",
+   "optic_type": "sct",
+   "aperture_mm": 235,
+   "focal_mm": 2350,
+   "obstruction_linear": 0.34,
+   "throughput": 0.82,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2350
+    },
+    {
+     "factor": 0.63,
+     "label": "riduttore 0.63x",
+     "focal_mm": 1481
+    }
+   ]
+  },
+  {
+   "id": "meade_sc10",
+   "name": "Meade Schmidt-Cassegrain 10\"",
+   "optic_type": "sct",
+   "aperture_mm": 254,
+   "focal_mm": 2500,
+   "obstruction_linear": 0.34,
+   "throughput": 0.82,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2500
+    },
+    {
+     "factor": 0.63,
+     "label": "riduttore 0.63x",
+     "focal_mm": 1575
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "name": "Celestron C11",
+   "optic_type": "sct",
+   "aperture_mm": 280,
+   "focal_mm": 2800,
+   "obstruction_linear": 0.34,
+   "throughput": 0.82,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 2800
+    },
+    {
+     "factor": 0.63,
+     "label": "riduttore 0.63x",
+     "focal_mm": 1764
+    }
+   ]
+  },
+  {
+   "id": "skymax127",
+   "name": "Sky-Watcher Skymax 127 (Mak)",
+   "optic_type": "mak",
+   "aperture_mm": 127,
+   "focal_mm": 1500,
+   "obstruction_linear": 0.32,
+   "throughput": 0.88,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 1500
+    }
+   ]
+  },
+  {
+   "id": "samyang135",
+   "name": "Samyang 135 mm f/2",
+   "optic_type": "obiettivo",
+   "aperture_mm": 67.5,
+   "focal_mm": 135,
+   "obstruction_linear": 0.0,
+   "throughput": 0.92,
+   "reducers": [
+    {
+     "factor": 1.0,
+     "label": "nativo",
+     "focal_mm": 135
+    }
+   ]
+  }
+ ],
+ "telescopes_note": "Ostruzione e trasmissione sono valori tipici per tipo di ottica, non misure del singolo esemplare: sono l'ingrediente piu' incerto del calcolo del tempo e si possono correggere dall'interfaccia.",
+ "mounts": [
+  {
+   "id": "am5",
+   "name": "ZWO AM5",
+   "type": "strain wave",
+   "rms_typ_arcsec": 0.9,
+   "rms_long_fl_arcsec": 1.3,
+   "max_sub_s": 600,
+   "note": "Con RC8 a carico pieno l'RMS scende difficilmente sotto 1\". Adatta a focali medio-corte."
+  },
+  {
+   "id": "cem70g",
+   "name": "iOptron CEM70G",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.6,
+   "rms_long_fl_arcsec": 0.7,
+   "max_sub_s": 1800,
+   "note": "Montatura principale per lunghe focali e carichi elevati."
+  },
+  {
+   "id": "heq5",
+   "name": "Sky-Watcher HEQ5 Pro",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 1.1,
+   "rms_long_fl_arcsec": 1.5,
+   "max_sub_s": 300
+  },
+  {
+   "id": "eq6r",
+   "name": "Sky-Watcher EQ6-R Pro",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.8,
+   "rms_long_fl_arcsec": 1.0,
+   "max_sub_s": 900
+  },
+  {
+   "id": "azeq6",
+   "name": "Sky-Watcher AZ-EQ6",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.7,
+   "rms_long_fl_arcsec": 0.9,
+   "max_sub_s": 1200
+  },
+  {
+   "id": "eq8r",
+   "name": "Sky-Watcher EQ8-R Pro",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.5,
+   "rms_long_fl_arcsec": 0.6,
+   "max_sub_s": 1800
+  },
+  {
+   "id": "cem26",
+   "name": "iOptron CEM26",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 1.0,
+   "rms_long_fl_arcsec": 1.4,
+   "max_sub_s": 300
+  },
+  {
+   "id": "cem40",
+   "name": "iOptron CEM40",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.8,
+   "rms_long_fl_arcsec": 1.0,
+   "max_sub_s": 900
+  },
+  {
+   "id": "gem45",
+   "name": "iOptron GEM45",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.7,
+   "rms_long_fl_arcsec": 0.9,
+   "max_sub_s": 1200
+  },
+  {
+   "id": "hem27",
+   "name": "iOptron HEM27",
+   "type": "strain wave",
+   "rms_typ_arcsec": 0.7,
+   "rms_long_fl_arcsec": 1.0,
+   "max_sub_s": 600
+  },
+  {
+   "id": "am3",
+   "name": "ZWO AM3",
+   "type": "strain wave",
+   "rms_typ_arcsec": 0.8,
+   "rms_long_fl_arcsec": 1.2,
+   "max_sub_s": 600
+  },
+  {
+   "id": "cgx",
+   "name": "Celestron CGX",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 0.7,
+   "rms_long_fl_arcsec": 0.9,
+   "max_sub_s": 1200
+  },
+  {
+   "id": "avx",
+   "name": "Celestron AVX",
+   "type": "equatoriale worm",
+   "rms_typ_arcsec": 1.3,
+   "rms_long_fl_arcsec": 1.8,
+   "max_sub_s": 300
+  },
+  {
+   "id": "rst135",
+   "name": "Rainbow Astro RST-135",
+   "type": "strain wave",
+   "rms_typ_arcsec": 0.6,
+   "rms_long_fl_arcsec": 0.8,
+   "max_sub_s": 900
+  }
+ ],
+ "mounts_note": "L'RMS e' quello tipicamente ottenuto in campo con guida decente, non il PE dichiarato dal costruttore. Dipende molto da sito, seeing, bilanciamento e taratura: e' modificabile dall'interfaccia, e vale la pena metterci il proprio.",
+ "filters": [
+  {
+   "id": "ha3",
+   "name": "Ha 3 nm",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 3.0,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "ha35",
+   "name": "Ha 3.5 nm (Baader)",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 3.5,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "ha5",
+   "name": "Ha 5 nm",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 5.0,
+   "peak_t": 0.92,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "ha65",
+   "name": "Ha 6.5 nm (Astronomik)",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 6.5,
+   "peak_t": 0.94,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "ha7",
+   "name": "Ha 7 nm (Lumicon / ZWO)",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 7.0,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro. SU UNA CAMERA A COLORI QUESTO FILTRO SI MONTA, E NON SI PRESCRIVE (Alessandro, 14 settembre 2026). Montabile non vuol dire prescrivibile: l'elenco della strumentazione dice che cosa entra nella ruota, il motore dice che cosa vale una notte. Questo Hα da 7 nm stava in ruota sulla matrice da prima della monocromatica, e serviva a una tecnica vecchia: si riprendeva con l'Hα sulla matrice, si separavano i tre canali, si prendeva il rosso, con PixelMath gli si sottraeva il continuo e lo si rinforzava con l'Hα, poi si ricomponeva l'RGB col rosso potenziato. È in disuso per tre motivi, che valgono come regola: tirare fuori l'Hα con una matrice di Bayer costa tre o quattro volte il tempo di integrazione che costa su una monocromatica; l'elaborazione è una forzatura e il risultato non ripaga le ore; le stelle restano innaturali per quante maschere dedicate si usino, e anche il fondo cielo ne risente. Un'esclusione senza motivo registrato viene annullata dal primo che legge l'elenco della strumentazione: questo è il motivo."
+  },
+  {
+   "id": "ha12",
+   "name": "Ha 12 nm",
+   "band": "Ha",
+   "classe": "riga",
+   "lambda_nm": 656.3,
+   "fwhm_nm": 12.0,
+   "peak_t": 0.95,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "o3_3",
+   "name": "OIII 3 nm",
+   "band": "OIII",
+   "classe": "riga",
+   "lambda_nm": 500.7,
+   "fwhm_nm": 3.0,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "o3_35",
+   "name": "OIII 3.5 nm (Baader)",
+   "band": "OIII",
+   "classe": "riga",
+   "lambda_nm": 500.7,
+   "fwhm_nm": 3.5,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "o3_65",
+   "name": "OIII 6.5 nm",
+   "band": "OIII",
+   "classe": "riga",
+   "lambda_nm": 500.7,
+   "fwhm_nm": 6.5,
+   "peak_t": 0.94,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "o3_12",
+   "name": "OIII 12 nm",
+   "band": "OIII",
+   "classe": "riga",
+   "lambda_nm": 500.7,
+   "fwhm_nm": 12.0,
+   "peak_t": 0.95,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "s2_3",
+   "name": "SII 3 nm",
+   "band": "SII",
+   "classe": "riga",
+   "lambda_nm": 672.4,
+   "fwhm_nm": 3.0,
+   "peak_t": 0.9,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "s2_65",
+   "name": "SII 6.5 nm",
+   "band": "SII",
+   "classe": "riga",
+   "lambda_nm": 672.4,
+   "fwhm_nm": 6.5,
+   "peak_t": 0.94,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "s2_12",
+   "name": "SII 12 nm",
+   "band": "SII",
+   "classe": "riga",
+   "lambda_nm": 672.4,
+   "fwhm_nm": 12.0,
+   "peak_t": 0.95,
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "lult",
+   "name": "Optolong L-Ultimate 3 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 3.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 3.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 3.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Optolong dichiara 3 nm su entrambe le righe. A 3 nm nella finestra blu ci sta la sola 5007: la 4959 dista 4.8 nm e resta fuori.",
+   "fwhm_source": "manufacturer-declared",
+   "manufacturer": "Optolong",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "lext",
+   "name": "Optolong L-eXtreme 7 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 7.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Optolong dichiara 7 nm su entrambe le righe, con l'Hbeta escluso.",
+   "fwhm_source": "manufacturer-declared",
+   "manufacturer": "Optolong",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "lenh",
+   "name": "Optolong L-eNhance",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 10.0,
+   "peak_t": 0.88,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 24.0,
+     "lines": [
+      {
+       "band": "Hb",
+       "lambda_nm": 486.13
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 10.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Optolong dichiara 10 nm sull'Ha e circa 24 nm sulla regione che contiene Hbeta e le due righe dell'OIII: e' l'unico dei tre a lasciar passare l'Hbeta, ed e' la ragione per cui il suo canale blu raccoglie piu' cielo degli altri.",
+   "fwhm_source": "manufacturer-declared",
+   "manufacturer": "Optolong",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "alpt",
+   "name": "Antlia ALP-T 5 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 5.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 5.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 5.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Antlia ALP-T: 5 nm dichiarati su entrambe le righe.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "nbz",
+   "name": "IDAS NBZ",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 12.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 12.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 12.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "IDAS NBZ: larghezza dichiarata unica per le due bande.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "nbz2",
+   "name": "IDAS NBZ-II Ultra 4 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 4.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 4.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 4.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "IDAS NBZ-II Ultra: 4 nm dichiarati su entrambe.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "idasv4",
+   "name": "IDAS LPS-V4",
+   "band": "dual",
+   "classe": "multiriga",
+   "classe_fonte": "MULTIRIGA, e sta dall'altra parte del confine che il D2 definisce. Le sue due finestre sono CENTRATE su righe — Hb+OIII la prima, Ha la seconda — e non le evitano: e' la differenza con la famiglia LP_COMB, e non e' la larghezza. La finestra Hb+OIII misura 63.4 nm, piu' larga delle tre finestre del D2 che ne misurano ~57: se il criterio fosse la larghezza, i due sarebbero scambiati.",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 27.7,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 63.4,
+     "lines": [
+      {
+       "band": "Hb",
+       "lambda_nm": 486.13
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 27.7,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Digitalizzato dalla curva misurata pubblicata da Hutech (lps/plots/v4.jpg). Finestra blu-verde 468.8-532.2 nm a meta' altezza: ci stanno dentro Hbeta 486.1 e tutte e due le righe dell'OIII. Finestra rossa 647.7-675.4 nm: e' la piu' stretta della famiglia LPS, ed e' la ragione per cui Hutech scrive «narrower H-alpha bandpass». Trasmissione misurata sulle righe: Hbeta 98.8%, OIII 98.3%, Ha 95.8%, sodio 589 nm 0.0%, oltre 700 nm mai sopra l'1.2%.",
+   "fwhm_source": "measured-from-manufacturer-plot",
+   "manufacturer": "IDAS",
+   "note": "NON e' un filtro a banda larga, ed e' il motivo per cui sta qui e non fra gli L: due finestre nette, 63 nm sul blu-verde e 28 nm sul rosso, con tutto il resto a zero. La larghezza efficace nel visibile e' 93 nm contro i 196 del P2. Il SII a 671.6 nm passa all'85%, ma NON e' dichiarato fra le bande: su un sensore a matrice SII e Ha cadono tutti e due sui pixel rossi e non si separano, quindi passare non vuol dire avere un canale. Su una monocromatica il filtro non si usa affatto.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola, e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati."
+  },
+  {
+   "id": "svd",
+   "name": "SVBony SV220 7 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 7.0,
+   "peak_t": 0.88,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "SVBony SV220: 7 nm dichiarati su entrambe.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "zwoduo",
+   "name": "ZWO Duo-Band 7 nm",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 7.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 7.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "ZWO Duo-Band: 7 nm dichiarati su entrambe.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "askard1",
+   "name": "Askar Colour Magic D1 (Ha+OIII)",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 6.0,
+   "peak_t": 0.9,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 6.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 6.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Askar Colour Magic D1, Ha + OIII: 6 nm dichiarati.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "askard2",
+   "name": "Askar Colour Magic D2 (SII+OIII)",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 586.0,
+   "fwhm_nm": 6.0,
+   "peak_t": 0.9,
+   "bands": [
+    "SII",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 6.0,
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 6.0,
+     "lines": [
+      {
+       "band": "SII",
+       "lambda_nm": 672.44
+      }
+     ]
+    }
+   ],
+   "windows_source": "Askar Colour Magic D2, SII + OIII: la finestra rossa contiene il sulfuro 672.4, non l'idrogeno.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "altri",
+   "name": "Antlia Triband RGB Ultra",
+   "band": "dual",
+   "classe": "multiriga",
+   "lambda_nm": 578.0,
+   "fwhm_nm": 25.0,
+   "peak_t": 0.92,
+   "bands": [
+    "Ha",
+    "OIII"
+   ],
+   "dual": true,
+   "windows": [
+    {
+     "fwhm_nm": 25.0,
+     "lines": [
+      {
+       "band": "Hb",
+       "lambda_nm": 486.13
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "fwhm_nm": 25.0,
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    }
+   ],
+   "windows_source": "Antlia Triband RGB Ultra: banda larga per un triband, la larghezza dichiarata vale per entrambe le regioni.",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "lum",
+   "name": "Luminanza L",
+   "band": "L",
+   "classe": "continuo",
+   "famiglia": "luminanza",
+   "famiglia_source": "dichiarata da Alessandro, 14 settembre 2026: la derivazione dalla classe non distingue la luminanza dal taglio UV/IR, due continui L senza finestre",
+   "famiglia_note": "Luminanza da monocromatica: la L del set LRGB. Su una matrice di Bayer non si monta — i colori li separa gia' la maschera, e la L non esiste — e il mestiere del vetro chiaro davanti a una camera a colori lo fa il taglio UV/IR.",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "lambda_nm": 550.0,
+   "fwhm_nm": 300.0,
+   "peak_t": 0.95,
+   "range_nm": [
+    400,
+    700
+   ],
+   "range_source": "intervalli ricavati dalla curva di trasmissione pubblicata da Optolong per il set LRGB. NON sono FWHM certificate: sono i bordi a cui la curva sale e scende, letti sul grafico. Il motore li usa come larghezza equivalente rettangolare, che e' l'approssimazione coerente con il resto della fotometria (anche i filtri a banda stretta entrano cosi'). Optolong dichiara inoltre il rapporto RGB 1:1:1, ed e' quello che il motore usa per ripartire il tempo.",
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "red",
+   "name": "Rosso R",
+   "band": "R",
+   "classe": "continuo",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "lambda_nm": 645.0,
+   "fwhm_nm": 110.0,
+   "peak_t": 0.95,
+   "range_nm": [
+    590,
+    700
+   ],
+   "range_source": "intervalli ricavati dalla curva di trasmissione pubblicata da Optolong per il set LRGB. NON sono FWHM certificate: sono i bordi a cui la curva sale e scende, letti sul grafico. Il motore li usa come larghezza equivalente rettangolare, che e' l'approssimazione coerente con il resto della fotometria (anche i filtri a banda stretta entrano cosi'). Optolong dichiara inoltre il rapporto RGB 1:1:1, ed e' quello che il motore usa per ripartire il tempo.",
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "grn",
+   "name": "Verde G",
+   "band": "G",
+   "classe": "continuo",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "lambda_nm": 540.0,
+   "fwhm_nm": 80.0,
+   "peak_t": 0.95,
+   "range_nm": [
+    500,
+    580
+   ],
+   "range_source": "intervalli ricavati dalla curva di trasmissione pubblicata da Optolong per il set LRGB. NON sono FWHM certificate: sono i bordi a cui la curva sale e scende, letti sul grafico. Il motore li usa come larghezza equivalente rettangolare, che e' l'approssimazione coerente con il resto della fotometria (anche i filtri a banda stretta entrano cosi'). Optolong dichiara inoltre il rapporto RGB 1:1:1, ed e' quello che il motore usa per ripartire il tempo.",
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "blu",
+   "name": "Blu B",
+   "band": "B",
+   "classe": "continuo",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "lambda_nm": 465.0,
+   "fwhm_nm": 90.0,
+   "peak_t": 0.95,
+   "range_nm": [
+    420,
+    510
+   ],
+   "range_source": "intervalli ricavati dalla curva di trasmissione pubblicata da Optolong per il set LRGB. NON sono FWHM certificate: sono i bordi a cui la curva sale e scende, letti sul grafico. Il motore li usa come larghezza equivalente rettangolare, che e' l'approssimazione coerente con il resto della fotometria (anche i filtri a banda stretta entrano cosi'). Optolong dichiara inoltre il rapporto RGB 1:1:1, ed e' quello che il motore usa per ripartire il tempo.",
+   "sensore_note": "Filtro per camere MONOCROMATICHE. Davanti a una matrice di Bayer non si usa, e non e una questione di gusto: un narrowband singolo lo vede un fotosito su quattro — misurato, un Ha da 7 nm costa fattore 8.9 su ASI2600MC contro 1.12 su ASI2600MM — e i filtri R, G, B davanti a una matrice che i colori li separa gia buttano via tre quarti del sensore per niente. Su una camera a colori si riprende con multibanda o con un anti-inquinamento, oppure senza filtro."
+  },
+  {
+   "id": "uvir",
+   "name": "UV/IR cut",
+   "band": "L",
+   "classe": "continuo",
+   "famiglia": "taglio_uv_ir",
+   "famiglia_source": "dichiarata da Alessandro, 14 settembre 2026",
+   "famiglia_note": "Da matrice, non da mono. Su una camera a colori l'UV/IR cut e' il caso «senza filtri», e su una camera che il taglio IR non ce l'ha non e' neutro: e' il minimo, perche' i coloranti della matrice di Bayer sono trasparenti nell'infrarosso, e senza taglio il colore si sporca e le stelle si gonfiano su un rifrattore. Se il taglio IR c'e' gia' dipende dal modello, non dalla famiglia: con lo stesso sensore IMX571 il manuale ZWO dell'ASI2600MC Pro dichiara un vetrino di protezione IR cut da 60 mm, spesso 2 mm, mentre la scheda QHYCCD della QHY268C dichiara un vetrino con trattamento antiriflesso multistrato sulle due facce, senza taglio IR. I dati delle camere non hanno ancora un campo per il vetrino. Non e' un'eccezione alla regola di famiglia: sta fuori dallo spazio che la regola divide, e per questo la famiglia si dichiara invece di derivarsi. Su una monocromatica il mestiere della luminanza lo fa la L dichiarata, che e' praticamente lo stesso vetro: toglierlo dal mono non toglie niente. Non va rimesso sul mono per coerenza con la regola.",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "lambda_nm": 550.0,
+   "fwhm_nm": 300.0,
+   "peak_t": 0.97
+  },
+  {
+   "id": "idas",
+   "name": "IDAS LPS P2",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB — un continuo con le tacche tolte dove stanno le righe della citta'. Sopprime il sodio e il mercurio e conserva l'informazione cromatica a banda larga: e' un vetro da LUMINANZA e da RGB, e non puo' consegnare un canale di riga. Le sue finestre NON corrispondono a righe di emissione — le evitano, ed e' l'opposto. La classe e' dichiarata e non dedotta da una soglia perche' NESSUNA soglia funziona: le tre finestre del D2 misurano circa 57 nm l'una e la finestra Hb+OIII del V4 ne misura 63.4, cioe' la stessa scala, e il V4 e' un multiriga a pieno titolo. Il criterio e' la corrispondenza finestra-riga, che si legge sulla curva e si scrive qui.",
+   "lambda_nm": 552.0,
+   "fwhm_nm": 196.0,
+   "fwhm_kind": "larghezza_efficace_continuo",
+   "fwhm_source": "LARGHEZZA EFFICACE DEL CONTINUO, NON UNA FWHM OTTICA. Il campo si chiama fwhm_nm per storia, ma nel motore pesa il CIELO: a riga 2140 le fotoni di fondo vanno come q*fwhm mentre il segnale va come la riga, e a riga 2171 la stessa larghezza definisce l'intervallo su cui si integra l'efficienza del mosaico. Per un multibanda la grandezza giusta e' quindi l'integrale su TUTTE le finestre — il cielo entra da tutte — e non la FWHM di una sola: una FWHM qui conterebbe una finestra e ignorerebbe le altre. Valore: 196 nm, ottenuto digitalizzando la curva che Hutech pubblica in sciencecenter.net/hutech/idas/lps/plots/p2.jpg e che dichiara «measured response of production filters», come area sotto la curva divisa per il picco fra 380 e 700 nm. Picco misurato 98.8%; peak_t resta 0.92 perche' e' la resa effettiva e la curva e' a incidenza normale, mentre in un fascio convergente cala. Trasmissioni misurate sulle righe: Hbeta 97.9%, OIII 97.1%, Ha 93.3%, SII 94.2%, sodio 589 nm 1.7%. Le FWHM ottiche vere di questo filtro, per chi le cercasse, stanno nelle finestre e non qui: sono due, e questo numero non e' nessuna delle due.",
+   "peak_t": 0.92,
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "idasd1",
+   "name": "IDAS LPS D1",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB — un continuo con le tacche tolte dove stanno le righe della citta'. Sopprime il sodio e il mercurio e conserva l'informazione cromatica a banda larga: e' un vetro da LUMINANZA e da RGB, e non puo' consegnare un canale di riga. Le sue finestre NON corrispondono a righe di emissione — le evitano, ed e' l'opposto. La classe e' dichiarata e non dedotta da una soglia perche' NESSUNA soglia funziona: le tre finestre del D2 misurano circa 57 nm l'una e la finestra Hb+OIII del V4 ne misura 63.4, cioe' la stessa scala, e il V4 e' un multiriga a pieno titolo. Il criterio e' la corrispondenza finestra-riga, che si legge sulla curva e si scrive qui.",
+   "lambda_nm": 530.0,
+   "fwhm_nm": 172.0,
+   "fwhm_kind": "larghezza_efficace_continuo",
+   "fwhm_source": "LARGHEZZA EFFICACE DEL CONTINUO, NON UNA FWHM OTTICA. Il campo si chiama fwhm_nm per storia, ma nel motore pesa il CIELO: a riga 2140 le fotoni di fondo vanno come q*fwhm mentre il segnale va come la riga, e a riga 2171 la stessa larghezza definisce l'intervallo su cui si integra l'efficienza del mosaico. Per un multibanda la grandezza giusta e' quindi l'integrale su TUTTE le finestre — il cielo entra da tutte — e non la FWHM di una sola: una FWHM qui conterebbe una finestra e ignorerebbe le altre. Valore: 172 nm, ottenuto digitalizzando la curva che Hutech pubblica in sciencecenter.net/hutech/idas/lps/plots/d1.jpg e che dichiara «measured response of production filters», come area sotto la curva divisa per il picco fra 380 e 700 nm. Picco misurato 98.8%; peak_t resta 0.92 perche' e' la resa effettiva e la curva e' a incidenza normale, mentre in un fascio convergente cala. Trasmissioni misurate sulle righe: Hbeta 96.6%, OIII 96.2%, Ha 97.1%, sodio 589 nm 1.2%. Le FWHM ottiche vere di questo filtro, per chi le cercasse, stanno nelle finestre e non qui: sono due, e questo numero non e' nessuna delle due.",
+   "peak_t": 0.92,
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "idasd2",
+   "name": "IDAS LPS D2",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB, ed e' il D2 il campione che rende necessaria la classe. Il P2 con cinque finestre e 196 nm efficaci SEMBRA una banda larga con delle tacche, e chiunque lo classificherebbe 'L' senza sbagliare di molto. Il D2 no: tre finestre su 171 nm aperti, 165 efficaci, cioe' ~57 nm di finestra media — esattamente la scala delle finestre di un multiriga come il V4 (27.7 e 63.4 nm). Qualunque regola automatica basata sul numero o sulla larghezza delle finestre metterebbe il D2 dalla parte sbagliata. Ed e' invece un anti-inquinamento: le sue finestre schivano il sodio a 589 nm e il mercurio, non inseguono l'Ha o l'OIII. Da qui la regola della famiglia: la classe si DICHIARA guardando dove cadono le finestre rispetto alle righe, non quanto sono larghe. Misure dalla curva che Hutech pubblica per i filtri di produzione: 3 finestre, 171 nm aperti, 165 nm di larghezza efficace del continuo. lambda_nm 540 e' il centro DICHIARATO dell'intervallo trasmesso, non un centroide misurato: serve al calcolo della resa sul canale L e vale quanto la stessa dichiarazione sugli altri della famiglia.",
+   "lambda_nm": 540.0,
+   "fwhm_nm": 165.0,
+   "fwhm_kind": "larghezza_efficace_continuo",
+   "fwhm_source": "LARGHEZZA EFFICACE DEL CONTINUO, NON UNA FWHM OTTICA — stessa convenzione di P2 e D1. Nel motore questo campo pesa il CIELO: le fotoni di fondo vanno come q*fwhm e la stessa larghezza definisce l'intervallo su cui si integra l'efficienza del mosaico. Per un multibanda la grandezza giusta e' quindi l'integrale su TUTTE le finestre, non la FWHM di una sola. Valore 165 nm da digitalizzazione della curva che Hutech pubblica per i filtri di produzione: 3 finestre, 171 nm complessivamente aperti, area sotto la curva divisa per il picco fra 380 e 700 nm.",
+   "peak_t": 0.92,
+   "peak_t_source": "resa effettiva in fascio convergente, come per gli altri della famiglia; la curva del produttore e' a incidenza normale e sovrastima",
+   "windows_source": "3 finestre misurate. Non sono elencate come `windows` perche' un LP_COMB non porta righe: elencarle inviterebbe a leggerle come canali, che e' esattamente l'errore che la classe impedisce.",
+   "manufacturer": "IDAS / Hutech",
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e' una questione di gusto: davanti a un sensore pancromatico conviene separare i canali con vetri dedicati.",
+   "confidence": "media — larghezza e numero di finestre misurati sulla curva del produttore; il centro dichiarato non e' un centroide misurato",
+   "note": "Anti-inquinamento della famiglia IDAS LPS, fra il D1 e il D3 per selettivita'."
+  },
+  {
+   "id": "idasd3",
+   "name": "IDAS LPS D3",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB — un continuo con le tacche tolte dove stanno le righe della citta'. Sopprime il sodio e il mercurio e conserva l'informazione cromatica a banda larga: e' un vetro da LUMINANZA e da RGB, e non puo' consegnare un canale di riga. Le sue finestre NON corrispondono a righe di emissione — le evitano, ed e' l'opposto. La classe e' dichiarata e non dedotta da una soglia perche' NESSUNA soglia funziona: le tre finestre del D2 misurano circa 57 nm l'una e la finestra Hb+OIII del V4 ne misura 63.4, cioe' la stessa scala, e il V4 e' un multiriga a pieno titolo. Il criterio e' la corrispondenza finestra-riga, che si legge sulla curva e si scrive qui.",
+   "lambda_nm": 550.0,
+   "fwhm_nm": 180.0,
+   "peak_t": 0.92,
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "lpro",
+   "name": "Optolong L-Pro",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB — un continuo con le tacche tolte dove stanno le righe della citta'. Sopprime il sodio e il mercurio e conserva l'informazione cromatica a banda larga: e' un vetro da LUMINANZA e da RGB, e non puo' consegnare un canale di riga. Le sue finestre NON corrispondono a righe di emissione — le evitano, ed e' l'opposto. La classe e' dichiarata e non dedotta da una soglia perche' NESSUNA soglia funziona: le tre finestre del D2 misurano circa 57 nm l'una e la finestra Hb+OIII del V4 ne misura 63.4, cioe' la stessa scala, e il V4 e' un multiriga a pieno titolo. Il criterio e' la corrispondenza finestra-riga, che si legge sulla curva e si scrive qui.",
+   "lambda_nm": 550.0,
+   "fwhm_nm": 220.0,
+   "peak_t": 0.93,
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  },
+  {
+   "id": "cls",
+   "name": "Astronomik CLS",
+   "operativo": false,
+   "operativo_nota": "Fuori dal catalogo OPERATIVO dal 2026-09. Non e' un errore di misura ne' un giudizio sul vetro: e' che questo modello e' fuori produzione e la sua curva — 2 finestre, 132 nm aperti, 129 efficaci — lo colloca a meta' strada fra un LP_COMB e una luminanza, senza fare bene ne' l'uno ne' l'altra. Offrirlo a chi sceglie oggi vorrebbe dire proporre un acquisto che non consigliamo. Il record resta INTERO, con tutte le misure: la ricerca non si cancella perche' un prodotto esce di catalogo, e chi vorra' rifare i conti deve trovarli. E chi il CLS ce l'ha gia' in ruota continua a usarlo: dichiarato esplicitamente viene onorato come qualunque altro. Togliere di mano a qualcuno un vetro che possiede sarebbe cambiargli la ruota di nascosto.",
+   "band": "L",
+   "classe": "lp_comb",
+   "classe_fonte": "LP_COMB — un continuo con le tacche tolte dove stanno le righe della citta'. Sopprime il sodio e il mercurio e conserva l'informazione cromatica a banda larga: e' un vetro da LUMINANZA e da RGB, e non puo' consegnare un canale di riga. Le sue finestre NON corrispondono a righe di emissione — le evitano, ed e' l'opposto. La classe e' dichiarata e non dedotta da una soglia perche' NESSUNA soglia funziona: le tre finestre del D2 misurano circa 57 nm l'una e la finestra Hb+OIII del V4 ne misura 63.4, cioe' la stessa scala, e il V4 e' un multiriga a pieno titolo. Il criterio e' la corrispondenza finestra-riga, che si legge sulla curva e si scrive qui.",
+   "lambda_nm": 550.0,
+   "fwhm_nm": 129.0,
+   "fwhm_kind": "larghezza_efficace_continuo",
+   "fwhm_source": "LARGHEZZA EFFICACE DEL CONTINUO, NON UNA FWHM OTTICA — la stessa grandezza di P2, D1 e D2: nel motore pesa il cielo, che entra da tutte le finestre. Valore 129 nm, quello che la nota operativo_nota di questo stesso record riporta dalla curva del filtro: 2 finestre, 132 nm complessivamente aperti, 129 efficaci. Prima qui c'era 200, senza nessuna fonte, e un valore misurato batte un campo senza fonte (decisione di Alessandro, 14 settembre 2026). Limite dichiarato: quale curva sia stata letta, e con quale metodo, non e' scritto ne' qui ne' nel commit che scrisse la nota (04b1bf4, 10 settembre 2026). Con 129 nm il CLS sta un nanometro sopra la soglia del continuo: vedi aperto_per_matrice.",
+   "peak_t": 0.92,
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori.",
+   "aperto_per_matrice": true,
+   "aperto_per_matrice_source": "decisione di Alessandro, 14 settembre 2026 — non della soglia",
+   "aperto_per_matrice_note": "129 nm di banda passante totale: UN nanometro sopra la soglia del continuo (128), e dentro il vuoto misurato nel passo 5 fra il filtro a righe piu' largo (IDAS LPS-V4, 91,1 nm) e il continuo per matrice piu' stretto che la soglia decide (IDAS LPS D2, 165 nm). Un filtro a un nanometro dal confine non lo decide la soglia: lo decide una persona, ed e' il criterio che dice onestamente dove finisce la sua competenza. Ammesso come filtro della luminanza e della banda larga su una matrice: la soglia risponde a «filtro a righe o continuo?», e il CLS e' un continuo, con tacche larghe e non finestre strette. Che dia una dominante piu' marcata di un L-Pro e' una questione di qualita', e aspetta la nota di qualita' dei continui (cosa-resta-aperto, 6 quater). Si ribalta scrivendo false: il motore legge questo campo prima della soglia, e il rifiuto porta allora il motivo escluso_per_decisione."
+  },
+  {
+   "id": "lqef",
+   "name": "Optolong L-QEF (quad-band)",
+   "manufacturer": "Optolong",
+   "band": "L",
+   "classe": "continuo",
+   "classe_fonte": "CONTINUO — raccoglie una fetta di spettro senza selezionare righe. Serve la luminanza e il colore, e non puo' consegnare un canale di riga.",
+   "peak_t": 0.9,
+   "peak_t_source": "manufacturer-declared",
+   "fwhm_source": "unknown",
+   "confidence": "bassa",
+   "blocking_nm": [
+    300,
+    1000
+   ],
+   "blocking_od": "OD2-OD4",
+   "curve_url": "https://optolong.com/cms/document/detail/id/286.html",
+   "spec_note": "Optolong dichiara quattro finestre sulle righe Hbeta, OIII, Halpha e SII con trasmissione >90%, blocco 300-1000 nm a OD2-OD4, e NON dichiara la larghezza delle finestre: la scheda riporta «FWHM: Quad bandpass filter». La curva ufficiale esiste ma non e' stata letta come numeri, quindi le larghezze restano non dichiarate e il motore assume banda larga, che e' l'ipotesi prudente: la classe continuo la dichiarano tre fonti concordi, il throughput resta STIMATO, e la posa lo sconta con confidenza bassa. I 7 nm di alcuni rivenditori, e i 10/24 nm di altri — che sono le specifiche dell'L-eNhance — non sono stati registrati. Non dichiara bands: le sue finestre descrivono cosa passa, ma un broadband multiband non puo SERVIRE Ha, OIII e SII come canali separati — su un sensore a colori quelle righe arrivano insieme, nella stessa posa. Dichiararle come bande servite faceva risultare percorribile una SHO con il solo L-QEF in ruota.",
+   "windows": [
+    {
+     "lines": [
+      {
+       "band": "Hb",
+       "lambda_nm": 486.13
+      }
+     ]
+    },
+    {
+     "lines": [
+      {
+       "band": "OIII",
+       "lambda_nm": 495.89
+      },
+      {
+       "band": "OIII",
+       "lambda_nm": 500.68
+      }
+     ]
+    },
+    {
+     "lines": [
+      {
+       "band": "Ha",
+       "lambda_nm": 656.28
+      }
+     ]
+    },
+    {
+     "lines": [
+      {
+       "band": "SII",
+       "lambda_nm": 672.4
+      }
+     ]
+    }
+   ],
+   "sensore_note": "Filtro per sensori a MATRICE. Su una monocromatica non si usa, e non e una questione di gusto: i multibanda lasciano passare il cielo di tutte le loro finestre mentre il silicio pancromatico ne puo usare una riga sola — misurato, un dual da 7/7 nm su ASI2600MM costa il 69% di tempo in piu di un Ha dedicato della stessa larghezza, un 10/24 il 310% — e gli anti-inquinamento non servono a chi ha in ruota la luminanza piena e i narrowband dedicati. La pratica e univoca: LRGB piu banda stretta singola sulla mono, multibanda e LPS sulla camera a colori."
+  }
+ ],
+ "extinction": {
+  "note": "Coefficienti mag/airmass per sito di montagna ~900-1000 m. Interpolati linearmente in lunghezza d'onda dall'app.",
+  "440": 0.25,
+  "500": 0.2,
+  "550": 0.15,
+  "630": 0.1,
+  "656": 0.09,
+  "672": 0.085
+ },
+ "sites": [
+  {
+   "id": "borno",
+   "name": "Borno (BS) - Altopiano del Sole",
+   "lat_deg": 45.95,
+   "lon_deg": 10.2,
+   "elevation_m": 950,
+   "sqm_zenith": 20.8,
+   "sqm_confidence": "misura di campo dichiarata dall utente; il modello dalle coordinate da 20.8",
+   "seeing_best_arcsec": 1.0,
+   "seeing_worst_arcsec": 2.4,
+   "seeing_typ_arcsec": 1.6,
+   "seeing_confidence": "assunto - migliore, peggiore e tipico sono entrati il 2 settembre 2026 (b05a70c) senza una fonte, e il tipico e' lo stesso numero del riferimento del motore; fino al 19 settembre qui c'era scritto misurato. Da sostituire con una misura: la FWHM dei sub, tolte la guida e il pixel",
+   "clear_night_fraction": 0.33,
+   "clear_night_confidence": "stimato - da correggere sull'esperienza",
+   "horizon": {
+    "note": "Altezza minima utilizzabile per settore di azimut, in gradi. Default uniforme; da personalizzare sul balcone reale.",
+    "N": 20,
+    "NE": 20,
+    "E": 20,
+    "SE": 20,
+    "S": 20,
+    "SW": 20,
+    "W": 20,
+    "NW": 20
+   }
+  }
+ ],
+ "limite_operativo_deg": 15,
+ "limite_operativo_nota": "LIMITE OPERATIVO GENERALE, in gradi. Sotto questa altezza il bersaglio non e' prescrivibile: non e' un giudizio sul canale, e' il punto in cui una ripresa smette di essere una ripresa. Vale per tutti i canali e per tutti i soggetti. E' DISTINTO da due altre cose che gli somigliano e non lo sono: l'orizzonte reale della stazione — che dice se in QUELLA direzione puoi puntare — e le quote preferite dei canali, che adesso colorano soltanto. La gerarchia e': orizzonte reale -> posso fotografare; limite operativo -> ha senso; air mass -> quanto vale quel tempo.",
+ "luna_soglia": {
+  "riferimento_deg": 60,
+  "banda_di_riferimento": {"band": "Ha", "lambda_nm": 656.3, "fwhm_nm": 3},
+  "tetto": {"band": "OIII", "lambda_nm": 500.7, "fwhm_nm": 3, "deg": 120},
+  "voce": "ACP · N.I.N.A. Target Scheduler",
+  "nota": "LA SOGLIA DI LUNA, UN CRITERIO SOLO (regia e Alessandro, 16 settembre 2026). La prescrizione non si vieta mai: la soglia e' il confine sotto il quale il moltiplicatore delle ore diventa un limite inferiore, perche' vicino alla Luna il danno e' un gradiente sul campo e luce diffusa nell'ottica, che le ore in piu' non tolgono. La soglia di un filtro e' la distanza a cui il fondo lunare che entra in banda raggiunge un valore di riferimento: il fondo lunare in banda e' un continuo, cresce linearmente con la larghezza della finestra e con la diffusione di Rayleigh, (550/lambda)^4, e vicino alla Luna cala con la distanza come una potenza. Questi numeri tarano il criterio sulla convenzione del mestiere, e solo li': a Luna piena 60 gradi per un Ha da 3 nm, la banda di riferimento, e 120 per un OIII da 3 nm, che dall'Ha differisce solo per Rayleigh (x2,95). Da qui l'esponente della distanza; e i 120 gradi della banda larga sono il tetto, oltre il quale la Luna piena non cala piu' con la distanza. La soglia scala con la fase come la Lorentziana della convenzione: piena a Luna piena, meta' al quarto. Chi riprende dichiara nel banco la distanza di riferimento (luna.riferimento_deg), e tutte le soglie la seguono, tetto compreso."
+ },
+ "airmass": {
+  "k_mag_per_massa_aria": 0.15,
+  "nota": "L'ALTEZZA PESA, E PESA UNA VOLTA SOLA. Un'ora bassa non e' un'ora persa e non e' un'ora piena: vale meno, e quanto meno lo dice l'atmosfera che attraversi. X = Kasten & Young 1989 (gia' nel motore), tau = 10^(-0.4*k*(X-1)), e le ore equivalenti sono ore_reali * tau^2. IL QUADRATO E' INTENZIONALE e non e' un raddoppio della penalita': tau e' la frazione di FOTONI che arriva, mentre qui si misura un'EQUIVALENZA DI TEMPO. Nel regime dominato dal fondo l'SNR va come S*sqrt(t), il fondo cielo si produce nell'atmosfera e non la attraversa, quindi per pareggiare lo zenit serve t = t0/tau^2. E' la stessa confusione che questo motore ha gia' pagato una volta in `lpPenalty`, dove un fattore di SNR era usato dove ne serviva uno di TEMPO. UN SOLO COEFFICIENTE, NON UNO PER BANDA, ed e' una scelta architetturale dichiarata. k(lambda) sarebbe piu' preciso — a 15 gradi l'OIII costa 1.76 volte l'Ha — ma per un filtro a banda larga o multi-finestra non esiste una lunghezza d'onda rappresentativa senza tirarsi dentro risposta spettrale, QE e spettro del soggetto: sarebbe un modello fotometrico spettrale, che non e' quello che serve qui. Si accetta che k = 0.15 sia una rappresentazione empirica unica dell'effetto, non una stima per canale. E' una limitazione voluta, e va lasciata tale. Valore: 0.15 mag/massa d'aria, lo stesso che `extinction` dichiara a 550 nm per un sito di montagna a 900-1000 m. Da un sito basso l'estinzione vera e' maggiore, quindi qui il motore e' ottimista — e lo dice."
+ },
+ "altitude_floors": {
+  "note": "QUOTE PREFERITE, NON SOGLIE. Fino a settembre 2026 questi numeri tagliavano: sotto la quota del canale critico le ore valevano ZERO, e un oggetto che non ci arrivava mai risultava impossibile. Da 46 gradi nord voleva dire cancellare M16 e M17 — che si fotografano — perche' culminano a 30 e 28 gradi contro i 35 che l'OIII pretendeva. Adesso l'altezza produce una penalita' CONTINUA via air mass, e questi valori non entrano piu' in nessun conto: restano per COLORARE la finestra della notte, cioe' per dire a chi guarda «qui sei sotto la quota che preferiresti per questo canale». Nessuna ora dipende da loro. Il limite che decide e' uno solo, `limite_operativo_deg`, e vale per tutti i canali.",
+  "OIII": 35,
+  "L": 35,
+  "B": 35,
+  "G": 32,
+  "R": 28,
+  "Ha": 25,
+  "SII": 25,
+  "HaOIII": 32
+ },
+ "reference_config": {
+  "note": "Configurazione di riferimento per i budget orari scritti in targets.json. L'app calcola il suo tasso di segnale per pixel (A_eff x Omega_px) e riscala ogni budget sul rapporto. Nessun 'f/ efficace': il rapporto focale resta quello geometrico, la trasmissione e' un fattore a parte.",
+  "telescope": "tecnosky115",
+  "reducer": 0.8,
+  "camera": "asi2600mm",
+  "gain": 100,
+  "gain_note": "Il guadagno sotto cui valgono le ore scritte in targets.json. Prima non era dichiarato, e il denominatore di ogni fattore di conversione sceglieva il modo di guadagno da se' mentre il rumore di lettura veniva da un altro campo: due regole per lo stesso riferimento. 100 e' la soglia HCG della camera di riferimento, cioe' il modo a cui corrisponde il rumore 1,5 e- che il motore usava gia' per il riferimento. Cambiarlo sposta il DENOMINATORE di tutti i fattori, quindi le ore di ogni oggetto: non e' un parametro di comodo.",
+  "description": "Tecnosky 115/800 con riduttore 0.80x (640 mm, f/5.6) + ASI2600MM",
+  "sqm_zenith": 21.3,
+  "sqm_note": "Il cielo sotto cui valgono le ore scritte nelle schede. Prima non era dichiarato e il fattore di inquinamento luminoso non aveva uno zero. 21.3 = Bortle 3, montagna in una notte pulita: e' il cielo della pratica da cui vengono le soglie (AstroBin, forum). Cambiarlo sposta il calendario di TUTTI gli oggetti, non le ore per canale.",
+  "filters": [
+   "ha3",
+   "o3_3",
+   "s2_3",
+   "lum",
+   "red",
+   "grn",
+   "blu"
+  ],
+  "filters_note": "La ruota sotto cui valgono le ore scritte nelle schede. Prima non era dichiarata, e la posa di riferimento — il denominatore di ogni fattore di conversione — finiva per essere calcolata con i filtri di CHI USA L'APP: due utenti con ruote diverse ottenevano riferimenti diversi per lo stesso oggetto, e cambiando filtri a sessione avviata il vecchio valore restava congelato. Un riferimento che dipende da chi lo interroga non e' un riferimento. Narrowband 3 nm piu' il set LRGB Optolong: e' la ruota coerente con la camera monocromatica di riferimento e con il rapporto 1:1:1 dichiarato per l'RGB."
+ },
+ "presets": [
+  {
+   "id": "rc8_full_cem70",
+   "label": "RC8 nativo + 2600MM + CEM70G",
+   "telescope": "rc8",
+   "reducer": 1.0,
+   "camera": "asi2600mm",
+   "mount": "cem70g",
+   "site": "borno"
+  },
+  {
+   "id": "rc8_red_cem70",
+   "label": "RC8 0.80x + 2600MM + CEM70G",
+   "telescope": "rc8",
+   "reducer": 0.8,
+   "camera": "asi2600mm",
+   "mount": "cem70g",
+   "site": "borno"
+  },
+  {
+   "id": "tec_full_cem70",
+   "label": "Tecnosky 115 nativo + 2600MM + CEM70G",
+   "telescope": "tecnosky115",
+   "reducer": 1.0,
+   "camera": "asi2600mm",
+   "mount": "cem70g",
+   "site": "borno"
+  },
+  {
+   "id": "tec_red_am5",
+   "label": "Tecnosky 115 0.80x + 2600MM + AM5",
+   "telescope": "tecnosky115",
+   "reducer": 0.8,
+   "camera": "asi2600mm",
+   "mount": "am5",
+   "site": "borno"
+  },
+  {
+   "id": "askar_full_am5",
+   "label": "Askar 71F nativo + 2600MM + AM5",
+   "telescope": "askar71f",
+   "reducer": 1.0,
+   "camera": "asi2600mm",
+   "mount": "am5",
+   "site": "borno"
+  },
+  {
+   "id": "askar_red_am5",
+   "label": "Askar 71F 0.75x + 2600MC + AM5",
+   "telescope": "askar71f",
+   "reducer": 0.75,
+   "camera": "asi2600mc",
+   "mount": "am5",
+   "site": "borno"
+  }
+ ],
+ "filters_note": "La larghezza a meta' altezza non e' un dettaglio: determina quanto inquinamento luminoso e quanta Luna passano. Fra un 3 nm e un 7 nm c'e' piu' del doppio. I filtri dual-band su sensore a colori raccolgono Ha e OIII nella stessa posa, quindi il tempo e' quello del canale piu' difficile, non la somma dei due.",
+ "default_filters": [
+  "ha3",
+  "o3_3",
+  "s2_3",
+  "lum",
+  "red",
+  "grn",
+  "blu",
+  "ha7",
+  "lult",
+  "idas"
+ ],
+ "lrgb_note": "Il set LRGB e' un insieme SEQUENZIALE: le ore della banda RGB si dividono fra R, G e B secondo il rapporto dichiarato 1:1:1, e in ogni istante la camera raccoglie attraverso UN filtro. La luminanza NON e' un quarto canale RGB: e' una banda a se', con la sua riga di budget e la sua larghezza.",
+ "sensors": [
+  {
+   "id": "imx571",
+   "name": "Sony IMX571",
+   "aka": [
+    "IMX571BQR-J",
+    "IMX571BLR-J",
+    "IMX571 APS-C"
+   ],
+   "famiglia": "Sony STARVIS, retroilluminato, APS-C",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 3.76,
+     "width_px": 6248,
+     "height_px": 4176
+    }
+   ],
+   "qe": {
+    "400": 0.72,
+    "450": 0.88,
+    "500": 0.9,
+    "550": 0.87,
+    "600": 0.78,
+    "650": 0.63,
+    "656": 0.62,
+    "672": 0.58,
+    "700": 0.5
+   },
+   "qe_cfa": {
+    "400": 0.55,
+    "450": 0.8,
+    "500": 0.82,
+    "550": 0.8,
+    "600": 0.7,
+    "650": 0.55,
+    "656": 0.54,
+    "672": 0.5,
+    "700": 0.42
+   },
+   "qe_cfa_fonte": {
+    "esito": "dichiarato",
+    "come": "curva ZWO ASI2600MC: e l'inviluppo max(R,G,B) dei tre coloranti misurato sulla camera vera, quindi la FORMA e' la migliore disponibile. Il LIVELLO no: il suo rapporto con la curva mono vale 0,916 a 527,5 nm contro lo 0,846 misurato EMVA sullo stesso sensore. Il motore tiene la forma e corregge il livello con un solo scalare, ancorato a dye_anchors.",
+    "conf": "media"
+   },
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "curva ZWO ASI2600MM, dichiarata \"Relative QE Curve\", riscalata sul picco dichiarato del 91%",
+    "conf": "media"
+   },
+   "qe_misure": [
+    {
+     "lam": 527.5,
+     "qe": 0.741,
+     "variante": "mono",
+     "come": "EMVA 1288 — Lucid Triton10 26MP, ricavata da soglia assoluta di sensibilita"
+    },
+    {
+     "lam": 527.5,
+     "qe": 0.627,
+     "variante": "colore, verde",
+     "come": "EMVA 1288 — Lucid Triton10 26MP colore, ricavata"
+    }
+   ],
+   "buio": {
+    "e_pixel_s": 0.001,
+    "a_c": -10,
+    "fonte": "QHYCCD, scheda del prodotto QHY268M/C PH (IMX571): 0,001 e-/pixel/s a -10 °C e 0,0005 a -20 °C, letta il 16 settembre 2026",
+    "raddoppio_c": 5.5,
+    "raddoppio_fonte": "MODELLO, non misura: il buio raddoppia ogni 5-6 °C. Dalle due curve pubblicate per lo stesso sensore — ZWO, ASI2600MM/MC P25: 0,0022 a 0 °C e 0,00012 a -20 °C (un raddoppio ogni 4,8 °C); Player One, Poseidon-C Pro: 0,00118 a 0 °C e 0,000105 a -20 °C (uno ogni 5,7 °C). La scheda QHY da due punti che ne danno uno ogni 10 °C: il modello tiene la pendenza delle due curve e il livello della scheda QHY a -10 °C, la temperatura a cui la sequenza consegnata raffredda.",
+    "nota": "Il buio e' del silicio e vale per ogni camera che lo monta. Il vecchio 0,003 delle camere IMX571 non aveva fonte ne' temperatura: a -10 °C le tre fonti trovate danno da 0,00035 a 0,001."
+   },
+   "saturazione_e": 48200,
+   "saturazione_fonte": {
+    "esito": "misura",
+    "come": "EMVA 1288 — Lucid Triton10 26MP: 48178 e- mono, 49547 e- colore. Coerente con QHY 51 ke- e Moravian 52,8 ke-; scarta i 102,5 ke- di ToupTek, che sono il fondo scala ADC (e-/ADU x 65536)",
+    "conf": "alta"
+   },
+   "pavimento_rumore_e": 1.2,
+   "cfa_response": "sony_bayer_generic",
+   "cfa_fraction": {
+    "Ha": 0.357,
+    "SII": 0.393,
+    "OIII": 0.641,
+    "HaOIII": 0.5
+   },
+   "cfa_fraction_fonte": {
+    "esito": "misura",
+    "come": "letture di terzi della carta QE per canale della ASI2600MC a 656,3 / 500,7 / 672,4 nm, con eta = (R+2G+B)/4 / max(R,G,B). Concordano entro il 6% col modello spettrale indipendente",
+    "conf": "media"
+   }
+  },
+  {
+   "id": "imx455",
+   "name": "Sony IMX455",
+   "aka": [
+    "IMX455AQK",
+    "IMX455ALK",
+    "IMX455 full frame"
+   ],
+   "famiglia": "Sony STARVIS, retroilluminato, pieno formato",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 3.76,
+     "width_px": 9576,
+     "height_px": 6388
+    },
+    {
+     "id": "QHY",
+     "pixel_um": 3.76,
+     "width_px": 9600,
+     "height_px": 6422,
+     "nota": "lettura leggermente piu ampia"
+    }
+   ],
+   "qe_peak": 0.91,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato da ZWO e QHY; nessuna curva assoluta pubblicata",
+    "conf": "media"
+   },
+   "qe_misure": [
+    {
+     "lam": 475,
+     "qe": 0.8,
+     "variante": "mono",
+     "come": "Alarcon et al. 2023, PASP 135 055001 — monocromatore, fotodiodo Hamamatsu calibrato"
+    },
+    {
+     "lam": 700,
+     "qe": 0.4,
+     "variante": "mono",
+     "come": "Alarcon 2023 (Gill 2022: 0,42 · Betoule 2023 su IMX411: 0,37)"
+    }
+   ],
+   "pavimento_rumore_e": 1.2,
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 51400,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 51,4 ke- per l'ASI6200 (mono e colore montano lo stesso silicio). Grandezza identificabile con la carica di saturazione del fotodiodo: e' il tetto oltre cui nessun modo di guadagno puo' andare. Stesso passo di pixel dell'IMX571 (3,76 um) e stessa famiglia STARVIS retroilluminata, e il valore e' coerente con i 48,2 ke- misurati EMVA su quel sensore.",
+    "conf": "media"
+   }
+  },
+  {
+   "id": "imx533",
+   "name": "Sony IMX533",
+   "aka": [
+    "IMX533CQK-D",
+    "IMX533CLK",
+    "IMX533 quadrato"
+   ],
+   "famiglia": "Sony STARVIS, retroilluminato, 1\" quadrato",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 3.76,
+     "width_px": 3008,
+     "height_px": 3008
+    }
+   ],
+   "qe_peak": 0.91,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato dai costruttori; nessuna misura indipendente esiste",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 1.2,
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 50000,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 50 ke- per l'ASI533. Stesso passo di pixel e stessa famiglia dell'IMX571 e dell'IMX455, e il valore ci sta in mezzo: coerente.",
+    "conf": "media"
+   }
+  },
+  {
+   "id": "imx294",
+   "name": "Sony IMX294 / IMX492",
+   "aka": [
+    "IMX294CJK",
+    "IMX492LQJ",
+    "IMX492LLJ",
+    "IMX294",
+    "IMX492"
+   ],
+   "famiglia": "Sony STARVIS, retroilluminato, 4/3\"",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "bin 2",
+     "pixel_um": 4.63,
+     "width_px": 4144,
+     "height_px": 2822,
+     "nota": "il modo con cui la 294 viene venduta: 2x2 sul silicio nativo"
+    },
+    {
+     "id": "nativo",
+     "pixel_um": 2.315,
+     "width_px": 8288,
+     "height_px": 5644,
+     "nota": "lo stesso silicio letto senza binning: e cio che i costruttori chiamano IMX492"
+    }
+   ],
+   "qe_peak": 0.9,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara \"about 90%\" sulla ASI294MM. Sulla ASI294MC il manuale scrive TBD e la pagina dice \"we estimate is over 75%\": una stima esplicita, non ammessa",
+    "conf": "bassa"
+   },
+   "qe_misure": [
+    {
+     "lam": 527.5,
+     "qe": 0.819,
+     "variante": "mono, modo nativo",
+     "come": "EMVA 1288 — Lucid Atlas10 47MP, ricavata"
+    },
+    {
+     "lam": 527.5,
+     "qe": 0.729,
+     "variante": "colore, verde, modo nativo",
+     "come": "EMVA 1288 — Lucid Atlas10 47MP colore, ricavata"
+    },
+    {
+     "lam": 530,
+     "qe": 0.84,
+     "variante": "mono, verde",
+     "come": "C. Buil, ASI294MM con spettrografo UVEX"
+    }
+   ],
+   "saturazione_e": 63700,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO, 63,7 ke-. Grandezza identificabile: a 14 bit fa 3,89 e-/ADU, conversione plausibile, quindi non e il fondo scala ADC",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 1.2,
+   "cfa_response": "sony_bayer_generic"
+  },
+  {
+   "id": "imx183",
+   "name": "Sony IMX183",
+   "aka": [
+    "IMX183CLK-J",
+    "IMX183CQJ-J",
+    "IMX183"
+   ],
+   "famiglia": "Sony retroilluminato, 1\"",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 2.4,
+     "width_px": 5496,
+     "height_px": 3672
+    }
+   ],
+   "qe_peak": 0.84,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato da ZWO. Le misure EMVA indipendenti danno 0,79 (FLIR @525) e 0,75 (Basler @541): registrate qui sotto, non applicate — vedi la nota sulla scala",
+    "conf": "media"
+   },
+   "qe_misure": [
+    {
+     "lam": 525,
+     "qe": 0.79,
+     "variante": "mono",
+     "come": "EMVA 1288 — FLIR BFS-U3-200S6M, pubblicata"
+    },
+    {
+     "lam": 470,
+     "qe": 0.63,
+     "variante": "colore, blu",
+     "come": "EMVA 1288 — FLIR BFS-U3-200S6C, pubblicata"
+    },
+    {
+     "lam": 525,
+     "qe": 0.69,
+     "variante": "colore, verde",
+     "come": "EMVA 1288 — FLIR BFS-U3-200S6C, pubblicata"
+    },
+    {
+     "lam": 640,
+     "qe": 0.43,
+     "variante": "colore, rosso",
+     "come": "EMVA 1288 — FLIR BFS-U3-200S6C, pubblicata"
+    }
+   ],
+   "saturazione_e": 15279,
+   "saturazione_fonte": {
+    "esito": "misura",
+    "come": "EMVA 1288 — FLIR BFS-U3-200S6M. Basler misura 13,8 ke- sullo stesso sensore",
+    "conf": "alta"
+   },
+   "pavimento_rumore_e": 1.6,
+   "cfa_response": "sony_bayer_generic"
+  },
+  {
+   "id": "imx178",
+   "name": "Sony IMX178",
+   "aka": [
+    "IMX178LQJ",
+    "IMX178LLJ",
+    "IMX178"
+   ],
+   "famiglia": "Sony STARVIS, retroilluminato, 1/1,8\"",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 2.4,
+     "width_px": 3096,
+     "height_px": 2080
+    }
+   ],
+   "qe_peak": 0.75,
+   "qe_fonte": {
+    "esito": "misura",
+    "come": "EMVA 1288 — FLIR BFS-U3-63S4M, 75% a 530 nm. Basler misura 81% a 541 nm sullo stesso sensore. E il sensore meglio documentato del catalogo, ed e fuori perimetro deep-sky: 1/1,8\"",
+    "conf": "alta"
+   },
+   "qe_misure": [
+    {
+     "lam": 530,
+     "qe": 0.75,
+     "variante": "mono",
+     "come": "EMVA 1288 — FLIR BFS-U3-63S4M, pubblicata"
+    },
+    {
+     "lam": 460,
+     "qe": 0.61,
+     "variante": "colore, blu",
+     "come": "EMVA 1288 — FLIR BFS-U3-63S4C, pubblicata"
+    },
+    {
+     "lam": 530,
+     "qe": 0.65,
+     "variante": "colore, verde",
+     "come": "EMVA 1288 — FLIR BFS-U3-63S4C, pubblicata"
+    },
+    {
+     "lam": 625,
+     "qe": 0.41,
+     "variante": "colore, rosso",
+     "come": "EMVA 1288 — FLIR BFS-U3-63S4C, pubblicata"
+    }
+   ],
+   "saturazione_e": 14181,
+   "saturazione_fonte": {
+    "esito": "misura",
+    "come": "EMVA 1288 — FLIR BFS-U3-63S4M. Basler 14,3 ke-, ZWO 15 ke-: tre fonti concordi",
+    "conf": "alta"
+   },
+   "pavimento_rumore_e": 1.4,
+   "cfa_response": "sony_bayer_generic"
+  },
+  {
+   "id": "imx410",
+   "name": "Sony IMX410",
+   "aka": [
+    "IMX410CQK",
+    "IMX410"
+   ],
+   "famiglia": "Sony, pieno formato",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 5.94,
+     "width_px": 6072,
+     "height_px": 4042
+    }
+   ],
+   "qe_peak": 0.8,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato dai costruttori",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 1.5,
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 100000,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 100 ke- per l'ASI2400MC. E' il pozzetto piu' profondo del catalogo e non sorprende: 5,94 um di lato sono oltre due volte l'area di un pixel da 3,76 um, e la capacita' del fotodiodo scala con l'area.",
+    "conf": "media"
+   }
+  },
+  {
+   "id": "imx071",
+   "name": "Sony IMX071",
+   "aka": [
+    "IMX071"
+   ],
+   "famiglia": "Sony, APS-C, illuminazione frontale",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 4.78,
+     "width_px": 4944,
+     "height_px": 3284
+    }
+   ],
+   "qe_peak": 0.5,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato da ZWO",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 2.3,
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 46000,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 46 ke- per l'ASI071MC.",
+    "conf": "media"
+   }
+  },
+  {
+   "id": "imx585",
+   "name": "Sony IMX585",
+   "aka": [
+    "IMX585-AAQJ1",
+    "IMX585"
+   ],
+   "famiglia": "Sony STARVIS 2, retroilluminato, 1/1,2\"",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 2.9,
+     "width_px": 3856,
+     "height_px": 2180,
+     "nota": "ZWO dichiara 3840x2160: e la lettura ritagliata"
+    }
+   ],
+   "qe_peak": 0.91,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato. La derivazione EMVA da Lucid da 90,5% mono: e il raro caso in cui il numero del costruttore regge",
+    "conf": "media-alta"
+   },
+   "qe_misure": [
+    {
+     "lam": 527.5,
+     "qe": 0.905,
+     "variante": "mono",
+     "come": "EMVA 1288 — Lucid Triton10 8.3MP, ricavata"
+    },
+    {
+     "lam": 527.5,
+     "qe": 0.78,
+     "variante": "colore, verde",
+     "come": "EMVA 1288 — Lucid Triton10 8.3MP colore, ricavata"
+    }
+   ],
+   "pavimento_rumore_e": 0.7,
+   "cfa_response": "sony_bayer_generic"
+  },
+  {
+   "id": "imx461",
+   "name": "Sony IMX461",
+   "aka": [
+    "IMX461"
+   ],
+   "famiglia": "Sony, medio formato 44x33 mm",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 3.76,
+     "width_px": 11760,
+     "height_px": 8896
+    }
+   ],
+   "qe_peak": 0.88,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato dai costruttori",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 1.4,
+   "cfa_response": "sony_bayer_generic"
+  },
+  {
+   "id": "mn34230",
+   "name": "Panasonic MN34230",
+   "aka": [
+    "MN34230"
+   ],
+   "famiglia": "Panasonic, 4/3\", illuminazione frontale",
+   "cfa_pattern": "RGGB",
+   "modi": [
+    {
+     "id": "nativo",
+     "pixel_um": 3.8,
+     "width_px": 4656,
+     "height_px": 3520
+    }
+   ],
+   "qe_peak": 0.6,
+   "qe_fonte": {
+    "esito": "dichiarato",
+    "come": "picco dichiarato da ZWO",
+    "conf": "media"
+   },
+   "pavimento_rumore_e": 1.2,
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 20000,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 20 ke- per l'ASI1600. Da notare: coincide con il valore che il motore usava come SEGNAPOSTO quando un sensore taceva. Per questa camera il ripiego era quindi casualmente giusto, e la posa non e' mai stata sbagliata; cio' che era sbagliato e' che venisse dichiarata assunta. Il pozzetto modesto e' coerente con il processo: e' l'unico sensore non Sony e non retroilluminato del catalogo, con 12 bit di convertitore.",
+    "conf": "media"
+   }
+  }
+ ],
+ "sensors_note": "Catalogo per SENSORE, non per marca. Lo stesso silicio Sony compare sotto ZWO, QHY, Player One, ToupTek, Altair, RisingCam: cambiano elettronica, raffreddamento e implementazione, non il cuore fotometrico. La chiave e la COPPIA sensore + modo di lettura, perche il pixel non e una proprieta del silicio ma della lettura: l'IMX294 e l'IMX492 sono lo STESSO sensore, letto binnato 2x2 a 4,63 um o nativo a 2,315 um. Il motore risolve la coppia da solo, dalla geometria e dalla nomenclatura: l'utente non sceglie nessun modello. Regola dei dati: MISURA (metodo, riferimento e grandezza dichiarati senza ambiguita) batte MODELLO; quello che non e ne l'una ne l'altro e IGNOTO e si dichiara. I valori ereditati non hanno ruolo operativo: restano nei campi *_ereditato per memoria. NOTA SULLA SCALA: le curve QE restano tutte sulla scala dei costruttori, che e alta del 12-38% rispetto alle misure indipendenti raccolte in qe_misure. E una scelta deliberata: una scala uniformemente alta si semplifica nei RAPPORTI fra configurazioni, una scala mista no. L'unico posto dove non si semplificava — mono contro matrice sullo stesso sensore — e risolto per struttura, derivando la curva della matrice da quella del silicio per la trasmissione del colorante, ancorata alle misure EMVA.",
+ "dye_anchors": {
+  "note": "Trasmissione del colorante al picco del verde, misurata. Le misure EMVA 1288 danno mono e colore della STESSA camera sulla stessa scala assoluta, quindi il loro rapporto E la trasmissione del colorante: T = QE_colore(lam)/QE_mono(lam). Su sei sensori Sony di quattro generazioni e tre laboratori vale 0,864 con scarto tipo 0,015, l'1,8%. E la prima conferma indipendente dell'ipotesi su cui poggia sony_bayer_generic, ed e l'ancora con cui il motore deriva la curva QE di una camera a matrice da quella del silicio.",
+  "lam_nm": 527.5,
+  "punti": [
+   {
+    "sensore": "IMX178",
+    "lam": 530,
+    "mono": 0.75,
+    "verde": 0.65,
+    "come": "FLIR BFS-U3-63S4 M/C, EMVA 1288 pubblicata"
+   },
+   {
+    "sensore": "IMX183",
+    "lam": 525,
+    "mono": 0.79,
+    "verde": 0.69,
+    "come": "FLIR BFS-U3-200S6 M/C, EMVA 1288 pubblicata"
+   },
+   {
+    "sensore": "IMX226",
+    "lam": 530,
+    "mono": 0.85,
+    "verde": 0.72,
+    "come": "FLIR BFS-U3-120S4 M/C, EMVA 1288 pubblicata"
+   },
+   {
+    "sensore": "IMX571",
+    "lam": 527.5,
+    "mono": 0.741,
+    "verde": 0.627,
+    "come": "Lucid Triton10 26MP, ricavata da soglia EMVA"
+   },
+   {
+    "sensore": "IMX585",
+    "lam": 527.5,
+    "mono": 0.905,
+    "verde": 0.78,
+    "come": "Lucid Triton10 8.3MP, ricavata"
+   },
+   {
+    "sensore": "IMX492",
+    "lam": 527.5,
+    "mono": 0.819,
+    "verde": 0.729,
+    "come": "Lucid Atlas10 47MP, ricavata"
+   }
+  ]
+ },
+ "cfa_responses": {
+  "sony_bayer_generic": {
+   "id": "sony_bayer_generic",
+   "note": "Trasmissione dei coloranti di una matrice di Bayer RGGB, normalizzazione COMUNE fra i tre canali (scala 0-100). Serve a calcolare UNA sola grandezza: la frazione di segnale che il mosaico raccoglie rispetto al canale migliore — cioe' quello che mostra la curva QE pubblicata. In banda stretta quella frazione e' cfa_fraction; in banda larga e' il suo integrale pesato sulla banda. Sono la STESSA cosa, ed e' il motivo per cui OSC_BB e cfa_fraction non vanno mai moltiplicati fra loro.",
+   "source": "Sony IMX219 digitalizzata a normalizzazione comune (bluegreen-labs/raspberry_pi_camera_responses, 400-700 nm passo 1 nm). E' l'unica base pubblica trovata che conservi il rapporto FRA i canali: quasi tutti i database normalizzano ogni canale a 1 e distruggono proprio quell'informazione. Per IMX571/455/533/294/183 a colori curve per canale pubbliche NON esistono — verificato sui flyer Sony (nessuna figura spettrale, datasheet completi sotto NDA), su ZWO/QHY (nessun dato tracciabile) e in letteratura (ogni misura pubblicata e' del sensore mono).",
+   "validation": "Verificato contro letture di terzi della carta ZWO ASI2600MC (IMX571) a 656.3, 500.7 e 672.4 nm: il VERDE — che pesa doppio nel mosaico — concorda entro il 7% su tutte e tre le righe. Il BLU e' 1.5-1.7x piu' alto nell'IMX219, atteso per un sensore nudo da telefono contro una camera astronomica. Contro le due curve ZWO mono/colore l'accordo e' ottimo fra 500 e 600 nm (-1%, +1%, -7%) e degrada nel rosso (+26% a 656 nm, +44% a 672 nm): il colorante rosso dell'IMX219 cade piu' in fretta di quello dell'IMX571, oppure la carta ZWO e' ottimista. E' il limite onesto del trapianto.",
+   "domain": "banda LARGA: +-6% sulla fuga nel rosso, +-3% sullo spettro della sorgente -> AFFIDABILE. banda stretta nel VERDE (OIII): +-2% -> AFFIDABILE. banda stretta nel ROSSO (Ha, SII): +-35-40%, dominata da un parametro non misurato per questi sensori -> NON affidabile, e infatti li' vince il dato dichiarato in cfa_fraction.",
+   "grid_nm": [
+    400,
+    430,
+    440,
+    457,
+    477,
+    483,
+    500.7,
+    504,
+    521,
+    530,
+    560,
+    582,
+    595,
+    597,
+    600,
+    620,
+    656.3,
+    672.4,
+    700
+   ],
+   "R": [
+    1.5,
+    1.2,
+    1.1,
+    1.0,
+    1.1,
+    1.2,
+    6.39,
+    7.5,
+    12,
+    18,
+    42,
+    62,
+    90,
+    97.19,
+    96,
+    92,
+    68.73,
+    59.53,
+    44
+   ],
+   "G": [
+    6,
+    16,
+    22,
+    34,
+    49.73,
+    57,
+    93.8,
+    94,
+    99.46,
+    97,
+    88,
+    62,
+    49.73,
+    46,
+    42,
+    22,
+    13.38,
+    15.23,
+    16
+   ],
+   "B": [
+    66,
+    80,
+    80.5,
+    83.12,
+    66,
+    57,
+    46.23,
+    41.56,
+    30,
+    22,
+    12,
+    8.5,
+    7.9,
+    7.8,
+    7.6,
+    7.4,
+    7.31,
+    8.6,
+    9
+   ]
+  }
+ }
+}
