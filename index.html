@@ -1055,9 +1055,20 @@ td.archcell{max-width:120px}
   .step .sn{width:23px;height:23px;font-size:11px}
   .steplink{max-width:18px}
 }
+/* L'INTESTAZIONE SU UNA RIGA (10 ottobre 2026). Sotto i 520 px marchio e tre pulsanti non ci stavano: i pulsanti
+   andavano a capo e l'intestazione, che resta appiccicata in alto, era alta 121 px invece di 69; a 320 px la
+   scritta finiva sotto le icone. Qui i pulsanti non si stringono piu', il marchio prende quello che resta, e se non
+   basta la scritta va a capo dopo il trattino invece di scivolare sotto le icone. Il pulsante Informazioni esce
+   dall'intestazione: sul telefono la stessa voce sta nel menu. Tutto vale solo sotto i 520 px. */
 @media(max-width:520px){
+  .topbar{gap:var(--s2)}
+  .brandblock{gap:var(--s2)}
+  .logo{width:36px;height:36px}
   .brandtext .payoff{display:none}
-  .wordmark{font-size:17px}
+  .wordmark{font-size:16px;white-space:normal}
+  .topspacer{display:none}
+  .topacts{flex:none;margin-left:auto;gap:var(--s1)}
+  .topacts .tbtn[data-go="info"]{display:none}
 }
 </style>
 </head>
