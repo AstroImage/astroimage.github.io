@@ -1025,12 +1025,16 @@ td.archcell{max-width:120px}
   .aside{position:static;grid-column:1 / -1;max-width:none}
   .aside-body{max-height:none}
 }
-/* Sotto gli 860 la sidebar diventa una barra orizzontale scorrevole. */
+/* Sotto gli 860 la sidebar diventa una barra orizzontale scorrevole.
+   LE VOCI LARGHE QUANTO IL LORO NOME (10 ottobre 2026). `.navitem` porta `width:100%` per la colonna del
+   computer, e nella barra, con `flex:0 0 auto`, quella larghezza diventava la base di ogni voce: su un telefono
+   da 375 px ogni voce era larga 326 px, se ne vedeva una sola e quella attiva quasi mai. `width:auto` vale solo
+   qui dentro: la colonna del computer non cambia di un pixel. La voce attiva la porta in vista `go()`. */
 @media(max-width:860px){
   .shell{grid-template-columns:minmax(0,1fr);padding:var(--s4) var(--s4) var(--s7);gap:var(--s4)}
   .sidebar{position:static;flex-direction:row;overflow-x:auto;gap:var(--s1);
     padding:var(--s2);scrollbar-width:thin}
-  .navitem{flex:0 0 auto;padding:9px 12px;font-size:13px;white-space:nowrap}
+  .navitem{flex:0 0 auto;width:auto;padding:9px 12px;font-size:13px;white-space:nowrap}
   .navitem.on::before{display:none}
   .navsep{display:none}
   .navfoot{display:none}
@@ -18023,6 +18027,14 @@ function go(name){
   secs.forEach(s=>s.classList.toggle('on',s.getAttribute('data-sec')===name));
   document.querySelectorAll('.navitem,.step').forEach(b=>
     b.classList.toggle('on',b.getAttribute('data-go')===name));
+  /* Sul telefono il menu e' una barra che scorre di lato: la voce attiva si porta al centro della barra, e
+     solo in orizzontale — scrollIntoView muoverebbe anche la pagina. Al computer la barra e' una colonna che
+     non scorre, e qui non succede niente. */
+  const barra=document.querySelector('.sidebar'), attiva=barra&&barra.querySelector('.navitem.on');
+  if(attiva&&barra.scrollWidth>barra.clientWidth){
+    const b=barra.getBoundingClientRect(), a=attiva.getBoundingClientRect();
+    barra.scrollLeft+=(a.left-b.left)-(b.width-a.width)/2;
+  }
   /* Le due sezioni che si popolano all'ingresso. La logica e' quella di
      sempre — openFilters() e renderState() non sono cambiate: e' cambiato
      soltanto il contenitore in cui scrivono, che da modale e' diventato
