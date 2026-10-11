@@ -10735,6 +10735,61 @@ function ninaCheck(root){
   return {ids:ids.size,refs:refs.length,dup,dangling,ok:!dup.length&&!dangling.length};
 }
 
+/*  L'INDIRIZZO DI N.I.N.A. SI SCRIVE (11 ottobre 2026). «Manda a N.I.N.A.» parlava solo col N.I.N.A. della stessa
+    macchina, su localhost:1888, e per il MiniX l'indirizzo si e' dovuto scrivere a mano nel magazzino del browser. Chi
+    lo scrive puo' dare un nome, un nome con la porta, un indirizzo intero o con /v2/api: diventano tutti lo stesso
+    indirizzo dell'Advanced API, e senza porta vale la sua di serie. Vuoto vuol dire questa macchina; quello che non e'
+    un indirizzo non passa, e resta quella di prima. Sorvegliato da tools/gate-indirizzo-nina.js. */
+const NINA_PORTA_DI_SERIE=1888;
+function indirizzoNina(testo){
+  const t=String(testo==null?'':testo).trim();
+  if(!t) return null;
+  const m=/^(?:(https?):\/\/)?([a-z\d](?:[a-z\d.-]*[a-z\d])?)(?::(\d{1,5}))?(?:\/v2\/api)?\/*$/i.exec(t);
+  if(!m) return null;
+  const porta=m[3]!=null?+m[3]:NINA_PORTA_DI_SERIE;
+  if(!(porta>0&&porta<65536)) return null;
+  return (m[1]?m[1].toLowerCase():'http')+'://'+m[2]+':'+porta+'/v2/api';
+}
+/*  QUANDO N.I.N.A. TACE SI DICE PERCHE', e il perche' dipende da dove sta la pagina (11 ottobre 2026). Provato dalla
+    pagina pubblica: il browser ha bloccato la richiesta verso localhost (ERR_BLOCKED_BY_CLIENT) e la pagina scriveva
+    «nessuno in ascolto», con N.I.N.A. aperto. Per JavaScript le due cose sono lo stesso errore, «Failed to fetch»;
+    quello che si sa e' il contesto. Da una pagina https il browser non lascia mai parlare con un indirizzo http di
+    un'altra macchina — lo si sa prima, e non si prova nemmeno (`ninaMisto`); verso questa macchina alcuni browser
+    bloccano e altri chiedono il permesso per la rete locale, e le cause si dicono tutt'e due; da una pagina locale
+    resta la risposta che manca, e quando la macchina e' un'altra c'e' anche il suo firewall.
+      PER CHIUNQUE, NON PER NOI DUE (11 ottobre 2026, «AIS deve essere generalizzato»). Una terza causa vale per tutti:
+    l'Advanced API manda il permesso per le pagine web — l'intestazione CORS — solo con l'opzione «Use Access Control
+    Header» accesa, di serie dalla 2.2.5; spenta, il browser non lascia leggere la risposta e la pagina vede lo stesso
+    «Failed to fetch» di un N.I.N.A. chiuso. Si nomina, perche' chi ha N.I.N.A. aperto non la cercherebbe mai. */
+const ninaLocale=base=>{ let h=''; try{ h=new URL(base).hostname; }catch(e){} return /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(h); };
+function ninaMisto(pagina,base){ return pagina==='https:'&&/^http:/i.test(String(base||''))&&!ninaLocale(base); }
+const NINA_CORS='l\'Advanced API è spento o non lascia entrare le pagine web (l\'opzione «Use Access Control Header», nelle sue impostazioni)';
+function perCheNinaTace(pagina,base,tipo){
+  const origine=String(base||'').replace(/\/v2\/api$/,'');
+  if(tipo==='tempo') return 'nessuna risposta entro 4 secondi da '+origine;
+  if(ninaMisto(pagina,base))
+    return 'il browser non lascia una pagina https parlare con '+origine+', che risponde in http su un\'altra macchina: '+
+      'apri la pagina scaricata, o apri la pagina sulla macchina dove gira N.I.N.A.';
+  if(pagina==='https:')
+    return 'nessuna risposta da '+origine+': N.I.N.A. è chiuso, '+NINA_CORS+', o il browser ha bloccato la richiesta — '+
+      'da un sito internet alcuni browser non lasciano parlare con i programmi del tuo PC, altri chiedono il permesso '+
+      'per la rete locale. Con la pagina scaricata la terza causa non c\'è.';
+  return 'nessuna risposta da '+origine+': N.I.N.A. è chiuso, '+NINA_CORS+
+    (ninaLocale(base)?'':', o il firewall di quella macchina chiude la porta');
+}
+/*  IL CARICAMENTO DIRETTO HA UNA VERSIONE (11 ottobre 2026). `sequence/load` con la sequenza nel corpo della richiesta
+    esiste dalla 2.2.6.0 dell'Advanced API (registro delle modifiche del plugin): con una versione piu' vecchia il rifiuto
+    arriva senza una parola per chi legge. Si confronta la versione che N.I.N.A. dichiara, e prima di offrire l'invio si
+    dice di aggiornare; una versione che non si legge non si giudica (`null`), e decide il rifiuto se c'e'. */
+const NINA_API_MINIMA='2.2.6';
+function versioneNinaBasta(v){
+  const a=String(v==null?'':v).match(/\d+/g);
+  if(!a) return null;
+  const b=NINA_API_MINIMA.split('.').map(Number);
+  for(let i=0;i<b.length;i++){ const x=+(a[i]||0); if(x>b[i]) return true; if(x<b[i]) return false; }
+  return true;
+}
+
 /* Ingombro dell'oggetto NEL SISTEMA DEL SENSORE, data una rotazione di camera.
    L'oggetto è un'ellisse con semiasse maggiore A lungo il proprio angolo di
    posizione (da Nord verso Est) e semiasse minore B perpendicolare. Ruotando la
@@ -16540,6 +16595,16 @@ function rxPlanHtml(pr,e,dv,t){
      completo non lo apre mai, e chi non ce l'ha lo apre una volta sola. */
   const capBox=`<details class="ninacap" ${CAPAPERTO?'open':''}
     ontoggle="CAPAPERTO=this.open"><summary>Il tuo setup per N.I.N.A.</summary>
+    <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
+      <label class="f" style="max-width:240px" data-tip="${esc('Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.» e «Leggi la ruota» parlano con lui. Vuoto = questa macchina (localhost:1888). Per un altro PC scrivi il suo nome e la porta, per esempio nome-del-pc:1888. Dalla pagina pubblica, in https, il browser non lascia parlare con un altro PC: usa la pagina scaricata, o aprila sul PC dove gira N.I.N.A.')}">
+        <span>Indirizzo di N.I.N.A.</span>
+        <input type="text" id="ninaUrl" maxlength="120" placeholder="localhost:1888"
+          value="${esc(NINA_URL_STORPIO!=null?NINA_URL_STORPIO:(()=>{ try{ const v=indirizzoNina(localStorage.getItem('ap_ninaurl')); return v?v.replace(/\/v2\/api$/,''):''; }catch(e){ return ''; } })())}"
+          onchange="setNinaUrl(this.value)"></label>
+      <span class="small ${NINA_URL_STORPIO!=null?'p-warn':'muted'}" style="padding-bottom:8px">${NINA_URL_STORPIO!=null
+        ? '«'+esc(NINA_URL_STORPIO)+'» non è un indirizzo: resta '+esc(NINA_BASE().replace(/\/v2\/api$/,''))
+        : 'vuoto = questa macchina · un altro PC: il suo nome e la porta, per esempio nome-del-pc:1888'}</span>
+    </div>
     <div class="small muted" style="margin:6px 0 8px;max-width:74ch">
       Queste non sono proprietà della camera o della montatura: sono proprietà del tuo banco,
       e decidono quali istruzioni finiscono nel file. Quello che spegni qui non viene scritto.</div>
@@ -17200,8 +17265,17 @@ let RUOTA_NINA=null;
 /* Il blocco si richiudeva a ogni ridisegno: si leggeva la ruota e spariva proprio
    mentre la si guardava. Lo stato di apertura vive quanto la pagina. */
 let CAPAPERTO=false;
-const NINA_BASE=()=>{try{return localStorage.getItem('ap_ninaurl')||'http://localhost:1888/v2/api'}
-  catch(e){return 'http://localhost:1888/v2/api'}};
+/*  L'indirizzo scritto nel riquadro del setup, normalizzato (`indirizzoNina`); vuoto, o storpio, e' questa macchina. */
+const NINA_BASE=()=>{ let v=null; try{ v=indirizzoNina(localStorage.getItem('ap_ninaurl')); }catch(e){}
+  return v||'http://localhost:1888/v2/api'; };
+/*  Si salva normalizzato; vuoto torna a questa macchina; uno storpio non si salva, e il riquadro lo dice. */
+let NINA_URL_STORPIO=null;
+function setNinaUrl(valore){
+  const t=String(valore||'').trim(), v=indirizzoNina(t);
+  NINA_URL_STORPIO=t&&!v?t:null;
+  try{ if(!t) localStorage.removeItem('ap_ninaurl'); else if(v) localStorage.setItem('ap_ninaurl',v); }catch(e){}
+  refresh();
+}
 async function leggiRuotaNina(){
   const box=document.getElementById('ruotaEsito');
   const dillo=t=>{ if(box) box.innerHTML=t; };
@@ -17212,7 +17286,7 @@ async function leggiRuotaNina(){
   const f=(r.ok&&r.dato&&r.dato.AvailableFilters)||[];
   if(!r.ok||!f.length){
     RUOTA_NINA=null;
-    dillo('<span class="pill p-dim">N.I.N.A. non risponde</span> <span class="muted">'+
+    dillo('<span class="pill p-dim">N.I.N.A. non raggiunto</span> <span class="muted">'+
       esc(r.ok?'nessun filtro nel profilo':r.motivo)+
       ' — i nomi restano quelli che hai scritto tu.</span>');
     return;
@@ -17222,6 +17296,8 @@ async function leggiRuotaNina(){
 }
 /* Una sola porta verso N.I.N.A., e una sola regola per leggerne le risposte. */
 async function ninaChiedi(via,opt){
+  /* da una pagina https verso un'altra macchina in http il browser blocca sempre: si dice, senza provare */
+  if(ninaMisto(location.protocol,NINA_BASE())) return {ok:false,motivo:perCheNinaTace(location.protocol,NINA_BASE(),'rete')};
   const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
   try{
     const r=await fetch(NINA_BASE()+via,Object.assign({signal:ctl.signal},opt||{}));
@@ -17232,12 +17308,12 @@ async function ninaChiedi(via,opt){
     if(j.Success!==true) return {ok:false,motivo:j.Error||'esito negativo',corpo:j};
     return {ok:true,dato:j.Response,corpo:j};
   }catch(err){
-    /* I messaggi del browser sono in inglese e non dicono niente a chi legge:
-       «Failed to fetch» vuol dire quasi sempre una cosa sola, e conviene dirla. */
+    /* I messaggi del browser sono in inglese e non dicono niente a chi legge, e «Failed to fetch» non distingue un
+       N.I.N.A. chiuso da un browser che blocca: il perche' lo dice il contesto (`perCheNinaTace`, 11 ottobre 2026). */
     const grezzo=String(err.message||err);
-    return {ok:false,motivo: err.name==='AbortError' ? 'nessuna risposta entro 4 secondi'
+    return {ok:false,motivo: err.name==='AbortError' ? perCheNinaTace(location.protocol,NINA_BASE(),'tempo')
       : /failed to fetch|networkerror|load failed/i.test(grezzo)
-        ? 'nessuno in ascolto su '+NINA_BASE().replace(/\/v2\/api$/,'')
+        ? perCheNinaTace(location.protocol,NINA_BASE(),'rete')
         : grezzo};
   }finally{ clearTimeout(t); }
 }
@@ -17294,9 +17370,16 @@ async function mandaANina(notte){
 
   const v=await ninaChiedi('/version');
   if(!v.ok){
-    dillo('<div class="warnbox"><b>N.I.N.A. non risponde.</b> '+esc(v.motivo)+
+    dillo('<div class="warnbox"><b>N.I.N.A. non raggiunto.</b> '+esc(v.motivo)+
       '<br><span class="small muted">Serve N.I.N.A. aperto con il plugin Advanced API attivo. '+
       'Nel frattempo il tasto verde qui accanto scarica lo stesso identico file.</span></div>');
+    return;
+  }
+  /* il caricamento diretto vuole l'Advanced API 2.2.6 o successiva: sotto, si dice di aggiornare (`versioneNinaBasta`) */
+  if(versioneNinaBasta(v.dato)===false){
+    dillo('<div class="warnbox"><b>L’Advanced API di N.I.N.A. è la '+esc(String(v.dato))+'.</b> Per caricare la sequenza '+
+      'da qui serve la '+NINA_API_MINIMA+' o successiva: aggiornala dal gestore dei plugin di N.I.N.A.'+
+      '<br><span class="small muted">Nel frattempo il tasto verde qui accanto scarica lo stesso identico file.</span></div>');
     return;
   }
   const prof=await ninaChiedi('/profile/show?active=true');
