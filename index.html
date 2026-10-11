@@ -342,6 +342,10 @@ button.primary:hover{filter:brightness(1.1);border-color:var(--acc)}
 /* La coppia conferma/annulla e UN oggetto solo: stessa altezza, stesso corpo. Prima
    il rosso si stirava a 58 px e l annulla restava a 29, e la riga sembrava rotta. */
 .ninaconf .confbt{min-height:44px;align-self:center;font-size:14px;padding:0 16px}
+/* Il menu «dove» (11 ottobre 2026) prende la riga che resta e non la sfonda: sul telefono una voce lunga si accorcia
+   nel campo, non allarga la pagina. */
+.ninaconf .ninadove{flex:1 1 220px;min-width:0}
+.ninaconf .ninadove select{width:100%}
 .cfr{display:grid;grid-template-columns:78px 1fr 1fr;gap:8px;font-size:12px;padding:3px 0}
 .cfr-k{color:var(--dim)}
 .cfr-h{font-weight:600;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:3px}
@@ -10782,12 +10786,107 @@ function perCheNinaTace(pagina,base,tipo){
     arriva senza una parola per chi legge. Si confronta la versione che N.I.N.A. dichiara, e prima di offrire l'invio si
     dice di aggiornare; una versione che non si legge non si giudica (`null`), e decide il rifiuto se c'e'. */
 const NINA_API_MINIMA='2.2.6';
-function versioneNinaBasta(v){
+function versioneNinaAlmeno(v,minima){
   const a=String(v==null?'':v).match(/\d+/g);
   if(!a) return null;
-  const b=NINA_API_MINIMA.split('.').map(Number);
+  const b=String(minima).split('.').map(Number);
   for(let i=0;i<b.length;i++){ const x=+(a[i]||0); if(x>b[i]) return true; if(x<b[i]) return false; }
   return true;
+}
+function versioneNinaBasta(v){ return versioneNinaAlmeno(v,NINA_API_MINIMA); }
+
+/*  UN BERSAGLIO AL POSTO DI UNO CHE C'E' GIA' (11 ottobre 2026). Alessandro: la sequenza caricata nel Sequenziatore e'
+    bella, e vuole poter cambiare solo il bersaglio, col menu a tendina come nell'Assistente di inquadratura di N.I.N.A.
+    L'Advanced API lo fa con `/sequence/set-target`: cambia nome, coordinate e angolo del contenitore — le stesse tre cose
+    che cambia «aggiorna il bersaglio esistente» dell'Assistente, letto nel codice di N.I.N.A. 3.3.0.1066 — e lascia
+    com'e' tutto il resto: pose, filtri, orari, istruzioni. Le istruzioni che ereditano le coordinate le seguono.
+      IL BERSAGLIO SI SCEGLIE PER POSIZIONE, e la posizione la conta N.I.N.A.: `index` e' il posto nella lista di
+    `ItemUtility.LookForTargetsDownwards`, che scende in ogni contenitore ma non dentro un contenitore di bersaglio — lo
+    conta e passa oltre — e non salta i disattivati. `bersagliNina` fa lo stesso giro sulla risposta di `/sequence/state`,
+    dove un contenitore di bersaglio e' quello che porta insieme `Target` e `Items`: un giro diverso aggiornerebbe un
+    altro bersaglio, senza un errore. L'API aggiunge «_Container» al nome dei contenitori: si mostra il nome del bersaglio.
+      LA VERSIONE: `set-target` c'e' dalla 2.1.2.0, ma fino alla 2.2.15.0 un bersaglio che non era il primo non si
+    aggiornava bene (registro delle modifiche del plugin): con una versione piu' vecchia si offre solo il primo.
+      SCRITTO, SI RILEGGE (`controlloDelBersaglio`): «Target updated» dice che N.I.N.A. ha accettato, non che il bersaglio
+    al suo posto sia quello mandato. E un'istruzione con coordinate sue, non ereditate, resta dov'era: si dice per nome.
+    Sorvegliato da tools/gate-bersaglio-nina.js. */
+const NINA_API_OLTRE_IL_PRIMO='2.2.15';
+/*  Le coordinate come le scrive N.I.N.A., in gradi. Il segno della declinazione sta in `NegativeDec` o nei pezzi
+    negativi, secondo chi ha scritto: si accettano tutti e due, e i pezzi si prendono in valore assoluto. */
+function gradiDaNina(c){
+  if(!c||typeof c!=='object') return null;
+  const n=k=>Math.abs(+c[k]||0);
+  const neg=c.NegativeDec===true||+c.DecDegrees<0||+c.DecMinutes<0||+c.DecSeconds<0;
+  const ra=(n('RAHours')+n('RAMinutes')/60+n('RASeconds')/3600)*15;
+  const dec=(neg?-1:1)*(n('DecDegrees')+n('DecMinutes')/60+n('DecSeconds')/3600);
+  return isFinite(ra)&&isFinite(dec)?{ra,dec}:null;
+}
+const eBersaglioNina=x=>!!(x&&typeof x==='object'&&x.Target&&typeof x.Target==='object'&&Array.isArray(x.Items));
+/*  Le istruzioni di un bersaglio che portano coordinate («Muovi e centra», «Muovi a RA/Dec»…), senza entrare in un
+    bersaglio annidato: le sue sono sue. `ereditate` dice se seguono il bersaglio. */
+function istruzioniConCoordinate(items){
+  const out=[];
+  const giro=xs=>{ for(const x of (Array.isArray(xs)?xs:[])){
+    if(!x||typeof x!=='object'||eBersaglioNina(x)) continue;
+    if(x.Coordinates&&typeof x.Coordinates==='object'&&'Inherited' in x){
+      const c=gradiDaNina(x.Coordinates);
+      out.push({nome:String(x.Name||''),ereditate:x.Inherited===true,ra:c?c.ra:null,dec:c?c.dec:null});
+    }
+    if(Array.isArray(x.Items)) giro(x.Items);
+  } };
+  giro(items);
+  return out;
+}
+function bersagliNina(risposta){
+  const out=[];
+  const giro=xs=>{ for(const x of (Array.isArray(xs)?xs:[])){
+    if(!x||typeof x!=='object') continue;
+    if(eBersaglioNina(x)){
+      const T=x.Target, c=gradiDaNina(T.InputCoordinates), pa=T.PositionAngle;
+      out.push({indice:out.length,
+        nome:String(T.TargetName||String(x.Name||'').replace(/_Container$/,'')),
+        stato:String(x.Status||''),
+        ra:c?c.ra:null, dec:c?c.dec:null,
+        rot:(pa!=null&&pa!==''&&isFinite(+pa))?+pa:null,
+        coordinate:istruzioniConCoordinate(x.Items)});
+      continue;
+    }
+    if(Array.isArray(x.Items)) giro(x.Items);
+  } };
+  giro(Array.isArray(risposta)?risposta:[risposta]);
+  return out;
+}
+/*  La richiesta, dal bersaglio del modello della sequenza (`sequenceModel(...).bersaglio`): lo stesso nome, lo stesso
+    centro e lo stesso angolo che il caricamento scriverebbe nel file. Gradi, come li vuole l'API; un numero mai in
+    forma esponenziale; niente richiesta se manca un pezzo. */
+function viaSetTarget(b,indice){
+  if(!b||!Number.isInteger(indice)||indice<0) return null;
+  const nome=String(b.nome==null?'':b.nome).trim(), ra=+b.ra_deg, dec=+b.dec_deg, rot=+b.rot;
+  if(!nome||!isFinite(ra)||!isFinite(dec)||!isFinite(rot)||ra<0||ra>=360||Math.abs(dec)>90) return null;
+  const num=x=>{ const s=String(x); return /e/i.test(s)?x.toFixed(7):s; };
+  return '/sequence/set-target?name='+encodeURIComponent(nome)+'&ra='+num(ra)+'&dec='+num(dec)+
+    '&rotation='+num(rot)+'&index='+indice;
+}
+/*  La distanza sul cielo in secondi d'arco, e la tolleranza della rilettura: N.I.N.A. riscrive i gradi in ore, primi e
+    secondi, e il resto dell'arrotondamento sta ben sotto i 2″. */
+const NINA_TOLLERANZA_ARCSEC=2;
+function arcsecFra(a,b){
+  const dra=((a.ra-b.ra)%360+540)%360-180, ddec=a.dec-b.dec;
+  return 3600*Math.hypot(dra*Math.cos(b.dec*Math.PI/180),ddec);
+}
+function controlloDelBersaglio(risposta,indice,b){
+  const x=bersagliNina(risposta)[indice];
+  if(!x||!b) return {ok:false,trovato:false,proprie:[],ferme:[],seguite:[]};
+  const voluto={ra:+b.ra_deg,dec:+b.dec_deg};
+  const vicino=y=>y.ra!=null&&y.dec!=null&&arcsecFra(y,voluto)<=NINA_TOLLERANZA_ARCSEC;
+  const nome=x.nome===String(b.nome).trim();
+  const coordinate=vicino(x);
+  const angolo=x.rot!=null&&Math.abs(((x.rot-(+b.rot))%360+540)%360-180)<0.01;
+  const proprie=x.coordinate.filter(c=>!c.ereditate).map(c=>c.nome);
+  const ferme=x.coordinate.filter(c=>c.ereditate&&!vicino(c)).map(c=>c.nome);
+  const seguite=x.coordinate.filter(c=>c.ereditate&&vicino(c)).map(c=>c.nome);
+  return {ok:nome&&coordinate&&angolo&&!ferme.length,trovato:true,nome,coordinate,angolo,proprie,ferme,seguite,
+    stato:x.stato};
 }
 
 /* Ingombro dell'oggetto NEL SISTEMA DEL SENSORE, data una rotazione di camera.
@@ -17404,7 +17503,13 @@ async function mandaANina(notte){
     (chk.dup.length?'id duplicati':'riferimenti pendenti')+'): non lo mando. Segnalalo.</div>'); return; }
 
   const diff=confrontoSetup(modello,P);
-  NINAINVIO={root,notte:nt.n,nome:(t.names&&t.names[0])||t.id};
+  /*  DOVE VA (11 ottobre 2026): come sequenza nuova, o al posto di un bersaglio che il Sequenziatore ha gia' — il menu
+      a tendina dell'Assistente di inquadratura, con `set-target` (nel motore, accanto a `bersagliNina`). I bersagli si
+      leggono adesso per il menu, e si rileggono al clic. */
+  const st=await ninaChiedi('/sequence/state');
+  const bersagli=st.ok?bersagliNina(st.dato):[];
+  NINAINVIO={root,notte:nt.n,nome:(t.names&&t.names[0])||t.id,bersaglio:modello.bersaglio,versione:v.dato,
+    bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:'nuova'};
 
   const riga=(k,a,b)=>`<div class="cfr"><div class="cfr-k">${k}</div>
     <div>${esc(a)}</div><div class="muted">${esc(b)}</div></div>`;
@@ -17430,23 +17535,137 @@ async function mandaANina(notte){
       pl.nights.map(x=>`<option value="${x.n}" ${x.n===nt.n?'selected':''}>${x.n}</option>`).join('')}
     </select></label>`:'';
 
+  /* un bersaglio in ripresa non si tocca; dopo il primo, con un'Advanced API piu' vecchia della 2.2.15, nemmeno */
+  const oltre=versioneNinaAlmeno(v.dato,NINA_API_OLTRE_IL_PRIMO)!==false;
+  const fermo=b=>b.stato==='RUNNING'?'in ripresa adesso: si cambia a sequenza ferma'
+    :(b.indice>0&&!oltre)?'dopo il primo serve l’Advanced API '+NINA_API_OLTRE_IL_PRIMO:null;
+  const dove=`<label class="f ninadove"><span>dove</span><select id="ninaDove" onchange="ninaDove(this.value)">
+      <option value="nuova">come sequenza nuova</option>${
+      bersagli.map(b=>{ const no=fermo(b), s=STATO_DEL_BERSAGLIO[b.stato];
+        return `<option value="${b.indice}"${no?' disabled':''}>al posto di «${esc(b.nome)}»${
+          no?' — '+esc(no):s?' — '+s:''}</option>`; }).join('')}
+    </select></label>`;
+
   dillo(`<div class="ninaconf">
     <div class="small muted" style="margin-bottom:6px">N.I.N.A. ${esc(v.dato)} · notte ${nt.n} ·
       ${sp.subs.length} blocchi · ${fmt(JSON.stringify(root).length/1024,1)} kB</div>
     ${testaConfronto}${avvisi}
     <div class="row" style="gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap">
-      ${scelta}
-      <button class="fn hero-go confbt"
-        onclick="ninaInviaDavvero()">${diff.length?'Invia comunque':'Invia a N.I.N.A.'}</button>
+      ${scelta}${dove}
+      <button class="fn hero-go confbt" id="ninaManda"
+        onclick="ninaInviaDavvero()">${testoDelTasto('nuova',diff.length)}</button>
       <button class="fn confbt" onclick="ninaAnnulla()">Annulla</button>
     </div>
-    <div class="small muted" style="margin-top:8px">La sequenza viene <b>caricata</b>, non avviata.
-      Ad avviarla sei tu, in N.I.N.A.</div>
+    <div class="small muted" id="ninaDoveNota" style="margin-top:8px">${notaDove('nuova')}</div>
   </div>`);
+}
+
+/* Lo stato del bersaglio in N.I.N.A., quando non e' quello di uno da fare: N.I.N.A. esegue solo cio' che e' da fare. */
+const STATO_DEL_BERSAGLIO={FINISHED:'già eseguito',SKIPPED:'saltato',FAILED:'non riuscito',DISABLED:'disattivato'};
+const testoDelTasto=(dove,differenze)=>dove==='nuova'?(differenze?'Invia comunque':'Invia a N.I.N.A.')
+  :(differenze?'Aggiorna comunque':'Aggiorna il bersaglio');
+/* Le coordinate come le scrive N.I.N.A.: ore, primi e secondi per l'AR, gradi per la declinazione. */
+const coordinateDette=(ra,dec)=>{
+  const due=n=>String(n).padStart(2,'0');
+  const s=Math.round(((+ra%360+360)%360)/15*3600)%86400, d=Math.round(Math.abs(+dec)*3600);
+  return `AR ${Math.floor(s/3600)}h ${due(Math.floor(s%3600/60))}m ${due(s%60)}s, Dec ${+dec<0?'−':'+'}`+
+    `${Math.floor(d/3600)}° ${due(Math.floor(d%3600/60))}′ ${due(d%60)}″`;
+};
+/* Che cosa fa la voce scelta, detto prima del clic: soprattutto che cosa NON cambia. */
+function notaDove(valore){
+  const inv=NINAINVIO; if(!inv) return '';
+  if(valore==='nuova') return 'La sequenza viene <b>caricata</b> al posto di quella aperta nel Sequenziatore, non avviata. '+
+    'Ad avviarla sei tu, in N.I.N.A.'+(inv.letti?'<br>I bersagli già nel Sequenziatore non si leggono ('+esc(inv.letti)+
+    '): nel menu non ci sono.':'');
+  const b=inv.bersagli[+valore], x=inv.bersaglio;
+  if(!b||!x) return '';
+  const righe=[`Del bersaglio «${esc(b.nome)}» cambiano solo nome, coordinate e angolo: diventa <b>«${esc(x.nome)}»</b>, `+
+    `${coordinateDette(x.ra_deg,x.dec_deg)}, angolo ${fmt(+x.rot,0)}°. Pose, filtri, orari e istruzioni restano quelli `+
+    'della sequenza di N.I.N.A.: le pose di questa prescrizione non entrano. Niente viene avviato.'];
+  const s=STATO_DEL_BERSAGLIO[b.stato];
+  if(s) righe.push(b.stato==='DISABLED'?'⚠ In N.I.N.A. è disattivato: lo salta finché non lo riattivi.'
+    :`⚠ In N.I.N.A. risulta ${s}, e N.I.N.A. lo salta finché non lo azzeri.`);
+  const proprie=b.coordinate.filter(c=>!c.ereditate).map(c=>'«'+esc(c.nome)+'»');
+  if(proprie.length) righe.push('⚠ Dentro, '+proprie.join(', ')+(proprie.length===1
+    ?' ha coordinate sue e non segue il bersaglio: resterebbe sul punto di prima. In N.I.N.A. va corretta a mano.'
+    :' hanno coordinate loro e non seguono il bersaglio: resterebbero sul punto di prima. In N.I.N.A. vanno corrette a mano.'));
+  return righe.join('<br>');
+}
+function ninaDove(valore){
+  const inv=NINAINVIO; if(!inv) return;
+  inv.dove=valore==='nuova'?'nuova':String(+valore);
+  const n=document.getElementById('ninaDoveNota'); if(n) n.innerHTML=notaDove(inv.dove);
+  const t=document.getElementById('ninaManda'); if(t) t.textContent=testoDelTasto(inv.dove,inv.differenze);
+}
+
+/*  AL POSTO DI UN BERSAGLIO (11 ottobre 2026). Si rilegge prima di scrivere — fra il menu e il clic la sequenza in
+    N.I.N.A. puo' essere cambiata, e l'indice e' una posizione —, si scrive, e si rilegge dopo: «Target updated» dice
+    che N.I.N.A. ha accettato, non che al suo posto ci sia il bersaglio mandato (`controlloDelBersaglio`). */
+async function ninaAggiornaBersaglio(indice){
+  const inv=NINAINVIO; if(!inv) return;
+  const box=document.getElementById('ninaInvio');
+  const dillo=h=>{ if(box) box.innerHTML=h; };
+  const chiudi=`<div style="margin-top:8px"><button class="chip" onclick="mandaANina(${inv.notte})">Rileggi i bersagli</button>
+    <button class="chip" onclick="ninaAnnulla()">Chiudi</button></div>`;
+  const prima=inv.bersagli[indice];
+  dillo('<span class="muted small">rileggo la sequenza aperta in N.I.N.A.…</span>');
+  const st=await ninaChiedi('/sequence/state');
+  if(!st.ok){ dillo(`<div class="warnbox"><b>N.I.N.A. non raggiunto.</b> ${esc(st.motivo)}${chiudi}</div>`); return; }
+  const ora=bersagliNina(st.dato), adesso=ora[indice];
+  if(!prima||!adesso||adesso.nome!==prima.nome||ora.length!==inv.bersagli.length){
+    dillo(`<div class="warnbox"><b>Non ho cambiato niente.</b> La sequenza aperta in N.I.N.A. è cambiata da quando
+      l’ho letta, e il bersaglio scelto non è più al suo posto.${chiudi}</div>`);
+    return;
+  }
+  if(adesso.stato==='RUNNING'||(indice>0&&versioneNinaAlmeno(inv.versione,NINA_API_OLTRE_IL_PRIMO)===false)){
+    dillo(`<div class="warnbox"><b>Non ho cambiato niente.</b> ${adesso.stato==='RUNNING'
+      ?'«'+esc(adesso.nome)+'» è in ripresa adesso: si cambia a sequenza ferma.'
+      :'Per un bersaglio dopo il primo serve l’Advanced API '+NINA_API_OLTRE_IL_PRIMO+' o successiva.'}${chiudi}</div>`);
+    return;
+  }
+  const via=viaSetTarget(inv.bersaglio,indice);
+  if(!via){ dillo(`<div class="warnbox">Il bersaglio di questa prescrizione non ha coordinate valide: non lo mando.
+    Segnalalo.${chiudi}</div>`); return; }
+  dillo('<span class="muted small">sto aggiornando il bersaglio…</span>');
+  const r=await ninaChiedi(via);
+  if(!r.ok){ dillo(`<div class="warnbox"><b>N.I.N.A. ha rifiutato.</b> ${esc(r.motivo)}${chiudi}</div>`); return; }
+
+  const dopo=await ninaChiedi('/sequence/state');
+  const k=dopo.ok?controlloDelBersaglio(dopo.dato,indice,inv.bersaglio):null, x=inv.bersaglio;
+  if(!k||!k.ok){
+    const cosa=!k?['non riesco a rileggere la sequenza per controllarlo ('+esc(dopo.motivo)+')']
+      :!k.trovato?['al suo posto non c’è più un bersaglio']
+      :[!k.nome&&'il nome non è «'+esc(x.nome)+'»', !k.coordinate&&'le coordinate non sono quelle mandate',
+        !k.angolo&&'l’angolo non è '+fmt(+x.rot,0)+'°',
+        k.ferme.length&&k.ferme.map(n=>'«'+esc(n)+'»').join(', ')+(k.ferme.length===1?' non ha seguito il bersaglio'
+          :' non hanno seguito il bersaglio')].filter(Boolean);
+    dillo(`<div class="warnbox"><b>N.I.N.A. dice di aver aggiornato il bersaglio, ma il controllo non torna:</b>
+      ${cosa.join('; ')}.<div class="small muted" style="margin-top:6px">Guardalo nel Sequenziatore prima di avviare.</div>
+      ${chiudi}</div>`);
+    NINAINVIO=null;
+    return;
+  }
+  const avvisi=[];
+  const s=STATO_DEL_BERSAGLIO[k.stato];
+  if(s) avvisi.push(k.stato==='DISABLED'?'In N.I.N.A. è disattivato: lo salta finché non lo riattivi.'
+    :`In N.I.N.A. risulta ${s}, e N.I.N.A. lo salta finché non lo azzeri.`);
+  if(k.proprie.length) avvisi.push(k.proprie.map(n=>'«'+esc(n)+'»').join(', ')+(k.proprie.length===1
+    ?' ha coordinate sue e non segue il bersaglio: è rimasta sul punto di prima. In N.I.N.A. va corretta a mano.'
+    :' hanno coordinate loro e non seguono il bersaglio: sono rimaste sul punto di prima. In N.I.N.A. vanno corrette a mano.'));
+  dillo(`<div class="okbox"><b>Aggiornato in N.I.N.A.</b>
+    <span class="muted">— ${prima.nome===x.nome?'«'+esc(x.nome)+'», con il centro e l’angolo di questa prescrizione'
+      :'«'+esc(prima.nome)+'» ora è «'+esc(x.nome)+'»'}</span>
+    <div class="small muted" style="margin-top:6px">Riletto dopo l’aggiornamento: nome, coordinate e angolo sono quelli
+      mandati${k.seguite.length?', e le istruzioni che ereditano le coordinate le hanno seguite':''}. Pose, filtri e orari
+      sono quelli della sequenza di N.I.N.A. <b>Non è stato avviato</b>: l’avvio resta tuo.</div>
+    ${avvisi.length?`<div class="warnbox" style="margin-top:8px">${avvisi.map(a=>'⚠ '+a).join('<br>')}</div>`:''}
+    <div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div></div>`);
+  NINAINVIO=null;
 }
 
 async function ninaInviaDavvero(){
   if(!NINAINVIO) return;
+  if(NINAINVIO.dove!=='nuova') return ninaAggiornaBersaglio(+NINAINVIO.dove);
   const box=document.getElementById('ninaInvio');
   const dillo=h=>{ if(box) box.innerHTML=h; };
   dillo('<span class="muted small">sto mandando…</span>');
