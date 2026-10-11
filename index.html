@@ -1272,7 +1272,8 @@ td.archcell{max-width:120px}
                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M4 19h16"/><path d="M6 16V9"/><path d="M11 16V5"/><path d="M16 16v-4"/></svg>
                     <b>Resa</b><span class="gc-tick" aria-hidden="true">&check;</span></span>
-                  <span class="gc-d">La posa più lunga che i limiti fisici consentono;
+                  <span class="gc-d">La posa che rende di più per ora di notte: lunga quanto
+                    basta a battere il rumore di lettura, non tanto da perdere fotogrammi;
                     meno tempo totale di acquisizione per raggiungere la stessa
                     profondità.</span></span></label>
               <label class="goalcard">
@@ -7621,15 +7622,19 @@ const snapExp=t=>{ let p=null;
    La figura di merito non e' l'SNR per ora di INTEGRAZIONE — sarebbe monotona
    e direbbe sempre "piu' lunga possibile" — ma l'SNR per ora di OROLOGIO:
 
-      merito = eff(t) x duty(t)
+      merito = eff(t) x duty(t) x sqrt(sopravvive(t))
       eff  = sqrt( sky·t / (sky·t + RN²) )     quanto sei vicino al limite del cielo
       duty = sqrt( t / (t + scarico + dither) ) quanto della notte finisce nei fotoni
+      sopravvive = e^(-lambda·max(0, t-600))    quanti fotogrammi in piu' si perdono oltre la posa di taratura
 
-   Entrambi crescono con la posa, quindi la posa migliore e' sempre la piu'
-   lunga ammessa: a fermarla e' un tetto, mai il cielo. I tetti sono tre —
-   saturazione delle stelle, rischio di perdere un fotogramma, numero minimo di
-   pose perche' la reiezione statistica funzioni in integrazione — e il consiglio
-   utile e' dire QUALE dei tre sta legando.
+   I primi due crescono con la posa, il terzo cala oltre la posa a cui la perdita e'
+   tarata (10 ottobre 2026): fino ad allora c'erano solo i primi due, e la posa
+   migliore era sempre la piu' lunga ammessa —
+   con la CEM70G 1800 s in banda stretta. Adesso il merito ha un massimo, che dipende
+   dal fondo, dalla lettura e dal tasso di perdita dichiarato, e prima di lui la
+   posa la fermano i tetti — saturazione delle stelle, del soggetto e del fondo,
+   numero minimo di pose consegnate perche' la reiezione statistica funzioni in
+   integrazione, la montatura —: il consiglio utile e' dire QUALE sta legando.
    Il modo di guadagno cade fuori dallo stesso calcolo invece che da una regola:
    un pozzetto profondo lascia posare piu' a lungo, un rumore di lettura basso
    rende meglio a parita' di posa. Vince chi ha il merito piu' alto. E' il motivo
@@ -8578,6 +8583,8 @@ const CODICE_DEL_LIMITE={
   'tetto di classe':'classe',
   'il fondo non copre il rumore di lettura':'lettura',
   'rischio / montatura':'montatura',
+  /* la perdita dei fotogrammi nel merito ha fermato la posa sotto i tetti (Alessandro, 10 ottobre 2026) */
+  'perdita dei fotogrammi':'perdita',
 };
 /*  UN TETTO DI CLASSE CADE QUANDO C'E' LA MISURA DI CIO' CHE PROTEGGEVA (regia e Alessandro, 22 settembre 2026), o una
     stima fatta dalla misura con un margine dichiarato. Ogni classe col tetto dichiara CHE COSA protegge
@@ -8897,11 +8904,47 @@ function subExposure(dv,site,band,opts){
     /* la forma unica sulle stelle vale solo dove un gradino della scala le tiene: sotto il primo non protegge niente, e
        la posa resta quella di prima col suo nome (trovato da tools/gate-limite-vero.js, 22 settembre 2026) */
     const fuStelle = formaUnica==='stelle' && snapExp(tStar)!=null;
-    const t = o.posaFissa!=null ? o.posaFissa
+    /*  La posa che i tetti lasciano: fin qui era la posa, e adesso e' il limite oltre cui la perdita non cerca. */
+    const tTetti = o.posaFissa!=null ? o.posaFissa
       : (o.soloStelle||fuStelle)
       ? Math.min(snapExp(Math.min(tObjP,tSky,risk,tFrames))||EXP_GRID[0],
                  snapExp(tMaxStar)||EXP_GRID[0])
       : tSenzaProtezione;
+    /*  LA PERDITA DEI FOTOGRAMMI E' UN COSTO, NON SOLO UN MURO (Alessandro, 10 ottobre 2026). «Con la CEM70 senza Luna
+        le pose su NGC 6888 possono arrivare anche a 1800 s: anche se da un cielo di 20,80 in banda stretta da 3 nm
+        sarebbe giusto, bisogna avere anche la razionalita' di non eccedere.» Il merito contava la lettura e lo scarico,
+        che premiano tutti e due la posa lunga, e la posa andava sempre al tetto. La perdita il motore la modellava gia' —
+        il tasso dichiarabile, di serie il 20 % a 600 s —, ma solo per contare le pose consegnate. Adesso entra anche nel
+        merito come la frazione di fotogrammi che arriva a casa, e il merito ha un massimo: la posa e' il gradino della
+        scala, fra quelli che i tetti lasciano, che rende di piu' per ora di notte. Nessun tetto nuovo: chi dichiara di
+        perdere poco torna alle pose lunghe, fino al tetto della montatura. Misurato su NGC 6888 a Borno con la CEM70G e i
+        filtri da 3 nm: col 20 % a 600 s il gradino migliore sta fra 600 e 900 s, e 1800 s costava dal 12 al 29 % di
+        notte in piu'.
+          LA PERDITA CONTA OLTRE LA POSA DI TARATURA, non su tutta la scala. Il modello e' tarato su un punto solo, 600 s
+        (vedi il muro delle pose qui sopra): oltre e' un limite superiore, e il verso e' quello della prudenza; sotto ne
+        esagera la pendenza, perche' la parte della perdita che non cala accorciando — la nuvola che rovina Δ/t + 1
+        fotogrammi — l'esponenziale la mette tutta nella parte che cala. MISURATO su 181 oggetti, quattro banchi, due cieli,
+        12 h: contata su tutta la scala, la perdita spostava in Equilibrio 1263 canali su 4933, 819 in banda larga — 526 da
+        120 a 60 s — e cambiava il modo di guadagno su 276; contata oltre i 600 s, 279 canali, 65 in banda larga e nessun modo,
+        con gli stessi numeri sui casi di NGC 6888. Quando il registro avra' le due tarature (300 e 900 s), la perdita
+        potra' contare su tutta la scala. Il motore riceve gia' il tasso come `perditaFrame`; il campo per dichiararlo ha
+        la sua forma nel registro — nel banco, «quante pose da 300 s scarti su dieci» (regia, 19 settembre 2026) — ed e'
+        il passo successivo: fino ad allora vale il 20 % a 600 s, per la pagina e per il Ponte.
+        Fuori: la posa del progetto, che e' imposta, e il metro delle ore (`metroDiRiferimento`), che non si sposta.
+        Sotto il pavimento operativo la perdita non porta mai la posa. Sorvegliato da tools/gate-perdita-nella-posa.js. */
+    const perditaNelMerito=!o.metroDiRiferimento&&lambda>0;
+    const sopravvive=x=>perditaNelMerito?Math.exp(-lambda*Math.max(0,x-PERDITA_ALLA_POSA)):1;
+    const meritoA=x=>{ const sx=sky*x; return Math.sqrt(sx/(sx+rn*rn))*Math.sqrt(x/(x+dl+settle/every))*Math.sqrt(sopravvive(x)); };
+    let t=tTetti;
+    if(perditaNelMerito&&o.posaFissa==null){
+      let mt=meritoA(tTetti);
+      const basso=Math.min(tTetti,floorSub);
+      for(const g of EXP_GRID){
+        if(g>=tTetti-1e-9||g<basso-1e-9) continue;
+        const mg=meritoA(g);
+        if(mg>mt+1e-12){ mt=mg; t=g; }
+      }
+    }
     const tMax = Math.min(tSat,risk,tFrames);
     const s=sky*t, eff=Math.sqrt(s/(s+rn*rn));
     const duty=Math.sqrt(t/(t+dl+settle/every));
@@ -8939,8 +8982,10 @@ function subExposure(dv,site,band,opts){
     const rnCost = rn>0&&sky*t>0 ? (rn*rn)/(sky*t) : 0;
     const RN_NOMINA = 0.25;
     const lowCap=Math.min(tObjP,tSky,risk,tFrames,tSomm);
-    const rec={gm:m,rn,tStar,tObj,tObjPosa:tObjP,tSky,tSat,tMax,sec:t,eff,duty,merit:eff*duty,
+    const rec={gm:m,rn,tStar,tObj,tObjPosa:tObjP,tSky,tSat,tMax,sec:t,eff,duty,merit:eff*duty*Math.sqrt(sopravvive(t)),
       swamp,rnCost,tObjDa,tSomm,
+      /*  la posa che i tetti lasciavano, e la frazione di fotogrammi che arriva a casa a quella scelta (10 ottobre 2026) */
+      tSenzaPerdita:tTetti,sopravvivenza:Math.exp(-lambda*t),
       /*  La perdita viaggia col record perche' chi mostra la posa deve poterla dichiarare IPOTESI: il numero di
           pose consegnate non e' una previsione ma un limite superiore della perdita, quindi un limite INFERIORE
           sulle pose. Si dice, non si nasconde. */
@@ -8950,11 +8995,14 @@ function subExposure(dv,site,band,opts){
          sta sotto il primo gradino della scala: nessuna posa disponibile salva le
          stelle, e dirlo vale piu' di una posa corta che finge di farlo. */
       coloreStellare: o.soloStelle
-        ? { protetto: t < tSenzaProtezione-1e-9, posaSenzaProtezione: tSenzaProtezione,
+        /* protetto dalle stelle, non dalla perdita: il confronto e' sulla posa dei tetti */
+        ? { protetto: tTetti < tSenzaProtezione-1e-9, posaSenzaProtezione: tSenzaProtezione,
             tStar, proteggibile: !isFinite(tStar) || snapExp(tStar)!=null }
         : null,
       underFloor:t<floorSub-1e-9,   // la posa scende sotto quanto converrebbe
       binding: o.posaFissa!=null ? 'posa del progetto'
+             /* la perdita dei fotogrammi ha fermato la posa sotto i tetti (10 ottobre 2026) */
+             : t<tTetti-1e-9 ? 'perdita dei fotogrammi'
              : (o.soloStelle && t<floorSub-1e-9 && tMaxStar===tStar)
                ? 'colore stellare protetto'
              /* la forma unica sui soggetti stellari: la posa e' scesa sotto il pavimento per non bruciare le stelle */
@@ -9098,6 +9146,9 @@ function subExposure(dv,site,band,opts){
               dire che il numero e' un limite inferiore sotto un'ipotesi dichiarata, e QUALE dei tre gradini decide. */
           posePreviste:best.posePreviste,poseConsegnate:best.poseConsegnate,
           perditaFrame:best.perditaFrame,perditaAllaPosa:best.perditaAllaPosa,
+          /*  la posa che i tetti lasciavano prima che la perdita la fermasse, e la frazione di fotogrammi che arriva a casa
+              alla posa scelta (10 ottobre 2026): chi disegna dice da dove scende la posa, e chi verifica rifa' il conto */
+          posaSenzaPerdita:best.tSenzaPerdita,sopravvivenza:best.sopravvivenza,
           maxSubDa,maxSub:maxSubMostrato,
           underFloor:best.underFloor,minSub:floorSub,
           tSat:best.tSat,tStar:best.tStar,tObj:best.tObj,
@@ -9177,7 +9228,8 @@ function subExposure(dv,site,band,opts){
 
    LE TRE PRIORITA', tutte ancorate a grandezze che il motore calcola gia':
 
-     RESA        la catena dei tetti attuale. Massima efficienza fotometrica.
+     RESA        il gradino di merito piu' alto fra quelli che i tetti lasciano,
+                 con la perdita dei fotogrammi nel merito (10 ottobre 2026).
                  E' il riferimento per definizione: costo zero.
 
      EQUILIBRIO  la posa piu' CORTA che costa al massimo un decimo di orologio.
@@ -9365,8 +9417,8 @@ function exposureStrategies(dv,site,band,opts){
     build — ed e' esattamente il comportamento voluto.                          */
 const STRATEGIES=[
   {id:'resa', label:'Resa',
-   nota:'La posa più lunga che i limiti fisici consentono; meno tempo totale di acquisizione per raggiungere la stessa profondità.',
-   tip:'Massima efficienza fotometrica: la posa più lunga che i limiti fisici concedono. Meno ore di orologio per la stessa profondità. Sulla luminanza e sulla banda stretta si ferma dove il cielo sommerge la lettura — oltre, la lettura costerebbe meno dell\'1 % e una posa più lunga non comprerebbe niente, consumando solo margine nel pozzetto.'},
+   nota:'La posa che rende di più per ora di notte: lunga quanto basta a battere il rumore di lettura, non tanto da perdere fotogrammi; meno tempo totale di acquisizione per raggiungere la stessa profondità.',
+   tip:'Massima efficienza per ora di notte. Allungare la posa toglie peso al rumore di lettura e agli scarichi, ma un fotogramma lungo si perde più facilmente — vento, guida, nuvole —: Resa si ferma dove le due cose si pareggiano, col tasso di fotogrammi persi di serie — il 20 % a 600 s, un\'ipotesi e non una misura —, se prima non la ferma un tetto. Meno ore di orologio per la stessa profondità. Sulla luminanza e sulla banda stretta si ferma anche dove il cielo sommerge la lettura — oltre, la lettura costerebbe meno dell\'1 % e una posa più lunga non comprerebbe niente, consumando solo margine nel pozzetto.'},
   {id:'equilibrio', label:'Equilibrio',
    nota:'Accorcia la posa fin dove conviene: un buon compromesso tra tempo di acquisizione e durata della singola posa.',
    tip:'La posa più CORTA che costa al massimo un decimo di orologio in più di Resa. La robustezza si prende dove è quasi gratis, non a qualunque prezzo, e il prezzo è misurato sul merito invece che assunto. Dove nemmeno un gradino più corto costa così poco, coincide con Resa e lo dice.'},
@@ -16187,7 +16239,7 @@ const OPLBL={overhead:['Overhead a notte (h)','Messa a fuoco, plate solve, calib
   minSession:['Sessione minima (h)','Sotto questa soglia una notte è quasi tutta overhead: è il tetto al numero di notti.'],
   minBlock:['Blocco minimo per filtro (h)','Sotto questa soglia non vale la pena aprire un canale in una notte.'],
   minSub:['Posa minima (s)','Il pavimento operativo: sotto, il numero di file e lo scarico mangiano la notte.'],
-  maxSub:['Posa massima (s)','Quanto sei disposto a perdere quando un fotogramma va storto. Vuoto = lo dichiara la montatura, e se non lo dichiara si ripiega su 600 s. Quello che scrivi qui vince su tutti e due.'],
+  maxSub:['Posa massima (s)','Il tetto oltre cui non vuoi andare comunque. Vuoto = lo dichiara la montatura, e se non lo dichiara si ripiega su 600 s. Quello che scrivi qui vince su tutti e due.'],
   minFrames:['Pose minime per canale','Sotto questo numero la reiezione statistica in integrazione non ha materiale su cui lavorare.'],
   minSubsNight:['Pose minime per notte','In modalità sessione completa: sotto questo numero un canale non si apre in quella notte e le sue ore vanno altrove.'],
   protectMag:['Magnitudine da proteggere','Le stelle più deboli di questa restano dentro il pozzetto nel colore: R, G, B e la camera a colori. La luminanza e la banda stretta proteggono l\'oggetto, non le stelle: lì bruciano, e la posa dice fin dove. Vuoto = 12.0 (11.0 sui soggetti stellari, dove le stelle sono l\'oggetto e le proteggono tutti i canali).'],
@@ -16967,7 +17019,11 @@ function rxExpoHtml(expo,dv,pr){
           sui deboli. */
       'tetto di classe':'Tetto che viene dalla pratica documentata per questa classe, non dal modello: le pose lunghe si fanno su soggetti deboli, non su globulari, ammassi o planetarie brillanti.',
       'numero minimo di pose':'Sotto questo numero di fotogrammi la reiezione statistica in integrazione non ha materiale su cui lavorare.',
-      'rischio / montatura':'Quanto sei disposto a perdere quando un fotogramma va storto.',
+      'rischio / montatura':'La posa è al tetto: quello che la montatura dichiara, o la posa massima che hai scritto nei parametri della posa.',
+      /*  la perdita dei fotogrammi nel merito (Alessandro, 10 ottobre 2026): il perche' coi numeri del caso */
+      'perdita dei fotogrammi':'Più lunga di così la posa renderebbe meno. Ogni minuto in più toglie ancora un po\' di rumore di lettura, ma un fotogramma lungo si perde più spesso — vento, guida, nuvole —, e con '
+        +Math.round(100*(e.perditaFrame||0))+' fotogrammi persi su 100 a '+e.perditaAllaPosa+' s la perdita costerebbe più di quanto la posa guadagna. Senza contarla la posa sarebbe '
+        +e.posaSenzaPerdita+' s. Il tasso è un\'ipotesi di serie, non una misura: chi perde meno fotogrammi conviene che posi più a lungo, fino al tetto della montatura.',
       'stella protetta':'Dinamica accorcia la posa fin qui perché la stella alla magnitudine protetta non vada a fondo scala. Non è la montatura né il fondo cielo: è la scelta di Dinamica, e costa fotogrammi in più.',
       'regola di Equilibrio':'Equilibrio accorcia la posa fin dove costa al massimo un decimo di orologio in più di Resa, e il gradino più corto costerebbe di più. Non è la montatura né il fondo cielo: è la regola di Equilibrio, che prende la robustezza dove è quasi gratis.',
       'regola di Dinamica':'Dinamica scende di un gradino sotto Equilibrio: il pozzetto si riempie un po\' meno e resta margine per le alte luci dell\'oggetto, con più fotogrammi da rigettare. Sulla luminanza e sulla banda stretta le stelle non si proteggono qui: si prendono dall\'RGB o si attenuano in elaborazione.',
@@ -17001,8 +17057,8 @@ function rxExpoHtml(expo,dv,pr){
         ? ` <span class="muted" style="font-size:10px" data-tip="${esc(
             'Il muro delle pose minime conta quelle che arrivano a casa, non quelle scattate: con il '
             +Math.round(100*e.perditaFrame)+' % di perdita a '+e.perditaAllaPosa+' s, a '+e.sec
-            +' s ne restano circa '+e.poseConsegnate+' su '+e.posePreviste+'. Il tasso è un\'ipotesi, non una misura: '
-            +'dichiaralo se conosci il tuo. E il modello è un limite superiore della perdita — una nuvola lunga rovina '
+            +' s ne restano circa '+e.poseConsegnate+' su '+e.posePreviste+'. Il tasso è un\'ipotesi di serie, non una misura. '
+            +'E il modello è un limite superiore della perdita — una nuvola lunga rovina '
             +'un numero di pose che cresce meno che proporzionalmente — quindi le pose in mano sono un minimo e le ore '
             +'che ne escono un massimo.')}">≈ ${e.poseConsegnate} in mano</span>`
         : ''}</td>
@@ -17085,9 +17141,11 @@ function rxExpoHtml(expo,dv,pr){
       <th>canale</th><th>posa</th><th>guadagno</th><th></th><th>totale</th>
       <th>tetti</th><th>efficienza</th><th></th></tr></thead><tbody>${rows}${hdrRow}</tbody></table>
     <p class="small" style="margin-top:8px">${why}</p>
-    <p class="small muted" style="margin-top:6px">La posa migliore è sempre <b>la più lunga
-      ammessa</b>: sia la frazione del limite del cielo sia la frazione di notte che finisce nei
-      fotoni crescono con la posa. A fermarla è un tetto, mai il cielo. In banda stretta da un
+    <p class="small muted" style="margin-top:6px">Allungare la posa conviene finché rende:
+      la frazione del limite del cielo e la frazione di notte che finisce nei fotoni crescono con
+      la posa, ma un fotogramma lungo si perde più spesso — vento, guida, nuvole. La posa migliore
+      è dove le due cose si pareggiano, col tasso di fotogrammi persi di serie — il 20 % a 600 s,
+      un'ipotesi e non una misura —, se prima non la ferma un tetto. In banda stretta da un
       cielo come questo il fondo non raggiunge <i>mai</i> il rumore di lettura — ci vorrebbero
       pose da ore — quindi si accetta di esserne limitati e si sceglie il modo di guadagno che
       ha quel rumore più basso. È il motivo fisico per cui la banda stretta va in HCG.
