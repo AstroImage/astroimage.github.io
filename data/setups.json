@@ -2506,7 +2506,23 @@
     }
    ],
    "pavimento_rumore_e": 0.7,
-   "cfa_response": "sony_bayer_generic"
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 38250,
+   "saturazione_fonte": {
+    "esito": "misura",
+    "come": "EMVA 1288 — Lucid Triton10 8.3MP (TRX083S): 38 250 e- mono, 37 565 e- colore, a 0,10 DN/e-. Coerente con ZWO, che nella pagina della ASI585 Pro dichiara 40 ke- per la MC e 38,7 ke- per la MM; scarta i 47 ke- del manuale ZWO, che contraddice la sua stessa pagina (docs/architettura-catalogo-sensori.md). Grandezza identificabile con il pixel: anche nella lettura piu' stretta compatibile, 12 bit a 0,10 DN/e-, l'ADC taglia a 40 950 e-, e la saturazione arriva prima",
+    "conf": "alta"
+   },
+   "saturazione_grezzi": {
+    "mono_e": 38250,
+    "colore_e": 37565,
+    "guadagno_dn_per_e": 0.1,
+    "bit": 12,
+    "rumore_buio_e": 6.15,
+    "dinamica_db": 74.5,
+    "documento": "Lucid Vision Labs, pagina del prodotto Triton10 8.3 MP (Sony IMX585), dati EMVA 1288 delle varianti TRX083S-M e TRX083S-C; letta il 13 ottobre 2026",
+    "nota": "12 bit e' la lettura piu' stretta compatibile con la misura: a 10 bit e 0,10 DN/e- l'ADC taglierebbe a 10 230 e-, sotto la saturazione misurata. La dinamica pubblicata non si rifa' esattamente dai loro stessi numeri: con la definizione EMVA viene 75,2 dB contro 74,5, e 75,0 contro 74,2 sul colore. Lo scarto e' lo stesso sulle due varianti, quindi e' una convenzione di calcolo e non un dato rotto, e la saturazione la conferma ZWO, il terzo testimone, entro l'1,2 % sulla MM"
+   }
   },
   {
    "id": "imx461",
@@ -2531,7 +2547,13 @@
     "conf": "media"
    },
    "pavimento_rumore_e": 1.4,
-   "cfa_response": "sony_bayer_generic"
+   "cfa_response": "sony_bayer_generic",
+   "saturazione_e": 50300,
+   "saturazione_fonte": {
+    "esito": "dichiarato",
+    "come": "ZWO dichiara 50,3 ke- per l'ASI461MM Pro (manuale, 198 ke- in bin 2), QHY 50 ke- per la QHY461 in modo standard: due costruttori concordi, e coerenti con la famiglia del pixel da 3,76 um (IMX571 48,2 ke- misurati EMVA, IMX455 51,4 ke- e IMX533 50 ke- dichiarati). E' il tetto del modo standard, quello delle camere che lo montano: a 16 bit implica 0,7675 e-/ADU, la conversione della 2600 a gain 0, quindi lettura e fondo scala coincidono come sull'IMX571, dove la misura EMVA del pixel sta il 4 % sotto il dichiarato. QHY dichiara 80 ke- nel suo modo a pozzetto esteso, che le camere del catalogo non usano",
+    "conf": "media"
+   }
   },
   {
    "id": "mn34230",
