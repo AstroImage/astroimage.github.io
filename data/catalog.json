@@ -1824,7 +1824,144 @@
    "constellation": "Taurus",
    "archetype": "reflection",
    "physics": "Ammasso giovane immerso per caso in una nube di polvere che ne diffonde la luce blu. Riflessione pura: nessuna riga, nessun filtro a banda stretta puo' registrare nulla. Il limite sono gli aloni delle stelle di magnitudine 3, che dipendono dall'ottica e non dalle ore.",
-   "physics_confidence": "media"
+   "physics_confidence": "media",
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 2.8,
+         "p90_R": 4.5
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 3.1,
+         "p90_R": 4.2
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 2.9,
+         "p90_R": 4.4
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 3,
+         "p90_R": 4.8
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 3.1,
+         "p90_R": 5.1
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 2.9,
+         "p90_R": 5.5
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 2.8,
+         "p90_R": 5.9
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 2.9,
+         "p90_R": 5.9
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 3.2
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "M 45",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 2,
+          "con_ha": 0,
+          "con_oiii": 1
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 63,
+          "con_ha": 6,
+          "con_oiii": 2
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 168,
+          "con_ha": 21,
+          "con_oiii": 3
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 445,
+          "con_ha": 67,
+          "con_oiii": 11
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 1321,
+          "con_ha": 201,
+          "con_oiii": 31
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 779,
+          "con_ha": 128,
+          "con_oiii": 22
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 331,
+          "con_ha": 53,
+          "con_oiii": 12
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 277,
+          "con_ha": 72,
+          "con_oiii": 6
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 180,
+          "con_ha": 45,
+          "con_oiii": 6
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
   },
   {
    "name": "M46",
@@ -3502,7 +3639,150 @@
    "constellation": "Orion",
    "archetype": "reflection",
    "physics": "Nebulosa a riflessione in Orione, polvere illuminata da due stelle giovani. Nessuna riga. Nel campo ci sono anche archi di emissione deboli, ma il soggetto e' la riflessione.",
-   "physics_confidence": "media"
+   "physics_confidence": "media",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 1.5,
+     "valore_R": 230.7,
+     "utile_R": 72.6,
+     "fondo_R": 27.4,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 1.5° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 1.5–2° ha il 90° percentile 8,42 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (8′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS+SHASSA",
+     "beam_arcmin": 8,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 49.2,
+        "p90_R": 53.6
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 50.5,
+        "p90_R": 73.6
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 53.7,
+        "p90_R": 87.6
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 56.3,
+        "p90_R": 133.5
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 59.8,
+        "p90_R": 240.1
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 72.6,
+        "p90_R": 230.7
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 78.2,
+        "p90_R": 197.4
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 65.8,
+        "p90_R": 175.7
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 27.4
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "M 78",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 7,
+         "con_ha": 1,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 209,
+         "con_ha": 60,
+         "con_oiii": 17
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 263,
+         "con_ha": 74,
+         "con_oiii": 11
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 247,
+         "con_ha": 82,
+         "con_oiii": 11
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 361,
+         "con_ha": 144,
+         "con_oiii": 13
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 176,
+         "con_ha": 92,
+         "con_oiii": 10
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 94,
+         "con_ha": 61,
+         "con_oiii": 7
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 132,
+         "con_ha": 85,
+         "con_oiii": 11
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 362,
+         "con_ha": 220,
+         "con_oiii": 21
+        }
+       ]
+      }
+     }
+    }
+   }
   },
   {
    "name": "M79",
@@ -5591,7 +5871,144 @@
    "constellation": "Perseus",
    "archetype": "reflection",
    "physics": "Nebulosa a riflessione dentro una nube molecolare attiva, con getti Herbig-Haro che emettono in Ha. Il soggetto e' la polvere azzurra: banda larga profonda, e l'Ha solo se vuoi i getti.",
-   "physics_confidence": "media"
+   "physics_confidence": "media",
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 4,
+         "p90_R": 5.2
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 4.4,
+         "p90_R": 5.3
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 4.3,
+         "p90_R": 5.2
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 4.4,
+         "p90_R": 5.8
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 4.5,
+         "p90_R": 6.4
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 5.1,
+         "p90_R": 7.9
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 5.5,
+         "p90_R": 10.3
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 6,
+         "p90_R": 13.4
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 5
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "NGC 1333",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 12,
+          "con_ha": 2,
+          "con_oiii": 1
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 146,
+          "con_ha": 36,
+          "con_oiii": 8
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 164,
+          "con_ha": 37,
+          "con_oiii": 11
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 164,
+          "con_ha": 33,
+          "con_oiii": 6
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 251,
+          "con_ha": 44,
+          "con_oiii": 11
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 168,
+          "con_ha": 33,
+          "con_oiii": 9
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 62,
+          "con_ha": 20,
+          "con_oiii": 3
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 74,
+          "con_ha": 22,
+          "con_oiii": 5
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 84,
+          "con_ha": 24,
+          "con_oiii": 5
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
   },
   {
    "name": "NGC 1499",
@@ -5912,7 +6329,150 @@
    ],
    "type": "reflection",
    "constellation": "Orion",
-   "archetype": "reflection"
+   "archetype": "reflection",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 0.5,
+     "valore_R": 4108.9,
+     "utile_R": 108,
+     "fondo_R": 49.1,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 0.5° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 0.5–0.75° ha il 90° percentile 83,68 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (8′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS+SHASSA",
+     "beam_arcmin": 8,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 243.2,
+        "p90_R": 352.5
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 123.4,
+        "p90_R": 775.4
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 108,
+        "p90_R": 4108.9
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 92.2,
+        "p90_R": 1028.6
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 85.9,
+        "p90_R": 163
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 79.1,
+        "p90_R": 170.6
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 73.3,
+        "p90_R": 191.5
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 62.4,
+        "p90_R": 100.8
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 49.1
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "NGC 1977",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 9,
+         "con_ha": 2,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 159,
+         "con_ha": 64,
+         "con_oiii": 11
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 247,
+         "con_ha": 124,
+         "con_oiii": 19
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 778,
+         "con_ha": 429,
+         "con_oiii": 82
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 2015,
+         "con_ha": 1170,
+         "con_oiii": 203
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 1061,
+         "con_ha": 649,
+         "con_oiii": 124
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 381,
+         "con_ha": 224,
+         "con_oiii": 39
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 563,
+         "con_ha": 390,
+         "con_oiii": 71
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 722,
+         "con_ha": 457,
+         "con_oiii": 53
+        }
+       ]
+      }
+     }
+    }
+   }
   },
   {
    "name": "Simeis 147",
@@ -6814,6 +7374,143 @@
     "oggetto": "nu Scorpii",
     "magnitudine_stella": "V 4.0",
     "nota": "Stessa cosa della Iris: il 3.9 di catalogo e' nu Scorpii, la stella che illumina la Testa di Cavallo Blu. Derivarne una brillanza superficiale darebbe 19.16, e sarebbe la stella spalmata sull'area della nebulosa."
+   },
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 27.4,
+         "p90_R": 28.9
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 25.2,
+         "p90_R": 28.4
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 18,
+         "p90_R": 25.2
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 15.3,
+         "p90_R": 21.9
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 15.9,
+         "p90_R": 20.4
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 17,
+         "p90_R": 24.3
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 17.1,
+         "p90_R": 25.7
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 16.5,
+         "p90_R": 39.4
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 9.9
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "IC 4592",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 0,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 1,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 1,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 6,
+          "con_ha": 1,
+          "con_oiii": 0
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 24,
+          "con_ha": 9,
+          "con_oiii": 3
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 60,
+          "con_ha": 6,
+          "con_oiii": 1
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 99,
+          "con_ha": 22,
+          "con_oiii": 5
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 135,
+          "con_ha": 26,
+          "con_oiii": 8
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 272,
+          "con_ha": 70,
+          "con_oiii": 7
+         }
+        ]
+       }
+      }
+     }
+    ]
    }
   },
   {
@@ -6833,7 +7530,144 @@
    "constellation": "Ophiuchus",
    "archetype": "reflection",
    "physics": "Complesso di riflessione fra i piu' colorati del cielo, con polvere gialla, azzurra e nebulosita' a emissione. Solo banda larga. Molto basso dall'Italia settentrionale.",
-   "physics_confidence": "media"
+   "physics_confidence": "media",
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 18.6,
+         "p90_R": 24.8
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 14.6,
+         "p90_R": 19.1
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 8.8,
+         "p90_R": 10.4
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 7.9,
+         "p90_R": 9.1
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 8.3,
+         "p90_R": 13.4
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 11.4,
+         "p90_R": 19
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 13.2,
+         "p90_R": 26
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 13.7,
+         "p90_R": 34.5
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 14.2
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "IC 4603",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 0,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 4,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 10,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 27,
+          "con_ha": 3,
+          "con_oiii": 1
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 84,
+          "con_ha": 18,
+          "con_oiii": 5
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 111,
+          "con_ha": 29,
+          "con_oiii": 7
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 113,
+          "con_ha": 35,
+          "con_oiii": 6
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 309,
+          "con_ha": 88,
+          "con_oiii": 12
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 568,
+          "con_ha": 145,
+          "con_oiii": 21
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
   },
   {
    "name": "NGC 6543",
@@ -7103,7 +7937,150 @@
    "constellation": "Cepheus",
    "archetype": "dark_molecular",
    "physics": "Nube oscura in Cefeo, pura estinzione: non emette nulla. Il soggetto e' l'assorbimento contro il fondo stellare, quindi serve banda larga profondissima e gestione maniacale dei gradienti.",
-   "physics_confidence": "media"
+   "physics_confidence": "media",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 2.5,
+     "valore_R": 26.5,
+     "utile_R": 6.9,
+     "fondo_R": 5.9,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 2.5° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 2.5–3.5° ha il 90° percentile 4,49 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (60′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 5.5,
+        "p90_R": 6.4
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 5.9,
+        "p90_R": 7.6
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 6,
+        "p90_R": 8.1
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 5.9,
+        "p90_R": 8.2
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 5.9,
+        "p90_R": 14.4
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 6.2,
+        "p90_R": 18.8
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 6.5,
+        "p90_R": 26.3
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 6.9,
+        "p90_R": 26.5
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 5.9
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "Barnard 150",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 0,
+         "con_ha": 0,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 3,
+         "con_ha": 0,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 26,
+         "con_ha": 3,
+         "con_oiii": 3
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 76,
+         "con_ha": 10,
+         "con_oiii": 3
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 162,
+         "con_ha": 34,
+         "con_oiii": 7
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 83,
+         "con_ha": 22,
+         "con_oiii": 2
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 46,
+         "con_ha": 16,
+         "con_oiii": 3
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 33,
+         "con_ha": 19,
+         "con_oiii": 10
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 12,
+         "con_ha": 8,
+         "con_oiii": 4
+        }
+       ]
+      }
+     }
+    }
+   }
   },
   {
    "name": "IC 5070",
@@ -7197,6 +8174,143 @@
     "oggetto": "HD 200775",
     "magnitudine_stella": "V 7.4",
     "nota": "La magnitudine che i cataloghi riportano per l'Iris e' quella della stella che la illumina, non della nebulosa. Applicando mu = mag + 2.5 log(area) uscirebbe 18.85: un numero perfettamente plausibile, ottenuto misurando l'oggetto sbagliato."
+   },
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 7.5,
+         "p90_R": 11.7
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 4.6,
+         "p90_R": 5.6
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 4.6,
+         "p90_R": 5.5
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 4.4,
+         "p90_R": 5.5
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 4.4,
+         "p90_R": 5.6
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 4.7,
+         "p90_R": 5.8
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 4.7,
+         "p90_R": 6.4
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 5,
+         "p90_R": 8
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 5.7
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "NGC 7023",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 48,
+          "con_ha": 5,
+          "con_oiii": 1
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 529,
+          "con_ha": 98,
+          "con_oiii": 26
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 513,
+          "con_ha": 92,
+          "con_oiii": 17
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 491,
+          "con_ha": 82,
+          "con_oiii": 20
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 786,
+          "con_ha": 105,
+          "con_oiii": 24
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 461,
+          "con_ha": 66,
+          "con_oiii": 14
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 173,
+          "con_ha": 24,
+          "con_oiii": 7
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 150,
+          "con_ha": 24,
+          "con_oiii": 5
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 90,
+          "con_ha": 22,
+          "con_oiii": 5
+         }
+        ]
+       }
+      }
+     }
+    ]
    }
   },
   {
@@ -7345,7 +8459,150 @@
    ],
    "type": "reflection",
    "constellation": "Cepheus",
-   "archetype": "reflection"
+   "archetype": "reflection",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 1,
+     "valore_R": 28.7,
+     "utile_R": 19.6,
+     "fondo_R": 9.5,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 1° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 1–1.5° ha il 90° percentile 3,02 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (60′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 19.2,
+        "p90_R": 28.2
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 21.6,
+        "p90_R": 35
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 20.8,
+        "p90_R": 32.9
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 19.9,
+        "p90_R": 28.4
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 19.6,
+        "p90_R": 28.7
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 17.1,
+        "p90_R": 38.7
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 15.7,
+        "p90_R": 40
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 12.8,
+        "p90_R": 41.7
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 9.5
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "NGC 7129",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 52,
+         "con_ha": 24,
+         "con_oiii": 5
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 205,
+         "con_ha": 92,
+         "con_oiii": 14
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 97,
+         "con_ha": 49,
+         "con_oiii": 3
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 83,
+         "con_ha": 37,
+         "con_oiii": 2
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 76,
+         "con_ha": 46,
+         "con_oiii": 12
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 33,
+         "con_ha": 29,
+         "con_oiii": 10
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 10,
+         "con_ha": 8,
+         "con_oiii": 2
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 3,
+         "con_ha": 3,
+         "con_oiii": 0
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 31,
+         "con_ha": 14,
+         "con_oiii": 1
+        }
+       ]
+      }
+     }
+    }
+   }
   },
   {
    "name": "Sh2-132",
@@ -7426,7 +8683,150 @@
    ],
    "type": "reflection",
    "constellation": "Cepheus",
-   "archetype": "reflection"
+   "archetype": "reflection",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 0.5,
+     "valore_R": 11.5,
+     "utile_R": 7.8,
+     "fondo_R": 5.5,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 0.5° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 0.5–0.75° ha il 90° percentile 2,09 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (60′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 8.3,
+        "p90_R": 9.2
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 8.1,
+        "p90_R": 10.5
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 7.8,
+        "p90_R": 11.5
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 7.6,
+        "p90_R": 10.5
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 7.9,
+        "p90_R": 11.6
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 7.7,
+        "p90_R": 10.4
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 6.8,
+        "p90_R": 12.5
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 6,
+        "p90_R": 17.5
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 5.5
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "VDB 152",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 2,
+         "con_ha": 0,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 24,
+         "con_ha": 10,
+         "con_oiii": 4
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 31,
+         "con_ha": 16,
+         "con_oiii": 4
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 71,
+         "con_ha": 51,
+         "con_oiii": 17
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 177,
+         "con_ha": 135,
+         "con_oiii": 46
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 93,
+         "con_ha": 72,
+         "con_oiii": 19
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 49,
+         "con_ha": 38,
+         "con_oiii": 11
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 42,
+         "con_ha": 26,
+         "con_oiii": 10
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 21,
+         "con_ha": 14,
+         "con_oiii": 3
+        }
+       ]
+      }
+     }
+    }
+   }
   },
   {
    "name": "NGC 7293",
@@ -7493,7 +8893,144 @@
    ],
    "type": "dark",
    "constellation": "Cepheus",
-   "archetype": "dark_molecular"
+   "archetype": "dark_molecular",
+   "fotometria": {
+    "rifiutate": [
+     {
+      "grandezza": "ha_del_campo",
+      "valore": null,
+      "fonte": "astrobin",
+      "controllo": "la pratica usa l'Hα nella maggioranza da un raggio del campo in su, e li' la mappa vede emissione",
+      "ragione": "la pratica non arriva alla maggioranza a nessun raggio fino a 3.5°: l'Hα del campo non entra nella tecnica di chi riprende questo oggetto",
+      "grezzi": {
+       "anelli": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "mediana_R": 3.4,
+         "p90_R": 3.8
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "mediana_R": 3,
+         "p90_R": 3.5
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "mediana_R": 3,
+         "p90_R": 3.7
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "mediana_R": 3.1,
+         "p90_R": 3.8
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "mediana_R": 3.2,
+         "p90_R": 4
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "mediana_R": 3.2,
+         "p90_R": 4.5
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "mediana_R": 3.3,
+         "p90_R": 4.6
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "mediana_R": 3.4,
+         "p90_R": 4.9
+        }
+       ],
+       "fondo": {
+        "da": 4,
+        "a": 6,
+        "mediana_R": 3.3
+       },
+       "pratica": {
+        "del": "2026-10-14",
+        "soggetto": "LDN 1251",
+        "fasce": [
+         {
+          "da": 0,
+          "a": 0.25,
+          "immagini": 1,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.25,
+          "a": 0.5,
+          "immagini": 5,
+          "con_ha": 0,
+          "con_oiii": 0
+         },
+         {
+          "da": 0.5,
+          "a": 0.75,
+          "immagini": 26,
+          "con_ha": 1,
+          "con_oiii": 1
+         },
+         {
+          "da": 0.75,
+          "a": 1,
+          "immagini": 66,
+          "con_ha": 3,
+          "con_oiii": 0
+         },
+         {
+          "da": 1,
+          "a": 1.5,
+          "immagini": 196,
+          "con_ha": 20,
+          "con_oiii": 6
+         },
+         {
+          "da": 1.5,
+          "a": 2,
+          "immagini": 103,
+          "con_ha": 13,
+          "con_oiii": 4
+         },
+         {
+          "da": 2,
+          "a": 2.5,
+          "immagini": 34,
+          "con_ha": 5,
+          "con_oiii": 2
+         },
+         {
+          "da": 2.5,
+          "a": 3.5,
+          "immagini": 56,
+          "con_ha": 4,
+          "con_oiii": 1
+         },
+         {
+          "da": 3.5,
+          "a": 90,
+          "immagini": 84,
+          "con_ha": 29,
+          "con_oiii": 7
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
   },
   {
    "name": "NGC 7380",
@@ -8109,6 +9646,322 @@
     }
    },
    "senza_innesto": "dalla voce IC 1848 di OpenNGC il record prende il nome, non i dati: LBN 667, la sigla della nebulosa (W5 = Sh2-199 = LBN 667), OpenNGC la mette su IC 1848, tipo «Cl+N», 40′×10′, magnitudine 6,5 — la magnitudine e il tipo sono dell'ammasso, non dei 150′×75′ della nebulosa. IC 1848 porta alla nebulosa intera, come si usa in astrofotografia (Alessandro, 24 settembre 2026)."
+  },
+  {
+   "name": "NGC 2023",
+   "aliases": [
+    "LBN 954"
+   ],
+   "ra_deg": 85.41,
+   "dec_deg": -2.259,
+   "size_arcmin": [
+    10,
+    8
+   ],
+   "type": "reflection",
+   "constellation": "Orion",
+   "archetype": "reflection",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 0,
+     "valore_R": 381.9,
+     "utile_R": 148.6,
+     "fondo_R": 48.6,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 0° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 0–0.25° ha il 90° percentile 7,86 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (8′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS+SHASSA",
+     "beam_arcmin": 8,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 148.6,
+        "p90_R": 381.9
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 283.1,
+        "p90_R": 492.5
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 156.2,
+        "p90_R": 370
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 88.8,
+        "p90_R": 256.5
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 68.2,
+        "p90_R": 200.7
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 60.3,
+        "p90_R": 116.1
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 66,
+        "p90_R": 88.9
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 70.5,
+        "p90_R": 156.3
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 48.6
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "NGC 2023",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 13,
+         "con_ha": 10,
+         "con_oiii": 3
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 528,
+         "con_ha": 392,
+         "con_oiii": 76
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 558,
+         "con_ha": 420,
+         "con_oiii": 62
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 784,
+         "con_ha": 593,
+         "con_oiii": 94
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 1942,
+         "con_ha": 1460,
+         "con_oiii": 260
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 1077,
+         "con_ha": 837,
+         "con_oiii": 123
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 400,
+         "con_ha": 307,
+         "con_oiii": 55
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 605,
+         "con_ha": 429,
+         "con_oiii": 65
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 740,
+         "con_ha": 473,
+         "con_oiii": 55
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "NGC 6914",
+   "aliases": [
+    "LBN 274"
+   ],
+   "ra_deg": 306.1804,
+   "dec_deg": 42.4826,
+   "size_arcmin": [
+    3,
+    3
+   ],
+   "type": "reflection",
+   "constellation": "Cygnus",
+   "archetype": "reflection",
+   "fotometria": {
+    "ha_del_campo": {
+     "raggio_deg": 0,
+     "valore_R": 187.7,
+     "utile_R": 135.7,
+     "fondo_R": 61.3,
+     "unita": "R",
+     "banda": "H-alpha 6563",
+     "stato": "limite_inferiore",
+     "grandezza": "l'H-alpha del campo che entra nell'inquadratura da questo raggio, la mezza diagonale del campo: il 90° percentile (valore_R) e la mediana (utile_R) dell'anello che comincia qui, contro il fondo regionale (fondo_R)",
+     "derivazione": "Due chiavi. La pratica: da 0° in su, fino a 3.5°, ogni fascia con almeno 20 immagini usa l'Hα o un multibanda nella maggioranza. La fisica: l'anello 0–0.25° ha il 90° percentile 3,06 volte il fondo regionale, oltre il doppio. LIMITE INFERIORE: il fascio della mappa (60′ su questo pixel) diluisce le strutture piu' sottili, quindi la brillanza vera e' almeno questa e le ore che ne escono sono al piu' quelle.",
+     "fonte": "finkbeiner2003",
+     "fonte_della_pratica": "astrobin",
+     "survey": "WHAM+VTSS",
+     "beam_arcmin": 60,
+     "grezzi": {
+      "anelli": [
+       {
+        "da": 0,
+        "a": 0.25,
+        "mediana_R": 135.7,
+        "p90_R": 187.7
+       },
+       {
+        "da": 0.25,
+        "a": 0.5,
+        "mediana_R": 153.1,
+        "p90_R": 193.3
+       },
+       {
+        "da": 0.5,
+        "a": 0.75,
+        "mediana_R": 126.9,
+        "p90_R": 196.1
+       },
+       {
+        "da": 0.75,
+        "a": 1,
+        "mediana_R": 125.1,
+        "p90_R": 176.3
+       },
+       {
+        "da": 1,
+        "a": 1.5,
+        "mediana_R": 119.9,
+        "p90_R": 168.3
+       },
+       {
+        "da": 1.5,
+        "a": 2,
+        "mediana_R": 113.4,
+        "p90_R": 236.4
+       },
+       {
+        "da": 2,
+        "a": 2.5,
+        "mediana_R": 102.7,
+        "p90_R": 235.1
+       },
+       {
+        "da": 2.5,
+        "a": 3.5,
+        "mediana_R": 79.7,
+        "p90_R": 221
+       }
+      ],
+      "fondo": {
+       "da": 4,
+       "a": 6,
+       "mediana_R": 61.3
+      },
+      "pratica": {
+       "del": "2026-10-14",
+       "soggetto": "NGC 6914",
+       "fasce": [
+        {
+         "da": 0,
+         "a": 0.25,
+         "immagini": 9,
+         "con_ha": 4,
+         "con_oiii": 0
+        },
+        {
+         "da": 0.25,
+         "a": 0.5,
+         "immagini": 116,
+         "con_ha": 68,
+         "con_oiii": 15
+        },
+        {
+         "da": 0.5,
+         "a": 0.75,
+         "immagini": 124,
+         "con_ha": 83,
+         "con_oiii": 15
+        },
+        {
+         "da": 0.75,
+         "a": 1,
+         "immagini": 147,
+         "con_ha": 102,
+         "con_oiii": 28
+        },
+        {
+         "da": 1,
+         "a": 1.5,
+         "immagini": 244,
+         "con_ha": 198,
+         "con_oiii": 53
+        },
+        {
+         "da": 1.5,
+         "a": 2,
+         "immagini": 142,
+         "con_ha": 114,
+         "con_oiii": 44
+        },
+        {
+         "da": 2,
+         "a": 2.5,
+         "immagini": 69,
+         "con_ha": 53,
+         "con_oiii": 18
+        },
+        {
+         "da": 2.5,
+         "a": 3.5,
+         "immagini": 171,
+         "con_ha": 143,
+         "con_oiii": 34
+        },
+        {
+         "da": 3.5,
+         "a": 90,
+         "immagini": 416,
+         "con_ha": 341,
+         "con_oiii": 83
+        }
+       ]
+      }
+     }
+    }
+   }
   }
  ],
  "fonti": {
@@ -8146,6 +9999,11 @@
    "dato": "NASA LAMBDA, Halpha_fwhm06_1024.fits e Halpha_mask_fwhm06_1024.fits, HEALPix NSIDE 1024 NESTED. Le unita' vengono dall'header (BUNIT = R, TUNIT1 = R, «Map is in Rayleighs»), non dalla pagina. Nel repository entrano solo i numeri per oggetto: la mappa resta fuori.",
    "attenzione": "Quattro. (1) L'header NON dichiara il sistema di coordinate: verificato con la mappa stessa, una scansione in latitudine galattica da' 8,06 R a b = 10° contro 0,14 al polo sud. (2) La mappa misura l'Ha TOTALE sulla linea di vista: per un oggetto si sottrae la mediana di un anello fra due e tre raggi. (3) Il beam efficace non e' sempre il nominale: misurato su 1012 planetarie di Frew 2013, vale 5,8′ dove c'e' solo SHASSA, 7,1′ con WHAM, 8,0′ con tutti e tre; dove SHASSA non arriva — sopra dec +15° — il campione di Frew ha un oggetto solo e la mappa e' piatta fino a 16′, quindi si usa il beam di WHAM, 60′, senza calibrarlo. (4) La diluizione (beam/diametro)² separa i tre stati a 2 e a 4: oltre, il numero non e' piu' un limite ma rumore con un'etichetta.",
    "fonti_primarie": "WHAM, VTSS e SHASSA; la maschera dichiara per ogni pixel quali sono stati usati."
+  },
+  "astrobin": {
+   "citazione": "AstroBin (astrobin.com), la pratica di chi riprende: immagini pubblicate, coi filtri e il campo risolto.",
+   "dato": "la ricerca delle immagini (/api/v2/images/image-search/), letta in sola lettura dalla scheda del browser dove l'utente era gia' entrato; i conteggi per soggetto e per fascia di raggio del campo (`field_radius`), con la data. Il raggio del campo di AstroBin e' la mezza diagonale dell'immagine risolta: verificato su sei immagini di vdB 152, scala per mezza diagonale in pixel, entro il millesimo di grado.",
+   "attenzione": "Tre. (1) La pratica dice che cosa si fa, non che cosa serve: va accanto ai numeri del motore, non al loro posto. (2) I filtri sono quelli dichiarati da chi pubblica: si contano solo le immagini con almeno un tipo di filtro, e un multibanda conta come Hα, perche' l'Hα lo fa passare. (3) Un soggetto e' quello che il risolutore riconosce nel campo: oltre qualche grado l'oggetto e' un pezzo di un panorama, ed e' per questo che la regola si ferma a 3.5°."
   }
  }
 }

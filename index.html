@@ -1675,6 +1675,13 @@ td.archcell{max-width:120px}
             quarantanove quella dentro l'<b>isofota 25</b>, cioè il disco intero. Sono valori
             <i>osservati</i>, non corretti per arrossamento né per inclinazione: il fotone che
             conta è quello che arriva al telescopio.</li>
+          <li><b>L'Hα del campo di sette riflessioni e nubi oscure</b> — da quale raggio del campo l'emissione che
+            le circonda entra nell'inquadratura. Due chiavi insieme: la pratica di chi riprende, da
+            <a href="https://www.astrobin.com" target="_blank" rel="noopener"><b>AstroBin</b></a> — per fascia di
+            raggio del campo, quante immagini usano l'Hα o un filtro multibanda —, e la mappa di <b>Finkbeiner 2003</b>,
+            dove l'anello che comincia a quel raggio deve avere il 90° percentile almeno doppio del fondo regionale.
+            La brillanza della mappa è un minimo, perché il beam diluisce i filamenti: le ore che ne escono sono al
+            più quelle.</li>
         </ul>
         <p class="small muted" style="max-width:74ch;margin-top:8px">
           Un ringraziamento al servizio <b>VizieR</b> del CDS di Strasburgo
@@ -4498,9 +4505,19 @@ function stradeDellaScheda(tg,budget,dual,dv){
      da qui — voci, stessa ripresa, bloccate, strada del catalogo, strada prescritta — legge il
      nome risolto; la strada della scheda non si tocca (`nomeDellaScheda` lo conserva). */
   const sullaMatrice=!!(dv&&dv.c&&dv.c.cfa_penalty);
+  /* LA STRADA DEL CAMPO SOTTO IL SUO RAGGIO NON E' UNA VOCE (14 ottobre 2026): l'Hα del campo resta fuori dal
+     fotogramma, e la strada che lo aggiunge descriverebbe una ripresa che il banco non fa. Non sparisce: si elenca col
+     motivo e coi due raggi (`fuoriCampo`), come le altre strade che non sono voci. */
+  const fuoriCampo=[];
+  const nelCampo=r0=>{
+    if(dentroIlCampo(r0.campo_minimo_deg,dv)) return true;
+    fuoriCampo.push({road:r0.id,name:(sullaMatrice&&r0.nome_su_matrice)||r0.name,tecnica:r0.tecnica||null,
+      motivo:'campo_stretto',raggio_deg:raggioDelCampo(dv),raggio_minimo_deg:r0.campo_minimo_deg});
+    return false;
+  };
   /* LA STRADA DEL SOGGETTO SENZA LA SUA SCALA NON E' UNA VOCE (passo 6): esce da qui, e sta fra le non prezzabili col
      motivo — la stessa lista delle voci generate, che la pagina mostra «non disponibile». */
-  const roads=tg.roads.concat(gen.strade).filter(r0=>{
+  const roads=tg.roads.filter(nelCampo).concat(gen.strade).filter(r0=>{
     const p=partiDellaStrada(budget,r0,tg.archetype);
     if(!(p.RGB&&p.RGB.prestito)) return true;
     gen.nonPrezzabili.push({id:r0.id,name:(sullaMatrice&&r0.nome_su_matrice)||r0.name,tecnica:r0.tecnica||null,variante:null,
@@ -4701,7 +4718,8 @@ function stradeDellaScheda(tg,budget,dual,dv){
     coppiaImposta=true;
   }
   return {roads,hasFilter,mancantiDi,cand0,cand0Perc,filterLimited,cand:candF,spezzate,coppiaImposta,unaPassata,muteConGemella,laClasse,
-          generazione:{classe:gen.classe,generate:gen.generate,nonPrezzabili:gen.nonPrezzabili,saltate:gen.saltate},stessaRipresa};
+          generazione:{classe:gen.classe,generate:gen.generate,nonPrezzabili:gen.nonPrezzabili,saltate:gen.saltate},stessaRipresa,
+          fuoriCampo};
 }
 
 function prescribe(e,hours,dv,panels,opts){
@@ -4709,7 +4727,7 @@ function prescribe(e,hours,dv,panels,opts){
   const hoursTot=hours;
   hours=hours/P;                    // le ore che restano a ciascun pannello
   const tg=e.tg, budget=e.budget, dual=e.dual;
-  const {roads,hasFilter,mancantiDi,cand0,cand0Perc,filterLimited,cand,spezzate,coppiaImposta,unaPassata,generazione,stessaRipresa,muteConGemella,laClasse}=
+  const {roads,hasFilter,mancantiDi,cand0,cand0Perc,filterLimited,cand,spezzate,coppiaImposta,unaPassata,generazione,stessaRipresa,muteConGemella,laClasse,fuoriCampo}=
     stradeDellaScheda(tg,budget,dual,dv);
   /* NESSUNA STRADA INVISIBILE (Alessandro, 14 settembre 2026). Una strada che esiste nei dati e non si vede
      da nessuna parte e' invisibile, non esclusa. Le strade che non sono voci, stessa ripresa o bloccate
@@ -4750,7 +4768,7 @@ function prescribe(e,hours,dv,panels,opts){
             roadChoices:[],raccomandataAssente:null,roadPicked:false,roadAuto:null,roadRequested:chiesta,
             roadRequestedBlocked:chiesta?(bloccateQui.find(b=>b.road===chiesta)||null):null,
             missing:mancano,missingPerche:mancano.map(pm),missingOff:spenteQui,filterLimited:false,
-            blocked:bloccateQui,starsDropped:[],coppiaImposta,stradeEscluse,
+            blocked:bloccateQui,starsDropped:[],coppiaImposta,stradeEscluse,fuoriCampo,
             alloc:[],spent:0,unused:0,critGroup:null,needed:0,short:0,expect:null,
             hours,hoursTotal:hoursTot,spentTotal:0,panels:P,nights:null,weeks:null};
   }
@@ -4953,7 +4971,12 @@ function prescribe(e,hours,dv,panels,opts){
      (una scheda salvata con un id tolto), quella spezzata dalla regola della coppia, quella con gli
      stessi canali di un'altra. `chosen` non cambia. */
   let roadRequestedSostituita=null;
-  if(voluta&&voluta!=='auto'&&!roadPicked&&!roadRequestedStessaRipresa&&
+  /*  La strada del campo chiesta su un banco dove l'Hα del campo resta fuori: si dice, coi due raggi (14 ottobre 2026). */
+  const chiestaFuoriCampo=voluta&&voluta!=='auto'&&!roadPicked?(fuoriCampo||[]).find(x=>x.road===voluta):null;
+  if(chiestaFuoriCampo)
+    roadRequestedSostituita={chiesta:voluta,nomeChiesta:chiestaFuoriCampo.name,presa:chosen.r.id,motivo:'campo_stretto',
+      con:null,nomeCon:null,raggio_deg:chiestaFuoriCampo.raggio_deg,raggio_minimo_deg:chiestaFuoriCampo.raggio_minimo_deg};
+  else if(voluta&&voluta!=='auto'&&!roadPicked&&!roadRequestedStessaRipresa&&
      !bloccate.some(b=>b.road===voluta&&(b.needs||[]).length)){
     const esclusa=stradeEscluse.find(x=>x.road===voluta), esiste=roads.find(x=>x.r.id===voluta);
     const senzaScala=((generazione||{}).nonPrezzabili||[]).find(x=>x.id===voluta);
@@ -4977,7 +5000,7 @@ function prescribe(e,hours,dv,panels,opts){
             parziale:(dv&&dv.parziale)?dv.parziale.slice():[],
             roadChoices:[],roadPicked:false,roadAuto:null,roadRequested:voluta||null,
             missing,missingPerche:missing.map(percheManca),missingOff:spente,filterLimited,
-            blocked:bloccate,starsDropped,coppiaImposta,stradeEscluse,
+            blocked:bloccate,starsDropped,coppiaImposta,stradeEscluse,fuoriCampo,
             alloc:[],spent:0,unused:0,critGroup:null,needed:0,short:0,expect:null,
             hours,hoursTotal:hoursTot,spentTotal:0,panels:P,nights:null,weeks:null};
   const critG=groups.find(g=>g.critical)||groups[0];
@@ -5142,6 +5165,8 @@ function prescribe(e,hours,dv,panels,opts){
              Serve all'interfaccia per dire «stai scegliendo tu» senza ricalcolare
              niente, e per mostrare che cosa consiglierebbe l'automatico. */
           roadPicked,roadAuto:auto.r.id,roadRequested:voluta||null,roadRequestedStessaRipresa,roadRequestedSostituita,stradeEscluse,
+          /* la strada dell'Hα del campo su un banco piu' stretto del suo raggio: col motivo e coi due raggi */
+          fuoriCampo,
           /* La strada «stelle» che l'automatico ha deciso e la gemella che la consegna, col motivo; e il limite della
              strada consegnata, quando e' una strada «stelle» senza gemella: il motivo viaggia col risultato. */
           roadAutoRisolta,limitiDellaStrada:chosen.limiti||[],
@@ -5888,12 +5913,100 @@ function nomeDellaStradaTipica(ar,suMatrice,senzaRGB){
 function portaStelleTipica(ar){
   return nomeDellaStradaTipica(ar)!==nomeDellaStradaTipica(ar,false,true);
 }
+/*  L'Hα DEL CAMPO (Alessandro, 14 ottobre 2026: «la vdB 152 è sì un oggetto LRGB, ma ha anche emissioni soprattutto in
+    Hα, ma solo quando viene ripresa a largo campo»).
+    ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+    La classe dice che cosa si insegue sull'oggetto, e una riflessione o una nube oscura si riprende in LRGB. Ma a campo
+    largo nell'inquadratura entra anche quello che le sta intorno — i filamenti che passano accanto alla testa di
+    vdB 152, l'Anello di Barnard a un grado e mezzo da M 78, M42 a mezzo grado da NGC 1977 — e li' la tecnica cambia.
+    IL DATO e' per oggetto (`fotometria.ha_del_campo`, tools/ingerisci-ha-del-campo.js), e dice DA QUALE RAGGIO DEL
+    CAMPO succede, con due chiavi che devono stare insieme: la pratica — su AstroBin, da quel raggio in su ogni fascia
+    usa l'Hα nella maggioranza delle immagini, mentre sui puliti (NGC 7023, M 45, LDN 1251) non si passa mai il 32 % —
+    e la fisica — sulla mappa di Finkbeiner l'anello che comincia li' ha il 90° percentile almeno doppio del fondo
+    regionale. Il raggio e' la mezza diagonale, la stessa grandezza che AstroBin chiama raggio del campo.
+    IL BANCO entra col suo fotogramma (`raggioDelCampo`): da quel raggio in su la scheda ha una strada in piu', «LRGB +
+    Hα del campo» — su matrice «RGB + Hα del campo» —, con l'Hα come aggiunta alla LRGB: la L comanda, e l'aggiunta si
+    paga con ore nuove (`comandaLaL`). Sotto, l'Hα del campo resta fuori dall'inquadratura: la strada non e' una voce, si
+    elenca col perche' (`fuoriCampo`, in `stradeDellaScheda`), e il canale e' morto (`evaluate`). Il gruppo che lo ha
+    gia' a campo stretto — NGC 2023, NGC 6914 — ha il raggio a zero, e la strada c'e' su ogni banco.
+    LE ORE dell'Hα del campo sono quelle dell'Hα additivo di famiglia, la classe dove l'Hα e' un'aggiunta a una LRGB
+    (`CLASSE_DELL_HA_ADDITIVO`), abbassate dove la brillanza del campo ne chiede meno. La brillanza della mappa e' un
+    MINIMO — il fascio, un grado sopra dec +15°, diluisce i filamenti — quindi le ore che ne escono sono un MASSIMO: la
+    misura puo' togliere ore alla famiglia, mai aggiungerne. Su vdB 152 la mappa da' 11,5 R e al riferimento 79 h di
+    pavimento, un tetto vero e inutile, e restano le ore di famiglia; su M 78 l'Anello di Barnard a 231 R ne chiede 3,3
+    di utile invece di 4, e vince la misura. Il riscontro con la pratica: nelle immagini mono di questi oggetti a campo
+    largo l'Hα sta alla L fra 1,0 e 1,6 (mediane, AstroBin, 14 ottobre 2026), e la famiglia la mette a 1,0 sulle
+    riflessioni e a 0,53 sulle nubi oscure. Si torna indietro togliendo i record: senza `ha_del_campo` la scheda e' quella
+    di prima. Sorvegliato da tools/gate-ha-del-campo.js. */
+const CLASSE_DELL_HA_ADDITIVO='spiral_hii';
+const STRADA_DEL_CAMPO='campo_ha';
+const STATI_DEL_CAMPO={misura:true,limite_inferiore:true};
+function recordDelCampo(f){
+  const c=f&&f.ha_del_campo;
+  if(!c||!STATI_DEL_CAMPO[c.stato]) return null;
+  if(!(isFinite(c.raggio_deg)&&c.raggio_deg>=0&&c.valore_R>0&&c.utile_R>0)) return null;
+  return c;
+}
+/*  Il raggio del campo di un banco: la mezza diagonale di un fotogramma, in gradi. Un mosaico non lo allarga: i riquadri
+    servono a coprire l'oggetto, e la scelta di un campo largo e' l'ottica. */
+function raggioDelCampo(dv){
+  return dv&&isFinite(dv.fovX)&&isFinite(dv.fovY)?Math.hypot(dv.fovX,dv.fovY)/2/60:null;
+}
+/*  Senza un banco non si toglie niente: dentro. */
+function dentroIlCampo(minimo,dv){
+  const r=raggioDelCampo(dv);
+  return r==null||!(minimo>0)||r>=minimo-1e-9;
+}
+const _oreDelCampo=new WeakMap();
+function oreDellHaDelCampo(c){
+  if(_oreDelCampo.has(c)) return _oreDelCampo.get(c);
+  const fam=((TG.archetypes[CLASSE_DELL_HA_ADDITIVO]||{}).default_budget||{}).Ha;
+  if(!fam||!(fam.useful>0)) return null;
+  /*  la misura alla configurazione di riferimento, con la ruota del riferimento: e' li' che valgono le ore delle schede,
+      e `evaluate` le porta sul banco col fattore di sempre */
+  const r=refCfg();
+  const mis=conRuotaDiRiferimento(()=>{
+    const el=elementoDelBanco(r.dv), fondo=varRate(rates(r.dv,'Ha',r.sqm),refSubFor('Ha'),0);
+    const ore=R=>oreAllElemento(tassoDiRiga(r.dv,'Ha',R),fondo,el.area);
+    return {floor:ore(c.valore_R),useful:ore(c.utile_R)};
+  });
+  const daMisura=isFinite(mis.useful)&&mis.useful<fam.useful;
+  const useful=daMisura?mis.useful:fam.useful;
+  const floor=Math.min(fam.floor,isFinite(mis.floor)?mis.floor:Infinity,useful);
+  const saturates=daMisura?useful*TETTO_SENZA_SCHEDA:Math.max(fam.saturates||useful*TETTO_SENZA_SCHEDA,useful);
+  const out={floor,useful,saturates,daMisura,famiglia:{floor:fam.floor,useful:fam.useful,saturates:fam.saturates},
+    misura:{floor:mis.floor,useful:mis.useful}};
+  _oreDelCampo.set(c,out);
+  return out;
+}
+/*  La strada e il canale, sulla scheda di un oggetto di catalogo che porta il record. Solo dove la classe riprende in
+    LRGB: e' l'aggiunta a una LRGB che la pratica fa, e una classe a riga l'Hα ce l'ha gia'. */
+function aggiungiLHaDelCampo(ar,strade,budget,c){
+  if(ar.tecnica_tipica!=='LRGB'||!budget.Ha||!(budget.L&&budget.L.useful>0)) return;
+  const ore=oreDellHaDelCampo(c);
+  if(!ore) return;
+  strade.push({id:STRADA_DEL_CAMPO,name:'LRGB + Hα del campo',nome_su_matrice:'RGB + Hα del campo',
+    tecnica:'HaRGB',banda_larga:'soggetto',campo_minimo_deg:c.raggio_deg,
+    when:'Quando il campo è largo abbastanza da prendere l’emissione che sta intorno all’oggetto: l’Hα si aggiunge alla LRGB, non la sostituisce.',
+    pro:'Il soggetto resta quello della LRGB, e intorno compare l’emissione del campo che a campo stretto resta fuori.',
+    contro:'Ore in più su un canale che a campo stretto non serve; la brillanza del campo è un minimo, e le ore dell’Hα sono una stima di famiglia.'});
+  for(const b of ['L','RGB']) if(budget[b]&&budget[b].useful>0&&budget[b].road!=null)
+    budget[b].road=[].concat(budget[b].road,STRADA_DEL_CAMPO);
+  budget.Ha={floor:ore.floor,useful:ore.useful,saturates:ore.saturates,road:STRADA_DEL_CAMPO,
+    haDelCampo:{raggio_minimo_deg:c.raggio_deg,valore_R:c.valore_R,utile_R:c.utile_R,fondo_R:c.fondo_R,stato:c.stato,
+      daMisura:ore.daMisura,classeDiFamiglia:CLASSE_DELL_HA_ADDITIVO},
+    /*  i numeri stanno in `haDelCampo`, le frasi restano fisse: nessun campo porta una frase composta
+        (docs/contratto-del-piano.md, regola 3) */
+    note:'L’Hα del campo: entra nell’inquadratura quando il campo è largo abbastanza, e si aggiunge alla LRGB.',
+    source:'ore dell’Hα additivo di famiglia, abbassate dove la brillanza minima del campo ne chiede meno',
+    confidence:ore.daMisura?'media':'bassa'};
+}
 function synthTarget(cat,archKey){
   const key=archKey||cat.archetype;
   const ar=TG.archetypes[key];
   if(!ar||!cat) return null;
   const crit=(Object.entries(ar.default_budget).find(([,v])=>v.critical)||['—'])[0];
-  return {
+  const tg={
     id:'cat_'+String(cat.name).toLowerCase().replace(/[^a-z0-9]+/g,'-'),
     names:[cat.name].concat(cat.aliases||[]),
     constellation:cat.constellation||'',
@@ -5937,6 +6050,10 @@ function synthTarget(cat,archKey){
     order:ar.order||'', expect:ar.expect?JSON.parse(JSON.stringify(ar.expect)):{},
     traps:(ar.traps||[]).slice()
   };
+  /*  L'Hα del campo, dove l'oggetto ne porta la misura: una strada e un canale in piu', che il banco apre o lascia fuori. */
+  const campo=recordDelCampo(cat.fotometria);
+  if(campo) aggiungiLHaDelCampo(ar,tg.roads,tg.budget,campo);
+  return tg;
 }
 
 /* ---------- PIANO DI ACQUISIZIONE ----------
@@ -8410,6 +8527,9 @@ function coloreDellaGalassia(f){
 function oreDallaFotometria(tg,dv,b,v,arch,sqm,tsub,modo){
   const famiglia=motivo=>({da:'famiglia',motivo});
   if(!tg||!dv||!v||!(v.useful>0)) return null;
+  /*  l'Hα del campo ha le ore dell'Hα additivo di famiglia, abbassate dalla brillanza minima del campo dove ne chiede
+      meno (`oreDellHaDelCampo`): la scheda le porta gia', e `evaluate` le converte come ogni canale di scheda */
+  if(v.haDelCampo) return famiglia('ha_del_campo');
   const f=tg.fotometria||{}, strada=stradaFotometrica(arch), matrice=!!(dv.c&&dv.c.cfa_penalty);
   const el=elementoDelBanco(dv);
   if(strada==='continuo'&&f.mu_d25_v&&isFinite(f.mu_d25_v.valore)&&f.bordo_d25_b&&isFinite(f.bordo_d25_b.valore)){
@@ -8509,7 +8629,8 @@ const MOTIVI_DELLE_ORE={
   planetaria_dopo_il_cielo:'le planetarie aspettano il ritorno sotto il cielo',
   stelle_risolte:'stelle risolte: le ore non vengono da una brillanza',
   banda_non_singola:'la banda non porta una riga sola',
-  tasso_non_calcolabile:'il tasso non si calcola su questo banco'};
+  tasso_non_calcolabile:'il tasso non si calcola su questo banco',
+  ha_del_campo:'per l\'Hα del campo quelle dell\'Hα additivo, abbassate dove la brillanza minima del campo ne chiede meno'};
 function provenienzaDelleOre(ore){
   if(!ore) return 'di famiglia';
   const n=(x,u)=>u==='R'?fmt(x,x<10?1:0)+' R':fmt(x,2)+' '+(u==='mag/arcsec²'?'mag/arcsec²':u);
@@ -12004,6 +12125,14 @@ function evaluate(tg,dv,site,np,state,cov){
     if(sullaMatrice&&b==='L'){
       budget[b]={...v, floor:0, useful:0, saturates:0, factor:null, skyFactor:null,
                  tsub:tsubFor(b), factorValidated:false, critical:false, assenteSuMatrice:true};
+      continue;
+    }
+    /*  L'Hα DEL CAMPO SOTTO IL SUO RAGGIO NON C'E' (14 ottobre 2026): l'emissione che lo porta resta fuori dal fotogramma.
+        Il canale resta nel budget, morto e coi due raggi; la sua strada si elenca in `stradeDellaScheda`. */
+    if(v.haDelCampo&&!dentroIlCampo(v.haDelCampo.raggio_minimo_deg,dv)){
+      budget[b]={...v, floor:0, useful:0, saturates:0, factor:null, skyFactor:null,
+                 tsub:tsubFor(b), factorValidated:false,
+                 fuoriCampo:{raggio_deg:raggioDelCampo(dv),raggio_minimo_deg:v.haDelCampo.raggio_minimo_deg}};
       continue;
     }
     const f=timeFactor(dv,b,tsubDiMisura(b),0,modoDiMisura(b));
@@ -16936,6 +17065,15 @@ function testoStelleNonRiprendibili(p){
   return 'con questa ruota la passata sulle stelle non si può fare'+(perche?', '+perche:'');
 }
 
+/* «L'Hα DEL CAMPO RESTA FUORI» (14 ottobre 2026), dai due raggi del motore. Il raggio del banco si scrive per difetto:
+   0,498° e' sotto la soglia di 0,5°, e scritto «0,50» si leggerebbe come se ci fosse. */
+function testoDelCampoStretto(x){
+  const banco=x&&isFinite(x.raggio_deg)?Math.floor(x.raggio_deg*100)/100:null;
+  return 'l’Hα del campo entra nell’inquadratura da '+fmt(x.raggio_minimo_deg,2)+'° di raggio del campo'
+    +(banco!=null?', e questo banco ne ha '+fmt(banco,2)+'° (mezza diagonale del sensore)':'')
+    +': a questo campo la tecnica resta quella della classe';
+}
+
 /* IL PERCHE' DELLA RACCOMANDATA, dai codici del motore (15 settembre 2026). Il motore dice da quale via esce e con che
    margine la classe la sceglie; le parole stanno qui. Il Ponte scrive le sue per gli stessi codici, nei suoi resx: si
    decide una volta che cosa dire, due volte come dirlo. Un codice che questa pagina non conosce non diventa una frase.
@@ -16991,7 +17129,9 @@ function rxRoadHtml(pr){
   const stesse=pr.stessaRipresa||[];
   /* E le strade escluse col loro motivo: una strada che esiste nei dati si vede, anche quando non si prende. */
   const escluse=pr.stradeEscluse||[];
-  if(!pr.roadChoices||pr.roadChoices.length+chiuse.length+nonPrezzabili.length+stesse.length+escluse.length<2){
+  /* E la strada dell'Hα del campo su un banco piu' stretto del suo raggio: si vede, col perche' e coi due raggi. */
+  const fuoriCampo=pr.fuoriCampo||[];
+  if(!pr.roadChoices||pr.roadChoices.length+chiuse.length+nonPrezzabili.length+stesse.length+escluse.length+fuoriCampo.length<2){
     /* UN MENU DA UNA CARTA NON HA NIENTE DA RACCOMANDARE, ma il perche' di un'assenza non e' un'informazione sul menu: e'
        sulla classe o sull'attrezzatura, e si scrive lo stesso (regia, 15 settembre 2026). Misurato su eb76bc7: 9 assenze
        su 40 non si vedevano, tutte la classe IFN.
@@ -17059,6 +17199,11 @@ function rxRoadHtml(pr){
       <div class="rc-h"><b>${esc(b.name||b.road)}</b></div><div class="rc-p"><span class="pill p-dim">non disponibile</span></div>
       <div class="rc-n"><span class="p-warn">${(b.perche||[]).map(testoDelMotivo).join(' · ')}</span></div>
     </div>`;
+  /* Fuori campo e' una spiegazione (neutro): il banco non sbaglia niente, l'emissione sta oltre il bordo. */
+  const fuori=x=>`<div class="roadcard lack" aria-disabled="true">
+      <div class="rc-h"><b>${esc(x.name||x.road)}</b></div><div class="rc-p"><span class="pill p-dim">campo stretto</span></div>
+      <div class="rc-n">${testoDelCampoStretto(x)}</div>
+    </div>`;
   const auto=pr.roadChoices.find(c=>c.id===pr.roadAuto);
   const chiesta=pr.roadRequestedBlocked;
   /* Il perche' della raccomandata e' una spiegazione (neutro); un menu senza raccomandata e' un limite dichiarato (giallo). */
@@ -17082,6 +17227,7 @@ function rxRoadHtml(pr){
       ${nonPrezzabili.map(nonPrezzabile).join('')}
       ${stesse.map(stessa).join('')}
       ${escluse.map(esclusa).join('')}
+      ${fuoriCampo.map(fuori).join('')}
     </div>
     ${percheRacc?`<div class="sc-s"><b>${esc(racc.name)}</b> è raccomandata: ${percheRacc}.</div>`:''}
     ${percheAssente?`<div class="sc-s"><span class="p-warn">${percheAssente}</span>.</div>`:''}
@@ -17107,6 +17253,8 @@ function rxRoadHtml(pr){
             ? 'non è disponibile: la scheda non dichiara ancora quante ore servono alla banda larga quando porta il soggetto.'
           : pr.roadRequestedSostituita.motivo==='stessi_canali'
             ? `ha gli stessi canali di <b>${esc(pr.roadRequestedSostituita.nomeCon||pr.roadRequestedSostituita.con||'')}</b>.`
+          : pr.roadRequestedSostituita.motivo==='campo_stretto'
+            ? `con questo banco non c’è: ${testoDelCampoStretto(pr.roadRequestedSostituita)}.`
             : 'con questa ruota non si può prendere.'} La prescrizione qui sotto segue quella che sceglie il motore, <b>${esc(pr.road.name)}</b>.</div>`
       : pr.roadPicked&&!pr.roadAutoSame
       ? `<div class="sc-s">Stai scegliendo tu: con queste ore il motore prenderebbe
