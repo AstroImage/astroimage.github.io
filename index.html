@@ -948,6 +948,26 @@ td.archcell{max-width:120px}
 .vista-oggetti button{font:inherit;font-size:13px;padding:6px 12px;border:0;background:transparent;color:var(--dim);cursor:pointer}
 .vista-oggetti button.on{background:rgba(var(--acc-rgb),.16);color:var(--acc)}
 .vista-oggetti button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+/* I filtri della lista e le intestazioni che ordinano (17 ottobre 2026) */
+.filtri-lista{margin:0 0 var(--s3)}
+.fl-testa{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.fl-apri,.fl-togli{font:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;
+  background:transparent;color:var(--dim);cursor:pointer}
+.fl-apri[aria-expanded="true"],.fl-apri.attivi{color:var(--acc);border-color:var(--acc)}
+.fl-corpo{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+.fl-corpo[hidden]{display:none}
+.fl-gruppo{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fl-nome{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2);font-weight:600;min-width:104px}
+.fl-chip{font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:20px;
+  background:transparent;color:var(--dim);cursor:pointer}
+.fl-chip.on{background:rgba(var(--acc-rgb),.16);border-color:var(--acc);color:var(--acc)}
+.fl-chip:focus-visible,.fl-apri:focus-visible,.fl-togli:focus-visible,button.ordina:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.fl-sel{font:inherit;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg3);color:var(--fg)}
+th button.ordina{font:inherit;text-transform:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;
+  padding:0;cursor:pointer;text-align:inherit}
+th[aria-sort="ascending"] button.ordina,th[aria-sort="descending"] button.ordina{color:var(--acc)}
+button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
+@media (max-width:720px){ .fl-nome{min-width:0;width:100%} }
 .bc-top{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3)}
 .bc-n{font-size:15.5px;font-weight:650}
 .bc-h{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;
@@ -1355,6 +1375,17 @@ td.archcell{max-width:120px}
         </div>
       </div>
       <div class="card-body">
+        <!--  FILTRARE LA LISTA (Alessandro, 17 ottobre 2026): i pulsanti li disegna `renderFiltri`, perche' le loro parole
+              dipendono dalla notte — le ore dichiarate, le costellazioni che ci sono. Valgono per le due viste. -->
+        <div class="filtri-lista">
+          <div class="fl-testa">
+            <button type="button" id="flApri" class="fl-apri" aria-expanded="true" aria-controls="flCorpo"
+              data-tip="Mostra o nasconde i filtri della lista. I filtri tolgono righe e riquadri: l'ordine resta quello che scegli nella tabella.">Filtra</button>
+            <span id="flConta" class="small muted"></span>
+            <button type="button" id="flTogli" class="fl-togli" hidden>togli i filtri</button>
+          </div>
+          <div id="flCorpo" class="fl-corpo"></div>
+        </div>
         <div id="bestNight"></div>
         <div id="tabellaOggetti" hidden>
         <div class="row" style="margin-bottom:16px">
@@ -1372,15 +1403,25 @@ td.archcell{max-width:120px}
         </div>
         <div class="tablewrap">
         <table>
+          <!--  OGNI INTESTAZIONE ORDINA, E PRIMA DI CLICCARE DICE COME (Alessandro, 17 ottobre 2026): il tooltip spiega
+                l'ordine che propone; un secondo clic lo rovescia. Le chiavi le legge `ordinaLista`. -->
           <thead><tr>
-            <th style="width:34%">Oggetto</th>
-            <th class="hide-s">Archetipo</th>
-            <th class="num">Finestra</th>
-            <th class="num hide-s">Inquadratura</th>
-            <th class="num">Fattibilità</th>
-            <th class="num hide-s">Progetto</th>
-            <th style="width:20%">Notte</th>
-            <th class="num">Resa</th>
+            <th style="width:34%" data-ordine="nome"><button type="button" class="ordina"
+              data-tip="Ordina per nome, dalla A alla Z. Un secondo clic rovescia l'ordine.">Oggetto</button></th>
+            <th class="hide-s" data-ordine="classe"><button type="button" class="ordina"
+              data-tip="Ordina per classe dell'oggetto — emissione, planetarie, galassie, ammassi, riflessioni e oscure — e dentro la classe per resa. Un secondo clic rovescia l'ordine.">Archetipo</button></th>
+            <th class="num" data-ordine="ore"><button type="button" class="ordina"
+              data-tip="Ordina per ore utili stanotte, nel canale che decide l'immagine e sopra il tuo orizzonte: prima chi ne ha di più. Un secondo clic rovescia l'ordine.">Finestra</button></th>
+            <th class="num hide-s" data-ordine="inquadratura"><button type="button" class="ordina"
+              data-tip="Ordina per quanto l'oggetto occupa il tuo campo: prima i più grandi rispetto al sensore, con i mosaici in testa. Un secondo clic rovescia l'ordine.">Inquadratura</button></th>
+            <th class="num" data-ordine="fattibilita"><button type="button" class="ordina"
+              data-tip="Ordina per settimane di notti serene che servono a chiudere il progetto: prima i più rapidi. Un secondo clic rovescia l'ordine.">Fattibilità</button></th>
+            <th class="num hide-s" data-ordine="progetto"><button type="button" class="ordina"
+              data-tip="Ordina per ore del progetto pieno su questa configurazione: prima i più economici. Un secondo clic rovescia l'ordine.">Progetto</button></th>
+            <th style="width:20%" data-ordine="notte"><button type="button" class="ordina"
+              data-tip="Ordina per l'ora in cui l'oggetto sta più alto stanotte: nell'ordine in cui la notte li offre, da chi è più alto al tramonto a chi lo è all'alba. In fondo chi stanotte non ha ore utili. Un secondo clic rovescia l'ordine.">Notte</button></th>
+            <th class="num" data-ordine="resa"><button type="button" class="ordina"
+              data-tip="L'ordine del motore, quello di partenza: pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte. Un secondo clic rovescia l'ordine.">Resa</button></th>
           </tr></thead>
           <tbody id="rows"></tbody>
         </table>
@@ -14925,6 +14966,8 @@ function refresh(){
      anonime non sono una lista di consigli, e il curato è per costruzione lo
      strato «questo merita». Chi cerca un NGC qualsiasi lo trova scrivendolo. */
   EVAL=MOTORE.scelta.classificaDiStanotte(evalPool(),dv,SITE,np,STATE,covIntent());
+  NP_LISTA=np;
+  renderFiltri();
   renderRows(np);
   renderBest();
   renderRx(np);
@@ -15089,9 +15132,14 @@ function cfgContext(){
     dell'oggetto, come la riga della tabella (26 settembre 2026). Il riquadro non e' piu' un <button>: dentro ci sta il
     tasto della scheda, e un tasto dentro un tasto non si puo'. Si prescrive anche da tastiera, con Invio o Spazio. */
 function bestNightHtml(){
-  const top=MOTORE.scelta.riquadriDiStanotte(EVAL).map(o=>({x:o.e,i:o.i}));
+  /*  i riquadri seguono i filtri: i primi dodici con mezz'ora utile della lista filtrata, nell'ordine del motore; `i`
+      resta l'indice in EVAL (17 ottobre 2026) */
+  const lista=listaFiltrata();
+  const top=MOTORE.scelta.riquadriDiStanotte(lista.map(x=>x.e)).map(o=>({x:o.e,i:lista[o.i].i}));
   const arch=x=>(TG.archetypes[x.tg.archetype]||{}).label||'';
   const scelto=($('rxTarget').value||'').trim().toLowerCase();
+  if(!top.length&&filtriAttivi()) return `<p class="small muted">Con questi filtri nessun oggetto ha almeno mezz'ora utile
+    stanotte. <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`;
   if(!top.length) return `<p class="small muted">Da qui, in questa notte, nessuno degli
     oggetti in catalogo sale abbastanza da valere un progetto. Cambia data o sito, o guarda la tabella:
     ci sono tutti, anche quelli che stanotte non salgono.</p>`;
@@ -15111,9 +15159,19 @@ function bestNightHtml(){
 }
 function renderBest(){ const b=$('bestNight'); if(b) b.innerHTML=bestNightHtml(); }
 
-/*  LE DUE VISTE DELLA LISTA, riquadri e tabella, con la scelta ricordata per chi guarda (26 settembre 2026). */
+/*  LE DUE VISTE DELLA LISTA, riquadri e tabella, con la scelta ricordata per chi guarda (26 settembre 2026).
+    LA VISTA DI PARTENZA DIPENDE DALLO SCHERMO (Alessandro, 17 ottobre 2026). Su uno schermo largo la tabella dice tutto
+    quello che dice un riquadro — nome, classe, ore utili, banda critica, culmine — e in piu' cielo, fattibilita',
+    inquadratura, progetto, notte e resa: si parte da lei. Fino a 720 px, il confine del telefono in tutta la pagina, la
+    tabella e' larga 720 px in 326 visibili (misurato a 375 px: si leggono il nome e meta' della finestra), mentre un
+    riquadro si legge intero in 131 px: li' si parte dai riquadri.
+    E LA SCELTA SI SALVA SOLO QUANDO SI SCEGLIE. Prima l'apertura scriveva la vista di partenza come se fosse stata scelta,
+    e chiunque avesse aperto la pagina portava un «riquadri» che non aveva mai cliccato: la chiave vecchia non si legge
+    piu', e la nuova la scrive solo il clic. Sorvegliato da tools/gate-lista-unica.js §2. */
+const VISTA_SCELTA='ap_vista_oggetti_scelta';
+const SCHERMO_STRETTO='(max-width:720px)';
 let VISTA_OGGETTI='riquadri';
-function mostraVistaOggetti(v){
+function mostraVistaOggetti(v,scelta){
   VISTA_OGGETTI=v==='tabella'?'tabella':'riquadri';
   const r=$('bestNight'), t=$('tabellaOggetti');
   if(r) r.hidden=VISTA_OGGETTI!=='riquadri';
@@ -15122,13 +15180,223 @@ function mostraVistaOggetti(v){
     const on=b.getAttribute('data-vista-oggetti')===VISTA_OGGETTI;
     b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false');
   });
-  try{ localStorage.setItem('ap_vista_oggetti',VISTA_OGGETTI); }catch(e){}
+  if(scelta) try{ localStorage.setItem(VISTA_SCELTA,VISTA_OGGETTI); }catch(e){}
+}
+function vistaDiPartenza(){
+  let stretto=false; try{ stretto=window.matchMedia(SCHERMO_STRETTO).matches; }catch(e){}
+  return stretto?'riquadri':'tabella';
 }
 function initVistaOggetti(){
   document.querySelectorAll('[data-vista-oggetti]').forEach(b=>
-    b.addEventListener('click',()=>mostraVistaOggetti(b.getAttribute('data-vista-oggetti'))));
-  let v='riquadri'; try{ v=localStorage.getItem('ap_vista_oggetti')||'riquadri'; }catch(e){}
-  mostraVistaOggetti(v);
+    b.addEventListener('click',()=>mostraVistaOggetti(b.getAttribute('data-vista-oggetti'),true)));
+  let v=null; try{ v=localStorage.getItem(VISTA_SCELTA); }catch(e){}
+  mostraVistaOggetti(v||vistaDiPartenza(),false);
+  initFiltri();
+}
+
+/*  FILTRARE E ORDINARE LA LISTA (Alessandro, 17 ottobre 2026: «mettere filtri di selezione degli oggetti in modo che si
+    possa ordinarli per visibilita' migliore, dimensione, tipo del soggetto»; e «noi siamo diversi dagli altri planner
+    perche' siamo piu' specifici»).
+    Gli altri planner — N.I.N.A., KStars, Telescopius, SkySafari, Deep-Sky Planner — filtrano il CATALOGO: tipo,
+    costellazione, magnitudine, dimensione, altezza minima, distanza dalla Luna. Qui i filtri parlano la lingua della
+    prescrizione, perche' la lista la sa gia': le ore utili sul tuo orizzonte, se la tua ruota fa la tecnica, se il
+    progetto si riempie nelle ore che hai dichiarato, quanto il cielo di stanotte toglie. Il tipo, la dimensione e la
+    costellazione restano come complemento. Fuori, apposta, magnitudine e brillanza superficiale: su molte nebulose la
+    magnitudine del catalogo e' quella della stella che le illumina, e la brillanza vera sta gia' dentro le ore.
+    SOLO LA VISTA CAMBIA. La classifica resta quella del motore (`EVAL`, per resa): i filtri tolgono righe e riquadri, e
+    l'ordine scelto dall'intestazione vale per la tabella. I riquadri restano i primi dodici con mezz'ora utile della
+    lista filtrata, nell'ordine del motore. Senza filtri e con l'ordine per resa la lista e' quella di prima.
+    E SI SALVA SOLO QUANDO SI SCEGLIE, come la vista. Sorvegliato da tools/gate-ordina-e-filtra.js. */
+const GRUPPI_DI_CLASSE=[
+  {id:'emissione',nome:'Emissione',classi:['hii_classic','hii_faint_he','wr_bubble','snr'],
+   tip:'Regioni HII, bolle di Wolf-Rayet e resti di supernova: le nebulose che emettono su righe.'},
+  {id:'planetarie',nome:'Planetarie',classi:['pn_bright','pn_faint'],
+   tip:'Nebulose planetarie, brillanti e deboli.'},
+  {id:'galassie',nome:'Galassie',classi:['spiral_hii','elliptical_group','tidal_ifn'],
+   tip:'Spirali, ellittiche e gruppi, correnti mareali.'},
+  {id:'ammassi',nome:'Ammassi',classi:['cluster_globular','cluster_open'],
+   tip:'Ammassi globulari e aperti.'},
+  {id:'riflessioni',nome:'Riflessioni e oscure',classi:['reflection','dark_molecular'],
+   tip:'Nebulose a riflessione e nubi oscure.'}];
+const GRUPPI_DI_TECNICA=[
+  {id:'stretta',nome:'Banda stretta',tecniche:['SHO','HOO','Ha','LRGB+HOO'],
+   tip:'La tecnica che la scheda consiglia su questa configurazione è a banda stretta: SHO, HOO, solo Hα.'},
+  {id:'larga',nome:'Banda larga',tecniche:['LRGB','RGB'],
+   tip:'La tecnica che la scheda consiglia su questa configurazione è a banda larga: LRGB o RGB.'},
+  {id:'hargb',nome:'Larga + Hα',tecniche:['HaRGB'],
+   tip:'La banda larga con l’Hα aggiunto: HaRGB, con la L o senza.'}];
+const ORE_UTILI_MINIME=[0.5,1,2,4], CULMINI_MINIMI=[30,45,60];
+const INQUADRATURE=[
+  {id:'campo',nome:'In un fotogramma',tip:'Ci sta in un fotogramma solo: niente mosaico.',
+   passa:e=>!!e.fit&&e.fit.codice!=='mosaico'},
+  {id:'riempie',nome:'Lo riempie bene',tip:'Riempie bene il campo: inquadratura ideale o al limite, fra il 30 e il 115 % del lato.',
+   passa:e=>!!e.fit&&(e.fit.codice==='ideale'||e.fit.codice==='al_limite')}];
+const DIMENSIONI=[
+  {id:'piccoli',nome:'Sotto 10′',passa:s=>s<10},
+  {id:'medi',nome:'10–60′',passa:s=>s>=10&&s<=60},
+  {id:'grandi',nome:'Oltre 60′',passa:s=>s>60}];
+const CHIAVE_FILTRI='ap_lista_filtri';
+const FILTRI_VUOTI=()=>({classi:[],ore:null,culmine:null,inquadratura:null,tecniche:[],dimensioni:[],costellazione:'',
+  conFiltri:false,nelleOre:false,cielo:false});
+let FILTRI_DELLA_LISTA=FILTRI_VUOTI(), ORDINE_DELLA_LISTA={chiave:'resa',inverso:false}, NP_LISTA=null;
+const _pienoNelleOre=new WeakMap();
+function dimensioneDi(e){ const s=e.tg&&e.tg.size_arcmin; return Array.isArray(s)&&s.length?Math.max(...s.map(Number).filter(isFinite)):null; }
+function gruppoDiClasse(e){ const i=GRUPPI_DI_CLASSE.findIndex(g=>g.classi.indexOf(e.tg.archetype)>=0); return i<0?GRUPPI_DI_CLASSE.length:i; }
+function gruppoDiTecnica(e){ const t=e.defRoad&&e.defRoad.tecnica; const g=GRUPPI_DI_TECNICA.find(x=>x.tecniche.indexOf(t)>=0); return g?g.id:null; }
+/*  Le ore dichiarate sono quelle della prescrizione (`rxHours`), le stesse della pastiglia «in N h» della riga. */
+function pienoNelleOre(e){
+  if(_pienoNelleOre.has(e)) return _pienoNelleOre.get(e);
+  let v=false;
+  try{ const rx=MOTORE.scelta.prescribe(e,rxHours(),derive(cfgMotore())); v=!!rx&&rx.disponibile!==false&&rx.level==='pieno'; }catch(err){}
+  _pienoNelleOre.set(e,v); return v;
+}
+function passaIFiltri(e){
+  const f=FILTRI_DELLA_LISTA;
+  if(f.classi.length&&!f.classi.some(id=>{ const g=GRUPPI_DI_CLASSE.find(x=>x.id===id); return g&&g.classi.indexOf(e.tg.archetype)>=0; })) return false;
+  if(f.ore!=null&&!(e.critH>=f.ore)) return false;
+  if(f.culmine!=null&&!(e.maxAlt>=f.culmine)) return false;
+  if(f.inquadratura){ const q=INQUADRATURE.find(x=>x.id===f.inquadratura); if(q&&!q.passa(e)) return false; }
+  if(f.tecniche.length&&f.tecniche.indexOf(gruppoDiTecnica(e))<0) return false;
+  if(f.dimensioni.length){ const s=dimensioneDi(e); if(s==null||!f.dimensioni.some(id=>DIMENSIONI.find(d=>d.id===id).passa(s))) return false; }
+  if(f.costellazione&&(e.tg.constellation||'')!==f.costellazione) return false;
+  if(f.conFiltri&&!(e.feas&&e.feas.codice!=='manca')) return false;
+  if(f.cielo&&MOTORE.scelta.ilCieloMorde(e)) return false;
+  if(f.nelleOre&&!pienoNelleOre(e)) return false;
+  return true;
+}
+function filtriAttivi(){ const f=FILTRI_DELLA_LISTA; return f.classi.length+f.tecniche.length+f.dimensioni.length+
+  (f.ore!=null)+(f.culmine!=null)+(!!f.inquadratura)+(!!f.costellazione)+f.conFiltri+f.nelleOre+f.cielo; }
+/*  L'ora in cui l'oggetto sta piu' alto DENTRO LA NOTTE, in ore dalla meta' della notte. L'angolo orario a meta' notte
+    dice quando passa al meridiano; se ci passa prima del buio sta piu' alto all'inizio della notte, se ci passa dopo
+    l'alba alla fine. Fra quelli che stanno piu' alti allo stesso bordo viene prima chi e' passato prima — a ovest al
+    tramonto, il primo a calare. Chi stanotte non ha ore utili non ha un posto nella notte: in fondo. */
+function oraDelCulmine(e){
+  const np=NP_LISTA; if(!np||!(e.critH>0)) return null;
+  const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end; if(!t0||!t1) return null;
+  const meta=(t0.getTime()+t1.getTime())/2;
+  let ha=lstDeg(toJD(new Date(meta)),SITE.lon)-e.tg.ra_deg; ha=((ha%360)+540)%360-180;
+  const t=-ha/15*0.99727, inizio=(t0.getTime()-meta)/3.6e6, fine=(t1.getTime()-meta)/3.6e6;
+  return Math.min(fine,Math.max(inizio,t))+t*1e-3;
+}
+/*  Le chiavi dell'ordine: il valore, e il verso naturale — quello del primo clic. Un valore che non c'e' va sempre in fondo. */
+const ORDINI={
+  nome:{val:e=>String(e.tg.names[0]||''),testo:true,cresce:true},
+  classe:{val:e=>gruppoDiClasse(e),cresce:true},
+  ore:{val:e=>isFinite(e.critH)?e.critH:null,cresce:false},
+  inquadratura:{val:e=>e.fit&&isFinite(e.fit.r)?e.fit.r:null,cresce:false},
+  fattibilita:{val:e=>isFinite(e.weeks)?e.weeks:null,cresce:true},
+  progetto:{val:e=>isFinite(e.roadHTot)?e.roadHTot:null,cresce:true},
+  notte:{val:e=>oraDelCulmine(e),cresce:true},
+  resa:{val:null,cresce:false}};
+/*  La lista che le due viste mostrano: [{e,i}], con `i` l'indice in EVAL. `ordinata` la mette nell'ordine scelto. */
+function listaFiltrata(){ return EVAL.map((e,i)=>({e,i})).filter(x=>passaIFiltri(x.e)); }
+function ordinaLista(lista){
+  const o=ORDINI[ORDINE_DELLA_LISTA.chiave]||ORDINI.resa;
+  if(!o.val) return ORDINE_DELLA_LISTA.inverso?lista.slice().reverse():lista;
+  const segno=(o.cresce?1:-1)*(ORDINE_DELLA_LISTA.inverso?-1:1);
+  const v=new Map(lista.map(x=>[x,o.val(x.e)]));
+  return lista.slice().sort((a,b)=>{
+    const va=v.get(a), vb=v.get(b);
+    if(va==null&&vb==null) return a.i-b.i;
+    if(va==null) return 1; if(vb==null) return -1;
+    const d=o.testo?String(va).localeCompare(String(vb),'it',{numeric:true,sensitivity:'base'}):va-vb;
+    return d?segno*d:a.i-b.i;
+  });
+}
+function salvaLaLista(){ try{ localStorage.setItem(CHIAVE_FILTRI,JSON.stringify({filtri:FILTRI_DELLA_LISTA,ordine:ORDINE_DELLA_LISTA})); }catch(e){} }
+function caricaFiltri(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(CHIAVE_FILTRI)||'null'); }catch(e){}
+  if(!s||typeof s!=='object') return;
+  const f=FILTRI_VUOTI(), d=s.filtri||{};
+  const ids=(xs,validi)=>Array.isArray(xs)?xs.filter(x=>validi.indexOf(x)>=0):[];
+  f.classi=ids(d.classi,GRUPPI_DI_CLASSE.map(g=>g.id));
+  f.tecniche=ids(d.tecniche,GRUPPI_DI_TECNICA.map(g=>g.id));
+  f.dimensioni=ids(d.dimensioni,DIMENSIONI.map(g=>g.id));
+  f.ore=ORE_UTILI_MINIME.indexOf(d.ore)>=0?d.ore:null;
+  f.culmine=CULMINI_MINIMI.indexOf(d.culmine)>=0?d.culmine:null;
+  f.inquadratura=INQUADRATURE.some(q=>q.id===d.inquadratura)?d.inquadratura:null;
+  f.costellazione=typeof d.costellazione==='string'?d.costellazione:'';
+  f.conFiltri=d.conFiltri===true; f.nelleOre=d.nelleOre===true; f.cielo=d.cielo===true;
+  FILTRI_DELLA_LISTA=f;
+  if(s.ordine&&ORDINI[s.ordine.chiave]) ORDINE_DELLA_LISTA={chiave:s.ordine.chiave,inverso:s.ordine.inverso===true};
+}
+function rifaiLista(){ renderFiltri(); if(NP_LISTA) renderRows(NP_LISTA); renderBest(); }
+/*  Un clic su un filtro: i gruppi a scelta multipla si accendono e si spengono uno per uno, le soglie sono una sola e
+    il secondo clic sulla stessa la toglie. */
+function filtra(campo,valore){
+  const f=FILTRI_DELLA_LISTA;
+  if(Array.isArray(f[campo])){ const k=f[campo].indexOf(valore); if(k>=0) f[campo].splice(k,1); else f[campo].push(valore); }
+  else if(typeof f[campo]==='boolean') f[campo]=!f[campo];
+  else if(campo==='costellazione') f[campo]=valore||'';
+  else f[campo]=f[campo]===valore?null:valore;
+  ROWS_N=25; salvaLaLista(); rifaiLista();
+}
+function togliFiltri(){ FILTRI_DELLA_LISTA=FILTRI_VUOTI(); ROWS_N=25; salvaLaLista(); rifaiLista(); }
+function ordinaPer(chiave){
+  if(!ORDINI[chiave]) return;
+  ORDINE_DELLA_LISTA=ORDINE_DELLA_LISTA.chiave===chiave?{chiave,inverso:!ORDINE_DELLA_LISTA.inverso}:{chiave,inverso:false};
+  salvaLaLista(); rifaiLista();
+}
+function segnaOrdine(){
+  document.querySelectorAll('th[data-ordine]').forEach(th=>{
+    const k=th.getAttribute('data-ordine'), b=th.querySelector('button.ordina'), o=ORDINI[k];
+    const attivo=ORDINE_DELLA_LISTA.chiave===k;
+    if(attivo){ const cresce=(o.cresce?1:-1)*(ORDINE_DELLA_LISTA.inverso?-1:1)>0; th.setAttribute('aria-sort',cresce?'ascending':'descending'); }
+    else th.removeAttribute('aria-sort');
+    if(b){ let v=b.querySelector('.verso'); if(!v){ v=document.createElement('span'); v.className='verso'; v.setAttribute('aria-hidden','true'); b.appendChild(v); }
+      v.textContent=attivo?(th.getAttribute('aria-sort')==='ascending'?'▲':'▼'):''; }
+  });
+}
+function renderFiltri(){
+  const c=$('flCorpo'); if(!c) return;
+  const f=FILTRI_DELLA_LISTA, n=filtriAttivi();
+  const chip=(campo,valore,nome,on,tip,spento)=>`<button type="button" class="fl-chip${on?' on':''}" aria-pressed="${on?'true':'false'}"
+      ${spento?'disabled':''} data-tip="${esc(tip||'')}" onclick="filtra(${jsAttr(campo)},${typeof valore==='string'?jsAttr(valore):String(valore)})">${esc(nome)}</button>`;
+  const gruppo=(nome,tip,dentro)=>`<div class="fl-gruppo"><span class="fl-nome" data-tip="${esc(tip)}">${nome}</span>${dentro}</div>`;
+  const rxh=rxHours();
+  const costellazioni=[...new Set((EVAL||[]).map(e=>e.tg.constellation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'it'));
+  c.innerHTML=
+    gruppo('La mia notte','I filtri che solo la prescrizione sa dare: la tua ruota, le tue ore, il tuo cielo di stanotte.',
+      chip('conFiltri',true,'Con i miei filtri',f.conFiltri,'Solo gli oggetti la cui tecnica la tua ruota sa fare: nessun filtro che manca.')+
+      chip('nelleOre',true,'Pieno in '+fmt(rxh,0)+' h',f.nelleOre,'Solo gli oggetti il cui progetto si riempie nelle '+fmt(rxh,0)+' h dichiarate nella prescrizione, come dice la pastiglia della riga.')+
+      chip('cielo',true,'Cielo che non morde',f.cielo,'Solo gli oggetti a cui Luna e luce artificiale di stanotte tolgono meno del 15 % delle ore utili.'))+
+    gruppo('Ore utili','Le ore di stanotte in cui l’oggetto sta sopra il tuo orizzonte e la soglia della sua classe, nel canale che decide l’immagine.',
+      ORE_UTILI_MINIME.map(h=>chip('ore',h,'≥ '+(h===0.5?'½':fmt(h,0))+' h',f.ore===h,'Almeno '+(h===0.5?'mezz’ora':fmt(h,0)+(h===1?' ora':' ore'))+' utili stanotte.')).join(''))+
+    gruppo('Culmine','L’altezza massima stanotte: più alto, meno aria da attraversare.',
+      CULMINI_MINIMI.map(a=>chip('culmine',a,'≥ '+a+'°',f.culmine===a,'Culmina almeno a '+a+'° stanotte.')).join(''))+
+    gruppo('Tipo','La classe dell’oggetto, cioè che cosa si insegue.',
+      GRUPPI_DI_CLASSE.map(g=>chip('classi',g.id,g.nome,f.classi.indexOf(g.id)>=0,g.tip)).join(''))+
+    gruppo('Tecnica','La tecnica che la scheda consiglia su questa configurazione.',
+      GRUPPI_DI_TECNICA.map(g=>chip('tecniche',g.id,g.nome,f.tecniche.indexOf(g.id)>=0,g.tip)).join(''))+
+    gruppo('Inquadratura','Quanto l’oggetto occupa il tuo campo, con questa camera e questo tubo.',
+      INQUADRATURE.map(q=>chip('inquadratura',q.id,q.nome,f.inquadratura===q.id,q.tip)).join(''))+
+    gruppo('Dimensione','Il lato maggiore dell’oggetto in catalogo, in primi d’arco.',
+      DIMENSIONI.map(d=>chip('dimensioni',d.id,d.nome,f.dimensioni.indexOf(d.id)>=0,'Lato maggiore '+d.nome.toLowerCase()+'.')).join(''))+
+    gruppo('Costellazione','La costellazione in cui sta l’oggetto.',
+      `<select class="fl-sel" aria-label="Costellazione" data-tip="Solo gli oggetti di una costellazione."
+         onchange="filtra('costellazione',this.value)"><option value="">ogni costellazione</option>${
+         costellazioni.map(k=>`<option value="${esc(k)}"${f.costellazione===k?' selected':''}>${esc(k)}</option>`).join('')}</select>`);
+  const tot=(EVAL||[]).length, quanti=n?listaFiltrata().length:tot;
+  const o=ORDINI[ORDINE_DELLA_LISTA.chiave];
+  const conta=$('flConta'); if(conta) conta.textContent=n?quanti+' di '+tot+' oggetti':tot+' oggetti';
+  const togli=$('flTogli'); if(togli) togli.hidden=!n;
+  const apri=$('flApri'); if(apri){ apri.textContent=n?'Filtra · '+n:'Filtra'; apri.classList.toggle('attivi',n>0); }
+  segnaOrdine();
+}
+/*  Su uno schermo largo i filtri si vedono; sul telefono stanno chiusi sotto «Filtra», e si aprono a richiesta. */
+function initFiltri(){
+  caricaFiltri();
+  const apri=$('flApri'), corpo=$('flCorpo');
+  let stretto=false; try{ stretto=window.matchMedia(SCHERMO_STRETTO).matches; }catch(e){}
+  if(apri&&corpo){
+    const mostra=v=>{ corpo.hidden=!v; apri.setAttribute('aria-expanded',v?'true':'false'); };
+    mostra(!stretto);
+    apri.addEventListener('click',()=>mostra(corpo.hidden));
+  }
+  const togli=$('flTogli'); if(togli) togli.addEventListener('click',togliFiltri);
+  document.querySelectorAll('th[data-ordine] button.ordina').forEach(b=>
+    b.addEventListener('click',()=>ordinaPer(b.closest('th').getAttribute('data-ordine'))));
+  segnaOrdine();
 }
 
 /* IL TEMPO DISPONIBILE, dichiarato invece che chiesto.
@@ -18136,7 +18404,16 @@ let ROWS_N=25;
 function showAllRows(){ ROWS_N=1e9; refresh(); }
 function renderRows(np){
   const RXH=rxHours(), DVX=derive(cfgMotore());
-  $('rows').innerHTML=EVAL.slice(0,ROWS_N).map((e,i)=>{
+  /*  le righe sono la lista filtrata, nell'ordine scelto dall'intestazione; `i` resta l'indice in EVAL, che la scheda
+      legge (17 ottobre 2026) */
+  const LISTA=ordinaLista(listaFiltrata());
+  if(!LISTA.length&&EVAL.length){
+    $('rows').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:14px">
+      <span class="muted">Nessun oggetto passa i filtri.</span>
+      <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></td></tr>`;
+    return;
+  }
+  $('rows').innerHTML=LISTA.slice(0,ROWS_N).map(({e,i})=>{
     const arch=TG.archetypes[e.tg.archetype];
     const bite = MOTORE.scelta.ilCieloMorde(e);    // cielo (Luna + IL) che morde davvero: la regola e' del motore
     const win = e.critH>0.3
@@ -18186,8 +18463,8 @@ function renderRows(np){
         <span>${e.score}</span><span class="sbar"><i style="width:${e.score}%"></i></span></div>
         <div class="tsub">${prog}</div></td>
     </tr>`;
-  }).join('')+(EVAL.length>ROWS_N?`<tr><td colspan="8" style="text-align:center;padding:12px">
-      <button class="fn fn-cfg" onclick="showAllRows()">mostra tutti i ${EVAL.length} oggetti valutati</button>
+  }).join('')+(LISTA.length>ROWS_N?`<tr><td colspan="8" style="text-align:center;padding:12px">
+      <button class="fn fn-cfg" onclick="showAllRows()">mostra tutti i ${LISTA.length} oggetti ${filtriAttivi()?'che passano i filtri':'valutati'}</button>
       <div class="tsub" style="margin-top:5px">Ordinati dal motore sulla configurazione e sulla data
         di adesso: cambia tubo, camera, binning, sito o notte e la classifica si rifà.</div></td></tr>`:'');
 }
