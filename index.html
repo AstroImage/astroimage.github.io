@@ -955,6 +955,8 @@ td.archcell{max-width:120px}
 .bc-scheda:hover,.tr-scheda:hover{background:rgba(var(--acc-rgb),.14)}
 .bc-scheda:focus-visible,.tr-scheda:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .tr-azioni,.bc-azioni{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+/* «Manda a N.I.N.A.» e «Esporta le sequenze» in fondo ai Risultati, staccati da quello che c'e' sopra (20 ottobre 2026) */
+.nina-in-fondo{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
 .bc-azioni{justify-content:flex-end}
 @media(prefers-reduced-motion:reduce){.tr-prescrivi,.bc-prescrivi{transition:none}}
 tr.tgt .tname{cursor:pointer}
@@ -16376,7 +16378,7 @@ function renderRx(np){
       :(RXCOV&&RXCOV.limited?` — e questo è il costo di <b>un campo</b>: il soggetto intero
           ne chiederebbe <b>${RXCOV.targetPanels}</b>`:'')}.</p>`;
 
-  let body='';
+  let body='', ninaInFondo='';
   {
     const ord=t.order?`<p class="small" style="margin:10px 0 0"><b>Ordine.</b> ${t.order}${citaOre(t.order)?tfNote:''}</p>`:'';
     /* La riga della scheda da cui la frase e' letta e' diagnostica: sta nel suggerimento, non nel
@@ -16420,6 +16422,7 @@ function renderRx(np){
         pr.oltreITettiARiga?`Oltre i tetti fisici le ore si dividono in parti uguali fra i canali a riga, come nelle regioni HII riprese in HOO e SHO.`:''].filter(Boolean);
     })()).join(' ');
     const piano=rxPlanHtml(pr,e,dv,t);
+    ninaInFondo=piano.nina;
     body=`${sottoBox}${rows}
       <div class="rxtot"><b>${oreScala(pr.ore_di_progetto.spese,pr.panels)}</b>
         <span class="muted">${isFinite(pr.weeks)?`≈ ${wkTxt(pr.weeks)} di calendario con il
@@ -16435,6 +16438,7 @@ function renderRx(np){
             ? (drop.length>1?'sono i canali che perdonano: li recuperi in una nottata qualsiasi, anche con la Luna.':'è un canale che perdona: lo recuperi in una nottata qualsiasi, anche con la Luna.')
             : 'meglio un canale in meno fatto bene che due a metà.');})()}</div>`:''}
       ${ord}
+      ${piano.strategia}
       ${piano.cuore}${exp}${sottoSoglia?costoNote:''}
       ${piano.dettaglio}
       <p class="small" style="margin:10px 0 0"><b>Binning.</b> ${dv.bin}×${dv.bin} —
@@ -16569,7 +16573,8 @@ function renderRx(np){
     </div>
     <div class="why">${why}</div>
     ${covBanner}${catBanner}${body}
-    ${noteBlock}${rxDiagHtml(pr,e,dv,t)}</div>`;
+    ${noteBlock}${rxDiagHtml(pr,e,dv,t)}
+    ${ninaInFondo?`<div class="nina-in-fondo">${ninaInFondo}</div>`:''}</div>`;
 }
 
 /* ---------- inquadratura reale (Aladin Lite v3) ----------
@@ -16926,7 +16931,7 @@ function rxPlanHtml(pr,e,dv,t){
   if(!pl.ok){
     const b=pl.bounds||{};
     const fixTo=pl.reason.want;
-    return {dettaglio:'',cuore:head+mosNote+`<div class="warnbox">
+    return {strategia:'',dettaglio:'',nina:'',cuore:head+mosNote+`<div class="warnbox">
       <b>Questa combinazione non si può pianificare.</b><br>${esc(pl.reason.msg)}
       ${fixTo?`<div style="margin-top:8px"><button class="fn fn-plan solid" onclick="setNights(${fixTo})">porta a ${fixTo} nott${fixTo===1?'e':'i'}</button>
         <span class="muted" style="margin-left:8px">o cambia le ore: sono due parametri diversi e nessuno dei due corregge l'altro.</span></div>`:''}
@@ -17188,18 +17193,20 @@ function rxPlanHtml(pr,e,dv,t){
        un'immagine.`
     : `I canali si <b>distribuiscono fra le notti</b> secondo la Luna. Rende di più sul progetto
        intero, ma una singola notte da sola non fa un'immagine.`;
-  /* IL CUORE IN CIMA, IL TABULATO DOPO (Alessandro, 14 settembre 2026). Il consiglio c'era ma era
-     sepolto: le notti con le pose esatte e il pulsante per N.I.N.A. stavano sotto la strategia della
-     posa e il menu delle tecniche. Si sposta, non si ridisegna: il cuore — le notti, le pose, N.I.N.A.
-     — e il dettaglio per chi lo vuole — perche' le notti sono fatte cosi', le tre strategie, le
-     tecniche fra cui scegliere, come escono pose e sub. */
+  /* PRIMA SI SCEGLIE, POI SI PIANIFICA, IN FONDO SI MANDA (Alessandro, 20 ottobre 2026). Dal 14 settembre le notti
+     e il pulsante per N.I.N.A. stavano in cima, e la strategia della posa e il menu delle tecniche sotto. Adesso
+     l'ordine e' quello in cui si lavora: la strategia di acquisizione, la tecnica e come escono pose e sub (`strategia`),
+     poi il piano delle notti (`cuore`) e la nota delle due politiche (`dettaglio`); e «Manda a N.I.N.A.», «Esporta le
+     sequenze» e le impostazioni della sequenza (`nina`) per ultimi, in fondo alla pagina Risultati, dopo la
+     diagnostica (`renderRx`). Si sposta, non si ridisegna. Sorvegliato da tools/gate-ordine-dei-risultati.js. */
   return {
-    cuore:head+mosNote+advice+modeSel+rows+dl,
+    strategia:rxStrategyHtml(expo,dv,pr,panels)+rxRoadHtml(pr)+rxExpoHtml(expo,dv,pr),
+    cuore:head+mosNote+advice+modeSel+rows,
     dettaglio:`<p class="small muted" style="margin:14px 0 8px">${modeNote}
       Le ore per canale <b>non cambiano</b> in nessuna delle due, né con il numero di notti:
       cambia solo come si distribuiscono. La posa si decide una volta sul totale del
-      progetto — cambiarla a metà strada vuol dire due set di dark.</p>`+
-      rxStrategyHtml(expo,dv,pr,panels)+rxRoadHtml(pr)+rxExpoHtml(expo,dv,pr)};
+      progetto — cambiarla a metà strada vuol dire due set di dark.</p>`,
+    nina:dl};
 }
 
 /* LE TRE STRATEGIE, a schermo.
