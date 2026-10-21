@@ -1657,14 +1657,35 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
         </div>
       </div>
       <div class="card-body">
+        <!-- I primi passi e la guida in PDF (20 ottobre 2026): la guida la fa tools/fai-guida.js dalla pagina stessa, e
+             tools/pubblica-pagina.js la porta sul sito perche' questo collegamento la nomina. -->
+        <div class="subhead">Primi passi</div>
+        <p class="small muted" style="max-width:74ch">
+          La prima volta conviene dichiarare prima dove sei e che cosa usi, perché le ore dipendono da lì:
+        </p>
+        <ol class="small muted" style="max-width:74ch;margin:6px 0 0;padding-left:20px">
+          <li><b>Condizioni</b> — il sito, il cielo (l'SQM, se lo conosci) e la data.</li>
+          <li><b>Strumentazione</b> — telescopio, riduttore, camera, montatura; poi spunta le configurazioni che hai davvero.</li>
+          <li><b>Filtri</b> — spunta quelli che possiedi: decidono quali tecniche sono possibili.</li>
+          <li><b>Strategia</b> — scrivi l'oggetto, scegli le notti e premi <b>Prescrivi</b>; oppure sceglilo dalla lista di stanotte.</li>
+          <li><b>Risultati</b> — la tecnica, le ore per canale con la loro soglia, la posa e il piano notte per notte.</li>
+          <li><b>N.I.N.A.</b> — in fondo ai Risultati: <i>Manda a N.I.N.A.</i>, o <i>Esporta le sequenze</i> e caricale nel Sequenziatore Avanzato.</li>
+        </ol>
+        <p class="small muted" style="max-width:74ch;margin-top:8px">
+          Tutto con le figure, un esempio vero coi suoi numeri e le ragioni per cui certe prescrizioni sorprendono, nella
+          <a href="https://astroimage.github.io/guida/AstroImage-Strategy-guida.pdf" target="_blank" rel="noopener"><b>guida
+          all'uso in PDF</b></a>, da leggere anche sul telefono.
+        </p>
+
         <div class="subhead">Il modello</div>
         <p class="small muted" style="max-width:74ch">
           Le ore scritte nelle schede valgono per un telescopio di riferimento, e vengono riportate alla tua
           strumentazione tenendo conto di quanta luce raccoglie e di quanto la distribuisce sul sensore: due
           strumenti con lo stesso rapporto focale non chiedono le stesse ore se i pixel sono diversi.
-          In banda stretta il fondo cielo non si ricava dall'SQM: sotto un filtro da pochi nanometri quello che
-          resta è la luminescenza naturale dell'atmosfera, non le luci della città — ed è il motivo per cui una
-          nebulosa a emissione resta fattibile da un cielo che rende impossibile una galassia.
+          Il fondo cielo cresce di quanto dice l'SQM in ogni banda: la luce artificiale è quasi tutta continua, come
+          quella naturale, e un filtro stretto le taglia tutte e due allo stesso modo. La banda stretta regge meglio
+          per un'altra ragione: la riga del soggetto passa intera mentre il fondo scende in assoluto — ed è il motivo
+          per cui da un cielo cittadino una nebulosa a emissione costa meno ore in più di una galassia.
         </p>
 
         <div class="subhead">Come si naviga</div>

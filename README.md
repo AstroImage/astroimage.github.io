@@ -7,6 +7,14 @@ calcolati sulla tua strumentazione e sul tuo cielo.
 niente. Non ci sono account: il sito e la strumentazione che dichiari restano nel tuo browser. Le anteprime
 delle immagini si chiedono al CDS di Strasburgo, che così sa quale oggetto stai guardando.
 
+Per chi comincia c'è la **guida all'uso**, in PDF:
+[guida/AstroImage-Strategy-guida.pdf](guida/AstroImage-Strategy-guida.pdf). Dentro: i primi passi con le figure, un
+esempio vero coi suoi numeri, perché certe prescrizioni sorprendono, come ragiona l'app, le domande frequenti e un
+glossario. L'indice in copertina è cliccabile. Nell'app la trovi anche nella schermata Informazioni.
+
+Le sequenze vanno in N.I.N.A. in due modi: «Manda a N.I.N.A.», se N.I.N.A. è aperto con il plugin Advanced API, oppure
+«Esporta le sequenze», un file per notte da caricare nel Sequenziatore Avanzato.
+
 ## Licenza
 
 Software proprietario. © 2026 Alessandro Curci, tutti i diritti riservati.
@@ -25,4 +33,5 @@ nella schermata Informazioni dell'app.
 *English.* AstroImage-Strategy is proprietary software (© 2026 Alessandro Curci, all rights reserved), offered
 free of charge for personal, non-commercial use through <https://astroimage.github.io/>. No licence is granted on
 the code delivered to the browser. `data/openngc.json` is derived from OpenNGC and licensed under CC-BY-SA-4.0.
-Full terms in [LICENSE](LICENSE).
+Full terms in [LICENSE](LICENSE). A user guide, in Italian, is in
+[guida/AstroImage-Strategy-guida.pdf](guida/AstroImage-Strategy-guida.pdf).
