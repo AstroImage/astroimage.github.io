@@ -3518,10 +3518,28 @@ function timeFactor(dv, band, tsub, sFot, modo, cieloSito){
     buio e lettura in `varRate`, come il cielo del sito in `timeFactor`. Luna e cielo sono continui e la larghezza del
     filtro si semplifica nel loro rapporto: il vantaggio della banda stretta e' il fondo assoluto piu' basso, dove buio e
     lettura pesano, ed e' qui che si vede. Restituisce il fattore che moltiplica le ore (>= 1). */
+/*  I TASSI SI TENGONO PER BANCO (21 ottobre 2026). L'offerta annuale chiede questo costo per nove bande e per ogni notte
+    dell'anno — 2925 chiamate su NGC 6888 dall'Askar 71F 0,75x con la 2600MC — e a ogni chiamata si rifacevano `bandSpec`
+    e `rates`, che dipendono dal banco, dalla banda, dal cielo, dal modo, dalla ruota e dai ruoli, non dalla notte: 290 ms
+    su 360 di una prescrizione del servizio. Si tengono per banco: `dv` e' un oggetto nuovo a ogni `derive`, che la pagina
+    rifa' a ogni cambio e il servizio a ogni richiesta, e la ruota e i ruoli stanno nella chiave come in `posaDecisa`. Il
+    conto della Luna resta questo, e i numeri non cambiano. */
+const _tassiDellaLuna=new WeakMap();
+function tassiDellaLuna(dv,band,sqm,modo){
+  let m=_tassiDellaLuna.get(dv); if(!m){ m=new Map(); _tassiDellaLuna.set(dv,m); }
+  const k=[band,sqm,JSON.stringify(modo===undefined?null:modo),OWNED.join('+'),JSON.stringify(ROLES||{})].join('|');
+  if(!m.has(k)) m.set(k,{impossibile:!!(dv.c&&bandSpec(band,dv.c).impossibile),r:dv.c&&bandSpec(band,dv.c).impossibile?null:rates(dv,band,sqm,modo)});
+  return m.get(k);
+}
 function costoDellaLuna(dv,band,tsub,modo,sqm,resaDelFondo){
   if(!(resaDelFondo>0)||resaDelFondo>=1) return 1;
-  if(dv&&dv.c&&bandSpec(band,dv.c).impossibile) return 1/resaDelFondo;
-  const r=rates(dv,band,sqm,modo);
+  if(!dv||typeof dv!=='object'){
+    const r=rates(dv,band,sqm,modo);
+    return varRate(Object.assign({},r,{R_b:r.R_b/resaDelFondo}),tsub,0)/varRate(r,tsub,0);
+  }
+  const x=tassiDellaLuna(dv,band,sqm,modo);
+  if(x.impossibile) return 1/resaDelFondo;
+  const r=x.r;
   const conLuna=Object.assign({},r,{R_b:r.R_b/resaDelFondo});
   return varRate(conLuna,tsub,0)/varRate(r,tsub,0);
 }
@@ -10977,12 +10995,14 @@ function perCheNinaTace(pagina,base,tipo){
   const origine=String(base||'').replace(/\/v2\/api$/,'');
   if(tipo==='tempo') return 'nessuna risposta entro 4 secondi da '+origine;
   if(ninaMisto(pagina,base))
+    /*  la strada indicata deve esserci (21 ottobre 2026): «la pagina scaricata» il sito non la offre, «Esporta le
+        sequenze» funziona sempre. Sorvegliato da tools/gate-indirizzo-nina.js. */
     return 'il browser non lascia una pagina https parlare con '+origine+', che risponde in http su un\'altra macchina: '+
-      'apri la pagina scaricata, o apri la pagina sulla macchina dove gira N.I.N.A.';
+      'apri la pagina sulla macchina dove gira N.I.N.A., oppure usa «Esporta le sequenze» e carica il file dal Sequenziatore Avanzato.';
   if(pagina==='https:')
     return 'nessuna risposta da '+origine+': N.I.N.A. è chiuso, '+NINA_CORS+', o il browser ha bloccato la richiesta — '+
       'da un sito internet alcuni browser non lasciano parlare con i programmi del tuo PC, altri chiedono il permesso '+
-      'per la rete locale. Con la pagina scaricata la terza causa non c\'è.';
+      'per la rete locale. «Esporta le sequenze» funziona sempre.';
   return 'nessuna risposta da '+origine+': N.I.N.A. è chiuso, '+NINA_CORS+
     (ninaLocale(base)?'':', o il firewall di quella macchina chiude la porta');
 }
@@ -16401,7 +16421,13 @@ function renderRx(np){
 
   let body='', ninaInFondo='';
   {
-    const ord=t.order?`<p class="small" style="margin:10px 0 0"><b>Ordine.</b> ${t.order}${citaOre(t.order)?tfNote:''}</p>`:'';
+    /*  L'ORDINE E' DELLA SCHEDA, LA TECNICA E' DI QUESTA PRESCRIZIONE (21 ottobre 2026). Su NGC 7000 con l'Askar 71F
+        nativo e la 2600MM la tecnica presa e' «Ha come luminanza + RGB», e l'Ordine diceva di dare il buio vero all'OIII.
+        Il testo curato resta com'e': se la tecnica non riprende una riga che l'Ordine nomina, lo si dice sotto.
+        Sorvegliato da tools/gate-ordine-della-tecnica.js. */
+    const fuori=righeFuoriDallaTecnica(t.order,pr.alloc);
+    const notaFuori=fuori.length?` <span class="muted">— la tecnica presa non riprende ${fuori.length>1?'né '+fuori.join(' né '):fuori[0]}: dove l'Ordine ne parla, non vale per questo piano.</span>`:'';
+    const ord=t.order?`<p class="small" style="margin:10px 0 0"><b>Ordine.</b> ${t.order}${citaOre(t.order)?tfNote:''}${notaFuori}</p>`:'';
     /* La riga della scheda da cui la frase e' letta e' diagnostica: sta nel suggerimento, non nel
        testo che legge chi riprende. */
     const exp=pr.expect?`<p class="small" style="margin:8px 0 0"><b data-tip="${esc('Letto alla riga «'+pr.expect.key+
@@ -16908,6 +16934,14 @@ const hmDaPezzi=p=>!p?'—':p.ore>0?`${p.ore} h ${String(p.minuti).padStart(2,'0
 const hm=h=>hmDaPezzi(oreEMinuti(h));
 const hmDaSecondi=s=>hmDaPezzi(oreEMinutiDaSecondi(s));
 
+/*  Le righe che l'Ordine della scheda nomina e la tecnica presa non riprende: OIII e SII, le due che una tecnica puo'
+    lasciare fuori. I canali presi sono le bande dei gruppi della prescrizione. */
+const RIGHE_DELL_ORDINE=[['OIII',"l'OIII",/\bOIII\b|\[O ?III\]/],['SII','il SII',/\bSII\b|\[S ?II\]/]];
+function righeFuoriDallaTecnica(order,alloc){
+  if(!order) return [];
+  const prese=new Set((alloc||[]).flatMap(g=>g.bands||[g.id]));
+  return RIGHE_DELL_ORDINE.filter(([b,,re])=>re.test(order)&&!prese.has(b)).map(([,nome])=>nome);
+}
 function rxPlanHtml(pr,e,dv,t){
   const N=rxNights();
   /* La notte e' quella risolta in renderRx: rileggere il campo qui era proprio
@@ -17142,7 +17176,7 @@ function rxPlanHtml(pr,e,dv,t){
   const capBox=`<details class="ninacap" ${CAPAPERTO?'open':''}
     ontoggle="CAPAPERTO=this.open"><summary>Il tuo setup per N.I.N.A.</summary>
     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
-      <label class="f" style="max-width:240px" data-tip="${esc('Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.» e «Leggi la ruota» parlano con lui. Vuoto = questa macchina (localhost:1888). Per un altro PC scrivi il suo nome e la porta, per esempio nome-del-pc:1888. Dalla pagina pubblica, in https, il browser non lascia parlare con un altro PC: usa la pagina scaricata, o aprila sul PC dove gira N.I.N.A.')}">
+      <label class="f" style="max-width:240px" data-tip="${esc('Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.» e «Leggi la ruota» parlano con lui. Vuoto = questa macchina (localhost:1888). Per un altro PC scrivi il suo nome e la porta, per esempio nome-del-pc:1888. Dalla pagina pubblica, in https, il browser non lascia parlare con un altro PC: usa «Esporta le sequenze», o apri la pagina sul PC dove gira N.I.N.A.')}">
         <span>Indirizzo di N.I.N.A.</span>
         <input type="text" id="ninaUrl" maxlength="120" placeholder="localhost:1888"
           value="${esc(NINA_URL_STORPIO!=null?NINA_URL_STORPIO:(()=>{ try{ const v=indirizzoNina(localStorage.getItem('ap_ninaurl')); return v?v.replace(/\/v2\/api$/,''):''; }catch(e){ return ''; } })())}"
