@@ -1526,6 +1526,12 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
           <label class="f">Camera<select id="cam"></select></label>
           <label class="f">Montatura<select id="mnt"></select></label>
         </div>
+        <div class="row" style="gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <button type="button" class="chip fn fn-cfg" id="btnBancoNina"
+            data-tip="Con AIS aperto sul PC dove gira N.I.N.A., chiede al suo plugin Advanced API il profilo attivo: telescopio e focale, camera, montatura, sito e nomi dei filtri. Propone le voci del catalogo e dice perché; applica solo se premi «Usa questo banco».">Leggi il banco da N.I.N.A.</button>
+          <span class="small muted">con AIS aperto sul PC dove gira N.I.N.A.: telescopio, focale, camera, montatura, sito e filtri del profilo attivo</span>
+        </div>
+        <div id="bancoNina"></div>
         <div class="subhead" style="margin-top:16px">La mia strumentazione
           <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">
             — spunta le configurazioni che possiedi davvero: solo quelle entrano nei
@@ -2109,6 +2115,65 @@ function riconosciDalDriver(d){
     return colore===null||colore===!!y.cfa_penalty;
   });
   return cand.length===1?{base:cand[0],via:'nome_e_geometria'}:{base:null,via:null,candidati:cand.map(y=>y.id)};
+}
+
+/*  IL BANCO LETTO DAL PROFILO DI N.I.N.A. (21 ottobre 2026). La pagina chiede all'Advanced API il profilo attivo
+    (`/profile/show?active=true`) e qui se ne fa una PROPOSTA di banco: che cosa il profilo dice, che cosa il catalogo
+    ne riconosce, e perche'. Misurato sul profilo vero di msi.station, «AM5-ASI 2600MM -RC8 RIDOTTO», Advanced API
+    2.2.15.2, coi dispositivi spenti: il telescopio ha un nome scritto a mano («RC8») e la focale (1295 mm), la montatura
+    un nome suo (`MountName`, «AM5»), la camera un codice al posto del modello (`Id` di un driver Alpaca), il pixel
+    3,75 µm, la matrice «None» e la geometria del Framing Assistant (6248×4176), che e' quella dell'ultima camera
+    collegata. Le regole sono quelle che il motore ha gia':
+      · ottica e montatura si riconoscono dal nome come una voce scritta (`voceScritta`), e solo se la voce e' una;
+      · il riduttore e' quello del catalogo la cui focale e' la piu' vicina a quella del profilo, e vale entro
+        MARGINE_BANCO; oltre si dice, e il riduttore non si propone;
+      · la camera dal nome del driver con la geometria (`riconosciDalDriver`); quando il nome non dice il modello, la
+        geometria e la matrice la PROPONGONO se la voce e' una, e la proposta resta da confermare: lo stesso sensore sta
+        in camere di marche diverse. Il pixel del profilo si confronta entro PIXEL_DAL_PROFILO_UM, perche' lo scrive
+        anche chi riprende (3,75 per una 2600 da 3,76);
+      · 4500×3500 e' il valore di serie del Framing Assistant: non e' una geometria;
+      · un sito a 0,0 non e' un sito.
+    Niente si applica da qui: e' chi guarda che sceglie. Sorvegliato da tools/gate-banco-da-nina.js. */
+const FA_DI_SERIE=[4500,3500], PIXEL_DAL_PROFILO_UM=0.02;
+function bancoDalProfiloNina(P){
+  const num=v=>(typeof v==='number'&&isFinite(v))?v:null;
+  const T=(P&&P.TelescopeSettings)||{}, C=(P&&P.CameraSettings)||{}, A=(P&&P.AstrometrySettings)||{};
+  const F=(P&&P.FramingAssistantSettings)||{}, W=(P&&P.FilterWheelSettings)||{};
+  const lat=num(A.Latitude), lon=num(A.Longitude);
+  const sito=(lat!=null&&lon!=null&&Math.abs(lat)<=90&&Math.abs(lon)<=180&&!(lat===0&&lon===0))
+    ?{lat,lon,quota:num(A.Elevation)}:null;
+  const nomeTel=String(T.Name||'').trim(), focale=num(T.FocalLength), rapporto=num(T.FocalRatio);
+  const wt=voceScritta(DB.telescopes,nomeTel);
+  const ottica={letto:{nome:nomeTel||null,focale_mm:focale,rapporto},voce:wt.voce?wt.voce.id:null,candidati:wt.candidati,riduttore:null};
+  if(wt.voce&&focale>0){
+    const rs=(wt.voce.reducers&&wt.voce.reducers.length?wt.voce.reducers:[{factor:1,focal_mm:wt.voce.focal_mm}])
+      .map(r=>({factor:r.factor,focal_mm:r.focal_mm||wt.voce.focal_mm*r.factor,label:r.label||null}));
+    const vicino=rs.reduce((a,b)=>Math.abs(b.focal_mm-focale)<Math.abs(a.focal_mm-focale)?b:a);
+    const scarto=Math.abs(vicino.focal_mm-focale)/vicino.focal_mm;
+    ottica.riduttore=Object.assign({},vicino,{scarto,dentro:scarto<=MARGINE_BANCO});
+  }
+  const nomeMnt=String(T.MountName||'').trim();
+  const wm=voceScritta(DB.mounts,nomeMnt);
+  const montatura={letto:{nome:nomeMnt||null,driver:T.Id||null},voce:wm.voce?wm.voce.id:null,candidati:wm.candidati};
+  const larghezza=num(F.CameraWidth), altezza=num(F.CameraHeight);
+  const diSerie=larghezza===FA_DI_SERIE[0]&&altezza===FA_DI_SERIE[1];
+  const bayer=String(C.BayerPattern==null?'':C.BayerPattern);
+  const matrice=/^none$/i.test(bayer)?'mono':/^(rggb|bggr|grbg|gbrg)$/i.test(bayer)?'colore':null;
+  const d={name:String(C.Id||''),pixel_um:num(C.PixelSize),width_px:diSerie?null:larghezza,height_px:diSerie?null:altezza,
+           sensor:matrice};
+  const dalNome=riconosciDalDriver(d);
+  let camera;
+  if(dalNome.base) camera={voce:dalNome.base.id,via:'nome_e_geometria',daConfermare:false};
+  else {
+    const geo=(d.width_px>0&&d.height_px>0)?(DB.cameras||[]).filter(y=>Math.abs(y.width_px-d.width_px)<=0.5
+      &&Math.abs(y.height_px-d.height_px)<=0.5&&(d.pixel_um==null||Math.abs(y.pixel_um-d.pixel_um)<=PIXEL_DAL_PROFILO_UM)
+      &&(matrice===null||(matrice==='colore')===!!y.cfa_penalty)):[];
+    camera=geo.length===1?{voce:geo[0].id,via:'geometria',daConfermare:true}
+      :{voce:null,via:null,daConfermare:false,candidati:geo.map(y=>y.id)};
+  }
+  camera.letto={driver:d.name||null,pixel_um:d.pixel_um,width_px:larghezza,height_px:altezza,geometriaDiSerie:diSerie,matrice};
+  const filtri=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>({nome:String(f.Name),pos:num(f.Position)}));
+  return {profilo:(P&&P.Name)||null,sito,ottica,montatura,camera,filtri};
 }
 
 const PEZZI_SETUP=['ottica','camera','montatura','riduttore'];
@@ -13413,6 +13478,7 @@ function start(){
     syncRms(); readSite(); refresh();
   });
   $('btnGear').onclick=()=>openGearManager();
+  $('btnBancoNina').onclick=leggiBancoNina;
   ['sqm','hor','cnf'].forEach(id=>
     $(id).addEventListener('input',()=>{
       if(id==='sqm') $('sqm').dataset.src='manuale';
@@ -17894,6 +17960,88 @@ async function leggiRuotaNina(){
   }
   RUOTA_NINA=f.map(x=>({nome:x.Name,pos:x.Id}));
   refresh();
+}
+/*  LEGGI IL BANCO DA N.I.N.A. (21 ottobre 2026): il profilo attivo, letto con l'Advanced API dalla porta unica, e la
+    proposta del motore (`bancoDalProfiloNina`). Si mostra che cosa dice N.I.N.A., che cosa si propone e perche';
+    «Usa questo banco» applica solo quello che e' riconosciuto, con gli stessi gesti delle tendine. Entro 0,01 gradi —
+    un chilometro — il sito del profilo e' quello che c'e', e resta col suo nome e il suo cielo. Sorvegliato da
+    tools/gate-banco-da-nina.js. */
+let BANCO_NINA=null;
+const STESSO_SITO_DEG=0.01;
+const sitoDiverso=s=>!!s&&(!SITE||Math.abs(s.lat-SITE.lat)>STESSO_SITO_DEG||Math.abs(s.lon-SITE.lon)>STESSO_SITO_DEG);
+const coord=x=>String(Math.round(x*1e4)/1e4).replace('.',',');
+async function leggiBancoNina(){
+  const box=$('bancoNina'); const dillo=h=>{ if(box) box.innerHTML=h; };
+  dillo('<span class="small muted">sto chiedendo a N.I.N.A.…</span>');
+  const r=await ninaChiedi('/profile/show?active=true');
+  if(!r.ok||!r.dato){
+    BANCO_NINA=null;
+    dillo('<div class="warnbox" style="margin-top:8px"><b>N.I.N.A. non raggiunto.</b> '+esc(r.motivo||'nessun profilo')+
+      '<br><span class="small muted">Serve N.I.N.A. aperto con il plugin Advanced API. Il banco resta quello che hai scelto qui.</span></div>');
+    return;
+  }
+  BANCO_NINA=bancoDalProfiloNina(r.dato);
+  dillo(htmlBancoNina(BANCO_NINA));
+}
+function htmlBancoNina(b){
+  const nome=(elenco,id)=>{ const v=(elenco||[]).find(x=>x.id===id); return v?(v.name||v.id):id; };
+  const simili=(elenco,ids)=>ids&&ids.length?' <span class="muted">— simili: '+ids.map(i=>esc(nome(elenco,i))).join(', ')+'</span>':'';
+  const no='<span class="p-warn">non riconosciuto</span>';
+  const riga=(pezzo,letto,proposta,perche)=>`<tr><td><b>${pezzo}</b></td><td>${letto}</td><td>${proposta}</td><td class="muted">${perche}</td></tr>`;
+  const o=b.ottica, m=b.montatura, c=b.camera, rid=o.riduttore;
+  const righe=[];
+  righe.push(riga('Sito',b.sito?`${coord(b.sito.lat)} · ${coord(b.sito.lon)}${b.sito.quota!=null?' · '+fmt(b.sito.quota,0)+' m':''}`:'—',
+    b.sito?(sitoDiverso(b.sito)?'queste coordinate':'il sito di adesso'):'—',
+    b.sito?(sitoDiverso(b.sito)?'il sito diventa questo, e l\'SQM si stima dalle coordinate':'entro un chilometro è lo stesso sito: resta col suo nome e il suo cielo')
+      :'il profilo non ha un sito'));
+  righe.push(riga('Telescopio',`«${esc(o.letto.nome||'—')}»${o.letto.focale_mm?' · '+fmt(o.letto.focale_mm,0)+' mm':''}${o.letto.rapporto?' · f/'+fmt(o.letto.rapporto,1):''}`,
+    o.voce?esc(nome(DB.telescopes,o.voce)):no+simili(DB.telescopes,o.candidati),
+    o.voce?'dal nome scritto nel profilo':'il nome del profilo non è una voce del catalogo: il telescopio resta quello di adesso'));
+  if(o.voce) righe.push(riga('Riduttore',o.letto.focale_mm?fmt(o.letto.focale_mm,0)+' mm':'—',
+    rid&&rid.dentro?esc(rid.label||('×'+fmt(rid.factor,2)))+' · '+fmt(rid.focal_mm,0)+' mm':no,
+    rid?(rid.dentro?`la focale del catalogo più vicina, a ${fmt(rid.scarto*100,1)} %`
+      :`<span class="p-warn">la focale più vicina del catalogo, ${fmt(rid.focal_mm,0)} mm, è a ${fmt(rid.scarto*100,1)} %: il riduttore resta quello di adesso</span>`)
+      :'il profilo non ha la focale'));
+  righe.push(riga('Montatura',m.letto.nome?'«'+esc(m.letto.nome)+'»':'<span class="muted">il profilo non la nomina</span>',
+    m.voce?esc(nome(DB.mounts,m.voce)):no+simili(DB.mounts,m.candidati),
+    m.voce?'dal nome della montatura nel profilo':'resta quella di adesso'));
+  const L=c.letto;
+  const lettoCam=[L.driver?(/^[0-9a-f-]{30,}$/i.test(L.driver)?'un codice del driver, non il modello':'«'+esc(L.driver)+'»'):null,
+    L.pixel_um?fmt(L.pixel_um,2)+' µm':null,
+    L.geometriaDiSerie?'geometria di serie del Framing Assistant':(L.width_px&&L.height_px?L.width_px+'×'+L.height_px:null),
+    L.matrice].filter(Boolean).join(' · ')||'—';
+  righe.push(riga('Camera',lettoCam,c.voce?esc(nome(DB.cameras,c.voce))+(c.daConfermare?' <span class="p-warn">da confermare</span>':''):no+simili(DB.cameras,c.candidati),
+    c.via==='nome_e_geometria'?'dal nome del driver, con la geometria'
+    :c.via==='geometria'?'dalla geometria e dalla matrice: il driver non dice il modello, e lo stesso sensore sta in camere di marche diverse'
+    :'resta quella di adesso'));
+  righe.push(riga('Filtri',b.filtri.length?b.filtri.map(f=>esc(f.nome)).join(' · '):'—',b.filtri.length?'i nomi per N.I.N.A.':'—',
+    b.filtri.length?'la sequenza chiamerà i filtri come li chiami in N.I.N.A.':'il profilo non ha una ruota'));
+  return `<div class="warnbox" style="margin-top:8px;border-color:var(--line)"><div class="small" style="margin-bottom:6px">
+      Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b></div>
+    <div style="overflow-x:auto"><table class="small" style="width:100%"><thead><tr><th></th><th>In N.I.N.A.</th><th>Proposta</th><th>Perché</th></tr></thead>
+    <tbody>${righe.join('')}</tbody></table></div>
+    <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="applicaBancoNina()">Usa questo banco</button>
+    <button type="button" class="chip" onclick="BANCO_NINA=null;$('bancoNina').innerHTML=''">Lascia com'è</button></div></div>`;
+}
+function applicaBancoNina(){
+  const b=BANCO_NINA; if(!b) return;
+  const esiste=(sel,v)=>v!=null&&[...$(sel).options].some(o=>o.value===String(v));
+  if(b.ottica.voce&&esiste('tel',b.ottica.voce)){
+    $('tel').value=b.ottica.voce; LAST_GEAR.tel=b.ottica.voce; fillReducers(b.ottica.voce);
+    const r=b.ottica.riduttore; if(r&&r.dentro&&esiste('red',r.factor)) $('red').value=String(r.factor);
+  }
+  if(b.camera.voce&&esiste('cam',b.camera.voce)){ $('cam').value=b.camera.voce; LAST_GEAR.cam=b.camera.voce; }
+  if(b.montatura.voce&&esiste('mnt',b.montatura.voce)){ $('mnt').value=b.montatura.voce; LAST_GEAR.mnt=b.montatura.voce; }
+  CFG_SCELTA=true; readCfg(); syncRms();
+  if(b.filtri.length) RUOTA_NINA=b.filtri.map(f=>({nome:f.nome,pos:f.pos}));
+  if(b.sito&&sitoDiverso(b.sito)){
+    $('lat').value=String(Math.round(b.sito.lat*1e4)/1e4); $('lon').value=String(Math.round(b.sito.lon*1e4)/1e4);
+    $('site').value='__custom'; SITE_DEFAULT=false; autoSQM();
+  }
+  readSite(); refresh();
+  $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+'.</span></div>';
+  BANCO_NINA=null;
 }
 /* Una sola porta verso N.I.N.A., e una sola regola per leggerne le risposte. */
 async function ninaChiedi(via,opt){
