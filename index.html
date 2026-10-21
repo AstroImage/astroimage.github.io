@@ -18138,8 +18138,11 @@ function ponteDiNina(){
   return PONTE_NINA;
 }
 const percorsoDellaVia=via=>String(via||'').split('?')[0];
+/* le due vie del Ponte (passo 3): non sono dell'Advanced API, e il nome lo dice */
+const VIA_BERSAGLI_DEL_PONTE='/ponte/bersagli', VIA_CONSEGNA_DEL_PONTE='/ponte/consegna';
 async function ninaDalPonte(via,opt){
-  const r=await chiediAlPonte({azione:'nina',via,metodo:(opt&&opt.method)||'GET',corpo:opt&&opt.body!=null?String(opt.body):null},4000);
+  const r=await chiediAlPonte({azione:'nina',via,metodo:(opt&&opt.method)||'GET',corpo:opt&&opt.body!=null?String(opt.body):null},
+    opt&&opt.method==='POST'?20000:4000);
   const b=r&&r.risposta;
   if(!b) return {ok:false,motivo:(r&&r.errore)||'il Ponte non ha risposto',ponte:true};
   if(b.Success!==true) return {ok:false,motivo:b.Error||'esito negativo',corpo:b,ponte:true};
@@ -18222,7 +18225,10 @@ async function mandaANina(notte){
   const dillo=h=>{ if(box) box.innerHTML=h; };
   dillo('<span class="muted small">sto chiedendo a N.I.N.A. chi è…</span>');
 
-  const v=await ninaChiedi('/version');
+  /* nel pannello del Ponte, se il Ponte consegna, la consegna e' sua: l'Advanced API non serve */
+  const ponte=await ponteDiNina();
+  const dalPonte=!!(ponte&&ponte.vie.has(VIA_CONSEGNA_DEL_PONTE));
+  const v=dalPonte?{ok:true,dato:ponte.versione}:await ninaChiedi('/version');
   if(!v.ok){
     dillo('<div class="warnbox"><b>N.I.N.A. non raggiunto.</b> '+esc(v.motivo)+
       '<br><span class="small muted">Serve N.I.N.A. aperto con il plugin Advanced API attivo. '+
@@ -18230,7 +18236,7 @@ async function mandaANina(notte){
     return;
   }
   /* il caricamento diretto vuole l'Advanced API 2.2.6 o successiva: sotto, si dice di aggiornare (`versioneNinaBasta`) */
-  if(versioneNinaBasta(v.dato)===false){
+  if(!dalPonte&&versioneNinaBasta(v.dato)===false){
     dillo('<div class="warnbox"><b>L’Advanced API di N.I.N.A. è la '+esc(String(v.dato))+'.</b> Per caricare la sequenza '+
       'da qui serve la '+NINA_API_MINIMA+' o successiva: aggiornala dal gestore dei plugin di N.I.N.A.'+
       '<br><span class="small muted">Nel frattempo il tasto verde qui accanto scarica lo stesso identico file.</span></div>');
@@ -18261,9 +18267,10 @@ async function mandaANina(notte){
   /*  DOVE VA (11 ottobre 2026): come sequenza nuova, o al posto di un bersaglio che il Sequenziatore ha gia' — il menu
       a tendina dell'Assistente di inquadratura, con `set-target` (nel motore, accanto a `bersagliNina`). I bersagli si
       leggono adesso per il menu, e si rileggono al clic. */
-  const st=await ninaChiedi('/sequence/state');
-  const bersagli=st.ok?bersagliNina(st.dato):[];
-  NINAINVIO={root,notte:nt.n,nome:(t.names&&t.names[0])||t.id,bersaglio:modello.bersaglio,versione:v.dato,
+  const st=await ninaChiedi(dalPonte?VIA_BERSAGLI_DEL_PONTE:'/sequence/state');
+  const bersagli=!st.ok?[]:dalPonte?(Array.isArray(st.dato)?st.dato:[]).map(b=>({indice:+b.indice,nome:String(b.nome||''),
+    stato:b.stato||null,coordinate:[]})):bersagliNina(st.dato);
+  NINAINVIO={root,modello,dalPonte,notte:nt.n,nome:(t.names&&t.names[0])||t.id,bersaglio:modello.bersaglio,versione:v.dato,
     bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:'nuova'};
 
   const riga=(k,a,b)=>`<div class="cfr"><div class="cfr-k">${k}</div>
@@ -18291,7 +18298,7 @@ async function mandaANina(notte){
     </select></label>`:'';
 
   /* un bersaglio in ripresa non si tocca; dopo il primo, con un'Advanced API piu' vecchia della 2.2.15, nemmeno */
-  const oltre=versioneNinaAlmeno(v.dato,NINA_API_OLTRE_IL_PRIMO)!==false;
+  const oltre=dalPonte||versioneNinaAlmeno(v.dato,NINA_API_OLTRE_IL_PRIMO)!==false;
   const fermo=b=>b.stato==='RUNNING'?'in ripresa adesso: si cambia a sequenza ferma'
     :(b.indice>0&&!oltre)?'dopo il primo serve l’Advanced API '+NINA_API_OLTRE_IL_PRIMO:null;
   const dove=`<label class="f ninadove"><span>dove</span><select id="ninaDove" onchange="ninaDove(this.value)">
@@ -18302,7 +18309,7 @@ async function mandaANina(notte){
     </select></label>`;
 
   dillo(`<div class="ninaconf">
-    <div class="small muted" style="margin-bottom:6px">N.I.N.A. ${esc(v.dato)} · notte ${nt.n} ·
+    <div class="small muted" style="margin-bottom:6px">${dalPonte?'N.I.N.A., attraverso il Ponte '+esc(v.dato||''):'N.I.N.A. '+esc(v.dato)} · notte ${nt.n} ·
       ${sp.subs.length} blocchi · ${fmt(JSON.stringify(root).length/1024,1)} kB</div>
     ${testaConfronto}${avvisi}
     <div class="row" style="gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap">
@@ -18329,6 +18336,17 @@ const coordinateDette=(ra,dec)=>{
 /* Che cosa fa la voce scelta, detto prima del clic: soprattutto che cosa NON cambia. */
 function notaDove(valore){
   const inv=NINAINVIO; if(!inv) return '';
+  /* dal Ponte la consegna e' un'altra: il bersaglio si aggiunge, o si sostituisce con le pose della prescrizione */
+  if(inv.dalPonte){
+    if(valore==='nuova') return 'Il Ponte <b>aggiunge</b> il bersaglio al Sequenziatore Avanzato, dopo quelli che ci sono, '+
+      'coi pezzi dei tuoi modelli di N.I.N.A., e rilegge ogni valore che scrive. Niente viene avviato: ad avviarlo sei tu.'+
+      (inv.letti?'<br>I bersagli già nel Sequenziatore non si leggono ('+esc(inv.letti)+'): nel menu non ci sono.':'');
+    const b=inv.bersagli[+valore], x=inv.bersaglio; if(!b||!x) return '';
+    const s=STATO_DEL_BERSAGLIO[b.stato];
+    return `Il Ponte mette <b>«${esc(x.nome)}»</b>, con pose, filtri e orari di questa prescrizione, nel punto della sequenza `+
+      `dove adesso c'è «${esc(b.nome)}»: il vecchio esce solo dopo che il nuovo è entrato. Niente viene avviato.`+
+      (s?`<br>⚠ In N.I.N.A. «${esc(b.nome)}» risulta ${s}.`:'');
+  }
   if(valore==='nuova') return 'La sequenza viene <b>caricata</b> al posto di quella aperta nel Sequenziatore, non avviata. '+
     'Ad avviarla sei tu, in N.I.N.A.'+(inv.letti?'<br>I bersagli già nel Sequenziatore non si leggono ('+esc(inv.letti)+
     '): nel menu non ci sono.':'');
@@ -18418,8 +18436,47 @@ async function ninaAggiornaBersaglio(indice){
   NINAINVIO=null;
 }
 
+/*  LA CONSEGNA DEL PONTE (passo 3, 21 ottobre 2026). Nel pannello il Ponte riceve il modello della sequenza — lo stesso
+    che il servizio gli dava, `sequenceModel` — e lo monta lui coi pezzi dei modelli di N.I.N.A., rileggendo ogni valore:
+    come bersaglio nuovo accanto agli altri, o al posto di quello scelto, che il Ponte ricontrolla per indice e nome. Il
+    Ponte torna con le pose montate blocco per blocco, e qui si confrontano con quelle del modello: il totale lo fa la
+    pagina, non il Ponte. Un rifiuto si dice col perche' del Ponte e i suoi scarti, e il file resta da scaricare. */
+async function consegnaDalPonte(){
+  const inv=NINAINVIO; if(!inv) return;
+  const box=document.getElementById('ninaInvio');
+  const dillo=h=>{ if(box) box.innerHTML=h; };
+  const chiudi='<div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div>';
+  const b=inv.dove==='nuova'?null:inv.bersagli[+inv.dove];
+  dillo('<span class="muted small">il Ponte sta montando il bersaglio…</span>');
+  const r=await ninaChiedi(VIA_CONSEGNA_DEL_PONTE,{method:'POST',
+    body:JSON.stringify({modello:inv.modello,sostituisci:b?{indice:b.indice,nome:b.nome}:null})});
+  const d=(r.corpo&&r.corpo.Response&&typeof r.corpo.Response==='object')?r.corpo.Response:{};
+  const elenco=(titolo,v)=>Array.isArray(v)&&v.length?`<div class="small" style="margin-top:6px"><b>${titolo}</b>
+    <ul style="margin:4px 0 0 18px">${v.map(x=>'<li>'+esc(String(x))+'</li>').join('')}</ul></div>`:'';
+  if(!r.ok){
+    dillo(`<div class="warnbox"><b>Il Ponte non ha consegnato.</b> ${esc(r.motivo)}${elenco('Scartati',d.scartati)}
+      <div class="small muted" style="margin-top:6px">Nel Sequenziatore non è cambiato niente. Il tasto verde scarica lo
+      stesso il file della notte.</div>${chiudi}</div>`);
+    NINAINVIO=null;
+    return;
+  }
+  const chieste=(inv.modello.blocchi||[]).map(x=>+x.n), montate=(Array.isArray(d.pose)?d.pose:[]).map(Number);
+  const uguali=chieste.length===montate.length&&chieste.every((n,i)=>n===montate[i]);
+  const totale=montate.reduce((a,n)=>a+n,0);
+  dillo(`<div class="okbox"><b>${d.sostituito?'Bersaglio sostituito dal Ponte':'Consegnato a N.I.N.A. dal Ponte'}</b>
+    <div class="small" style="margin-top:6px">«${esc(d.bersaglio||inv.nome)}»: ${fmt(+d.blocchi||0,0)} blocchi, ${fmt(totale,0)} pose${
+      d.sostituito?', al posto di «'+esc(d.sostituito)+'»':''}. ${uguali?'Le pose montate sono quelle chieste, blocco per blocco.'
+      :'<b class="p-warn">⚠ Le pose montate ('+montate.join(' · ')+') non sono quelle chieste ('+chieste.join(' · ')+
+        '): guardalo nel Sequenziatore prima di avviare.</b>'}</div>
+    ${elenco('Note del Ponte',d.note)}${elenco('Scartati',d.scartati)}
+    <div class="small muted" style="margin-top:6px">${esc(inv.nome)}, notte ${inv.notte}. Lo trovi nel Sequenziatore
+      Avanzato. <b>Non è stato avviato</b>: l'avvio resta tuo.</div>${chiudi}</div>`);
+  NINAINVIO=null;
+}
+
 async function ninaInviaDavvero(){
   if(!NINAINVIO) return;
+  if(NINAINVIO.dalPonte) return consegnaDalPonte();
   if(NINAINVIO.dove!=='nuova') return ninaAggiornaBersaglio(+NINAINVIO.dove);
   const box=document.getElementById('ninaInvio');
   const dillo=h=>{ if(box) box.innerHTML=h; };
