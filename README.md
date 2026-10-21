@@ -10,7 +10,8 @@ delle immagini si chiedono al CDS di Strasburgo, che così sa quale oggetto stai
 Per chi comincia c'è la **guida all'uso**, in PDF:
 [guida/AstroImage-Strategy-guida.pdf](guida/AstroImage-Strategy-guida.pdf). Dentro: i primi passi con le figure, un
 esempio vero coi suoi numeri, perché certe prescrizioni sorprendono, come ragiona l'app, le domande frequenti e un
-glossario. L'indice in copertina è cliccabile. Nell'app la trovi anche nella schermata Informazioni.
+glossario. L'indice in copertina è cliccabile. Nell'app si apre con un clic da «Guida» in alto, dal menu e dalla
+schermata Informazioni.
 
 Le sequenze vanno in N.I.N.A. in due modi: «Manda a N.I.N.A.», se N.I.N.A. è aperto con il plugin Advanced API, oppure
 «Esporta le sequenze», un file per notte da caricare nel Sequenziatore Avanzato.

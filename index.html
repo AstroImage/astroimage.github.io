@@ -148,6 +148,13 @@ html[data-night="1"] .topbar{background:var(--bg)}
 .tbtn svg{width:16px;height:16px;flex:none}
 .tbtn.accent{color:var(--acc);border-color:rgba(var(--acc-rgb),.4);background:rgba(var(--acc-rgb),.1)}
 .tbtn.accent:hover{background:rgba(var(--acc-rgb),.2);border-color:var(--acc)}
+/* LA GUIDA A UN CLIC (21 ottobre 2026). Un collegamento, non un pulsante: il PDF si apre in una scheda nuova e l'app
+   resta dov'era. Nell'intestazione si vede piu' di Informazioni e meno dell'Archivio. Fra 721 e 1000 px l'intestazione
+   era gia' al limite: anche la sola icona mandava a capo i pulsanti a 800-840 e a 920-940 px. Li' la guida sta solo nel
+   menu, col suo nome; sotto, sul telefono, le etichette non ci sono e l'icona ci sta. */
+a.tbtn,a.navitem{text-decoration:none}
+.tbtn.guida{color:var(--fg);border-color:var(--line)}
+@media(min-width:721px) and (max-width:1000px){.topacts .tbtn.guida{display:none}}
 
 /* =====================================================================
    SHELL — sidebar / main / riepilogo
@@ -1016,8 +1023,9 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
 
      E le caselle di spunta restano quelle che sono: il loro bersaglio vero e'
      l'etichetta che le contiene, gia' alta per tutta la riga — ingrandire il
-     quadratino non aggiungerebbe niente e romperebbe l'allineamento. */
-  button,select,
+     quadratino non aggiungerebbe niente e romperebbe l'allineamento. I collegamenti fatti come tasti — la guida — sono
+     tasti anche qui. */
+  button,select,a.tbtn,a.navitem,
   input[type=number],input[type=text],input[type=date],input[type=time],
   input[type=search],input:not([type]){min-height:44px}
   /* Quello che non si preme non segue la regola: il cursore si trascina, la spunta ha
@@ -1157,6 +1165,13 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
       <span class="tlabel">Modalità notte</span>
     </button>
+    <a class="tbtn guida" href="https://astroimage.github.io/guida/AstroImage-Strategy-guida.pdf" target="_blank" rel="noopener"
+       title="La guida all'uso in PDF: i primi passi con le figure e un esempio vero. Si apre in una scheda nuova">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 6.6C10.2 5.3 7.8 4.6 4 4.6v13.2c3.8 0 6.2.7 8 2 1.8-1.3 4.2-2 8-2V4.6c-3.8 0-6.2.7-8 2Z"/><path d="M12 6.6v13.2"/></svg>
+      <span class="tlabel">Guida</span>
+    </a>
     <button class="tbtn" data-go="info" title="Come funziona, limiti dichiarati e crediti">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1219,6 +1234,11 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
     Informazioni</button>
+  <a class="navitem" href="https://astroimage.github.io/guida/AstroImage-Strategy-guida.pdf" target="_blank" rel="noopener" title="La guida all'uso in PDF, in una scheda nuova">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 6.6C10.2 5.3 7.8 4.6 4 4.6v13.2c3.8 0 6.2.7 8 2 1.8-1.3 4.2-2 8-2V4.6c-3.8 0-6.2.7-8 2Z"/><path d="M12 6.6v13.2"/></svg>
+    Guida all'uso</a>
 
   <div class="navfoot">
     <div class="nf-name">AstroImage-Strategy</div>
