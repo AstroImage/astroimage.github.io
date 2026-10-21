@@ -13564,6 +13564,8 @@ function start(){
   initNav();
   initVistaOggetti();
   refresh();
+  /* nel pannello del Ponte, le dichiarazioni della postazione sono quelle del profilo di N.I.N.A. */
+  postazioneDalPonte('apertura');
 }
 
 /* =====================================================================
@@ -15135,6 +15137,7 @@ function refresh(){
   renderBest();
   renderRx(np);
   renderSummary();
+  postazioneCambiata();
 }
 const cell=(k,v,n)=>`<div class="dcell"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n||''}</div></div>`;
 
@@ -18123,6 +18126,7 @@ function chiediAlPonte(msg,ms){
     /* il Ponte risponde con un testo JSON; un oggetto si accetta lo stesso */
     w.addEventListener('message',ev=>{ let d=ev&&ev.data;
       if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ return; } }
+      if(d&&d.evento==='profilo'){ alProfiloDelPonte(); return; }
       const f=d&&PONTE_ATTESE.get(d.id); if(f) f(d); }); }
   const id='ais'+(++PONTE_SEGNO);
   return new Promise(fatto=>{
@@ -18140,6 +18144,103 @@ function ponteDiNina(){
 const percorsoDellaVia=via=>String(via||'').split('?')[0];
 /* le due vie del Ponte (passo 3): non sono dell'Advanced API, e il nome lo dice */
 const VIA_BERSAGLI_DEL_PONTE='/ponte/bersagli', VIA_CONSEGNA_DEL_PONTE='/ponte/consegna';
+/*  LE DICHIARAZIONI DELLA POSTAZIONE NEL PROFILO DI N.I.N.A. (passo 4, 21 ottobre 2026). Nel pannello del Ponte, AIS
+    tiene nel profilo attivo di N.I.N.A. quello che descrive la postazione: il banco e il binning, il banco letto da
+    N.I.N.A., il sito e i siti, i filtri posseduti e in uso coi ruoli e i nomi per N.I.N.A., le capacita' della sequenza,
+    le impostazioni operative col tetto della posa. Cosi' ogni profilo ha le sue, e Borno e Milano restano separati da
+    soli. Resta di chi riprende, uguale in ogni profilo, tutto il resto: l'attrezzatura e i filtri aggiunti al catalogo, i
+    bersagli, la Luna di riferimento, l'RMS (gia' uno per montatura), le scelte della pagina. Il Ponte le custodisce senza
+    leggerle.
+    All'apertura e a ogni cambio di profilo si chiedono al Ponte. Se sono diverse da quelle in memoria si scrivono e la
+    pagina riparte, cosi' tutto si rilegge come all'avvio, una volta sola per lo stesso contenuto; se il profilo non ne
+    ha, resta quello che c'e', e da li' in poi ogni cambiamento si salva in quel profilo. Si salva solo nel profilo da
+    cui si e' letto: il Ponte lo ricontrolla. Fuori dal pannello niente di tutto questo parte. */
+const VIA_DICHIARAZIONI_DEL_PONTE='/ponte/dichiarazioni';
+const CHIAVI_DELLA_POSTAZIONE=['ap_cfg','ap_bin','ap_banco_nina','ap_site','ap_sites','ap_filters','ap_using','ap_roles',
+  'ap_ninafilters','ap_ninacap','ap_opset','ap_tetto_dichiarato'];
+const VERSIONE_DELLA_POSTAZIONE=1;
+let POSTAZIONE_LETTA=null, POSTAZIONE_ATTESA=null, POSTAZIONE_GIRO=null;
+/* COMANDA L'ULTIMA PAGINA APERTA (21 ottobre 2026, visto su msi.station). Quando si passa a un altro profilo, N.I.N.A.
+   costruisce un pannello nuovo, e la pagina di prima restava viva, nascosta, sulla stessa memoria: riceveva lei l'avviso del profilo, e un profilo si e'
+   trovato dichiarazioni che nessuno aveva cambiato. Ogni pagina, partendo, lascia il suo segno; quella il cui segno non
+   e' piu' l'ultimo non salva e non risponde agli avvisi. Il Ponte spegne il pannello vecchio: questo e' il secondo argine,
+   e vale anche senza il primo. */
+const SEGNO_DELLA_PAGINA=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+const comandaQuestaPagina=()=>{ try{ return localStorage.getItem('ap_pagina_del_pannello')===SEGNO_DELLA_PAGINA; }catch(e){ return true; } };
+function fotoDellaPostazione(){
+  const o={};
+  for(const k of CHIAVI_DELLA_POSTAZIONE){ let v=null; try{ v=localStorage.getItem(k); }catch(e){} if(v!=null) o[k]=v; }
+  return o;
+}
+const improntaDellaPostazione=o=>JSON.stringify(CHIAVI_DELLA_POSTAZIONE.map(k=>o&&typeof o[k]==='string'?o[k]:null));
+function scriviLaPostazione(o){
+  for(const k of CHIAVI_DELLA_POSTAZIONE){
+    try{ if(typeof o[k]==='string') localStorage.setItem(k,o[k]); else localStorage.removeItem(k); }catch(e){} }
+}
+async function postazioneDalPonte(perche){
+  const ponte=await ponteDiNina();
+  if(!ponte||!ponte.vie.has(VIA_DICHIARAZIONI_DEL_PONTE)) return;
+  if(perche==='apertura'){ try{ localStorage.setItem('ap_pagina_del_pannello',SEGNO_DELLA_PAGINA); }catch(e){} }
+  else if(!comandaQuestaPagina()) return;
+  const r=await ninaChiedi(VIA_DICHIARAZIONI_DEL_PONTE);
+  if(!r.ok||!r.dato||!r.dato.id){
+    POSTAZIONE_LETTA=null;
+    toast('Le dichiarazioni del profilo di N.I.N.A. non si leggono: '+(r.motivo||'nessuna risposta')+'.');
+    return;
+  }
+  const d=r.dato;
+  const nel=d.dati&&d.dati.versione===VERSIONE_DELLA_POSTAZIONE&&d.dati.chiavi&&typeof d.dati.chiavi==='object'?d.dati.chiavi:null;
+  if(nel&&improntaDellaPostazione(nel)!==improntaDellaPostazione(fotoDellaPostazione())){
+    const segno=d.id+'|'+improntaDellaPostazione(nel);
+    let gia=null; try{ gia=sessionStorage.getItem('ap_postazione_ripartita'); }catch(e){}
+    if(gia!==segno){
+      try{ sessionStorage.setItem('ap_postazione_ripartita',segno);
+           sessionStorage.setItem('ap_postazione_avviso',JSON.stringify({perche,nome:d.nome})); }catch(e){}
+      scriviLaPostazione(nel);
+      location.reload();
+      return;
+    }
+    toast('Le dichiarazioni del profilo «'+d.nome+'» non si sono potute scrivere in questa pagina.');
+  }
+  POSTAZIONE_LETTA={id:d.id,nome:d.nome,ultima:improntaDellaPostazione(fotoDellaPostazione())};
+  if(!POSTAZIONE_GIRO) POSTAZIONE_GIRO=setInterval(postazioneCambiata,5000);
+  let avviso=null;
+  try{ avviso=JSON.parse(sessionStorage.getItem('ap_postazione_avviso')||'null'); sessionStorage.removeItem('ap_postazione_avviso'); }catch(e){}
+  if(d.nota) toast(d.nota);
+  /* si dice sempre, anche quando la memoria era gia' giusta: al cambio di profilo puo' averla scritta la pagina di prima,
+     un attimo prima di essere spenta, e allora la ripartenza l'ha vista lei (misurato su msi.station) */
+  else if(nel) toast('Profilo di N.I.N.A. «'+d.nome+'»'+(avviso&&avviso.perche==='profilo'?', appena scelto':'')+
+    ': banco, sito e filtri sono i suoi.');
+  else{
+    toast('Il profilo «'+d.nome+'» di N.I.N.A. non ha ancora le sue dichiarazioni: quello che dichiari da qui in poi resta suo.');
+    /* anche all'apertura, non solo all'avviso: N.I.N.A. ricrea il pannello quando si cambia profilo dalle Opzioni, e la pagina
+       nuova parte da capo senza ricevere nessun avviso (misurato su msi.station). Si propone e basta: si applica a mano. */
+    go('strumentazione'); leggiBancoNina();
+  }
+}
+function postazioneCambiata(){
+  if(!POSTAZIONE_LETTA||!comandaQuestaPagina()||improntaDellaPostazione(fotoDellaPostazione())===POSTAZIONE_LETTA.ultima) return;
+  clearTimeout(POSTAZIONE_ATTESA);
+  POSTAZIONE_ATTESA=setTimeout(salvaLaPostazione,400);
+}
+async function salvaLaPostazione(){
+  const p=POSTAZIONE_LETTA; if(!p||!comandaQuestaPagina()) return;
+  const foto=fotoDellaPostazione(), ora=improntaDellaPostazione(foto);
+  if(ora===p.ultima) return;
+  const r=await ninaChiedi(VIA_DICHIARAZIONI_DEL_PONTE,{method:'POST',
+    body:JSON.stringify({id:p.id,dati:{versione:VERSIONE_DELLA_POSTAZIONE,chiavi:foto}})});
+  if(r.ok){ p.ultima=ora; return; }
+  if(POSTAZIONE_LETTA===p) toast('Le dichiarazioni non si sono salvate nel profilo «'+p.nome+'» di N.I.N.A.: '+r.motivo);
+}
+/* IL PROFILO DI N.I.N.A. E' CAMBIATO, e lo dice il Ponte: l'invio preparato e il banco letto erano del profilo di prima,
+   e le dichiarazioni da qui in poi sono del profilo nuovo. */
+function alProfiloDelPonte(){
+  if(!comandaQuestaPagina()) return;
+  NINAINVIO=null; const ni=document.getElementById('ninaInvio'); if(ni) ni.innerHTML='';
+  BANCO_NINA=null; const bn=document.getElementById('bancoNina'); if(bn) bn.innerHTML='';
+  clearTimeout(POSTAZIONE_ATTESA); POSTAZIONE_LETTA=null;
+  postazioneDalPonte('profilo');
+}
 async function ninaDalPonte(via,opt){
   const r=await chiediAlPonte({azione:'nina',via,metodo:(opt&&opt.method)||'GET',corpo:opt&&opt.body!=null?String(opt.body):null},
     opt&&opt.method==='POST'?20000:4000);
