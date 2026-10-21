@@ -18019,11 +18019,12 @@ async function leggiBancoNina(){
   const [r,h]=await Promise.all([ninaChiedi('/profile/show?active=true'),ninaChiedi('/profile/horizon')]);
   if(!r.ok||!r.dato){
     BANCO_NINA=null;
-    dillo('<div class="warnbox" style="margin-top:8px"><b>N.I.N.A. non raggiunto.</b> '+esc(r.motivo||'nessun profilo')+
-      '<br><span class="small muted">Serve N.I.N.A. aperto con il plugin Advanced API. Il banco resta quello che hai scelto qui.</span></div>');
+    dillo('<div class="warnbox" style="margin-top:8px"><b>'+(r.ponte?'Il Ponte non ha dato il profilo.':'N.I.N.A. non raggiunto.')+'</b> '+
+      esc(r.motivo||'nessun profilo')+'<br><span class="small muted">'+(r.ponte?'':'Serve N.I.N.A. aperto con il plugin Advanced API. ')+
+      'Il banco resta quello che hai scelto qui.</span></div>');
     return;
   }
-  BANCO_NINA=bancoDalProfiloNina(r.dato,h.ok?h.dato:null);
+  BANCO_NINA=Object.assign(bancoDalProfiloNina(r.dato,h.ok?h.dato:null),{dalPonte:!!r.ponte});
   dillo(htmlBancoNina(BANCO_NINA));
 }
 function htmlBancoNina(b){
@@ -18066,7 +18067,7 @@ function htmlBancoNina(b){
   righe.push(riga('Filtri',b.filtri.length?b.filtri.map(f=>esc(f.nome)).join(' · '):'—',b.filtri.length?'i nomi per N.I.N.A.':'—',
     b.filtri.length?'la sequenza chiamerà i filtri come li chiami in N.I.N.A.':'il profilo non ha una ruota'));
   return `<div class="warnbox" style="margin-top:8px;border-color:var(--line)"><div class="small" style="margin-bottom:6px">
-      Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b></div>
+      Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b>${b.dalPonte?' <span class="muted">· letto dal Ponte, dentro N.I.N.A.</span>':''}</div>
     <div style="overflow-x:auto"><table class="small" style="width:100%"><thead><tr><th></th><th>In N.I.N.A.</th><th>Proposta</th><th>Perché</th></tr></thead>
     <tbody>${righe.join('')}</tbody></table></div>
     <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="applicaBancoNina()">Usa questo banco</button>
@@ -18106,8 +18107,49 @@ function applicaBancoNina(){
     '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+'.</span></div>';
   BANCO_NINA=null;
 }
+/* IL PONTE COME OSPITE (21 ottobre 2026). Nel pannello del Ponte, dentro N.I.N.A., AIS gira in un WebView2: c'e'
+   `chrome.webview`, e il Ponte risponde a una presentazione con le vie che sa dare. Quelle si chiedono a lui, con le
+   stesse domande e la stessa busta dell'Advanced API; tutte le altre vanno alla rete, com'era. Cosi' il banco si legge
+   senza il plugin Advanced API e senza un browser che blocchi una pagina https che parla con N.I.N.A. in http: il
+   Ponte e' N.I.N.A. stesso. Fuori dal pannello `chrome.webview` non c'e', non si chiede niente e niente cambia; un
+   ospite che non si presenta entro PONTE_ATTESA_MS vale come nessun ospite. */
+const PONTE_ATTESA_MS=1500;
+const PONTE_ATTESE=new Map();
+let PONTE_NINA=null, PONTE_SEGNO=0, ponteInAscolto=false;
+function webviewDelPonte(){ try{ return (window.chrome&&window.chrome.webview)||null; }catch(e){ return null; } }
+function chiediAlPonte(msg,ms){
+  const w=webviewDelPonte(); if(!w) return Promise.resolve(null);
+  if(!ponteInAscolto){ ponteInAscolto=true;
+    /* il Ponte risponde con un testo JSON; un oggetto si accetta lo stesso */
+    w.addEventListener('message',ev=>{ let d=ev&&ev.data;
+      if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ return; } }
+      const f=d&&PONTE_ATTESE.get(d.id); if(f) f(d); }); }
+  const id='ais'+(++PONTE_SEGNO);
+  return new Promise(fatto=>{
+    const t=setTimeout(()=>{ PONTE_ATTESE.delete(id); fatto(null); },ms);
+    PONTE_ATTESE.set(id,d=>{ clearTimeout(t); PONTE_ATTESE.delete(id); fatto(d); });
+    try{ w.postMessage(JSON.stringify(Object.assign({id},msg))); }catch(e){ clearTimeout(t); PONTE_ATTESE.delete(id); fatto(null); }
+  });
+}
+/* la presentazione si chiede una volta sola: mentre la pagina e' aperta il Ponte non cambia le sue vie */
+function ponteDiNina(){
+  if(!PONTE_NINA) PONTE_NINA=chiediAlPonte({azione:'presentati'},PONTE_ATTESA_MS).then(r=>
+    r&&r.ospite&&Array.isArray(r.vie)?{ospite:String(r.ospite),versione:r.versione||null,vie:new Set(r.vie.map(String))}:null);
+  return PONTE_NINA;
+}
+const percorsoDellaVia=via=>String(via||'').split('?')[0];
+async function ninaDalPonte(via,opt){
+  const r=await chiediAlPonte({azione:'nina',via,metodo:(opt&&opt.method)||'GET',corpo:opt&&opt.body!=null?String(opt.body):null},4000);
+  const b=r&&r.risposta;
+  if(!b) return {ok:false,motivo:(r&&r.errore)||'il Ponte non ha risposto',ponte:true};
+  if(b.Success!==true) return {ok:false,motivo:b.Error||'esito negativo',corpo:b,ponte:true};
+  return {ok:true,dato:b.Response,corpo:b,ponte:true};
+}
 /* Una sola porta verso N.I.N.A., e una sola regola per leggerne le risposte. */
 async function ninaChiedi(via,opt){
+  /* nel pannello del Ponte, una via che il Ponte dichiara si chiede a lui */
+  const ponte=await ponteDiNina();
+  if(ponte&&ponte.vie.has(percorsoDellaVia(via))) return ninaDalPonte(via,opt);
   /* da una pagina https verso un'altra macchina in http il browser blocca sempre: si dice, senza provare */
   if(ninaMisto(location.protocol,NINA_BASE())) return {ok:false,motivo:perCheNinaTace(location.protocol,NINA_BASE(),'rete')};
   const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
