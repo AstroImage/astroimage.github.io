@@ -1,0 +1,19 @@
+{
+ "id": "./",
+ "name": "AstroImage-Strategy",
+ "short_name": "AIS",
+ "description": "La strategia di ripresa per l'astrofotografia: tecnica, ore per canale, posa e notti, fino alla sequenza per N.I.N.A.",
+ "lang": "it",
+ "dir": "ltr",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#070b11",
+ "theme_color": "#070b11",
+ "categories": ["utilities", "education"],
+ "icons": [
+  { "src": "icone/ais-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+  { "src": "icone/ais-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "icone/ais-maschera-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+ ]
+}

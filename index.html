@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070b11">
 <title>AstroImage-Strategy — Strategia di Ripresa</title>
 <style>
 /* =====================================================================
@@ -153,6 +154,8 @@ html[data-night="1"] .topbar{background:var(--bg)}
    era gia' al limite: anche la sola icona mandava a capo i pulsanti a 800-840 e a 920-940 px. Li' la guida sta solo nel
    menu, col suo nome; sotto, sul telefono, le etichette non ci sono e l'icona ci sta. */
 a.tbtn,a.navitem{text-decoration:none}
+/* «Installa l'app» c'e' solo quando il browser la offre (`comeUnaApp`): finche' no, `hidden` deve vincere su display:flex */
+.navitem[hidden]{display:none}
 .tbtn.guida{color:var(--fg);border-color:var(--line)}
 @media(min-width:721px) and (max-width:1000px){.topacts .tbtn.guida{display:none}}
 
@@ -1239,6 +1242,12 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M12 6.6C10.2 5.3 7.8 4.6 4 4.6v13.2c3.8 0 6.2.7 8 2 1.8-1.3 4.2-2 8-2V4.6c-3.8 0-6.2.7-8 2Z"/><path d="M12 6.6v13.2"/></svg>
     Guida all'uso</a>
+  <button type="button" class="navitem" id="btnInstalla" hidden
+          title="Installa AIS come un'app: un'icona sua, una finestra sua, e si apre anche senza rete">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg>
+    Installa l'app</button>
 
   <div class="navfoot">
     <div class="nf-name">AstroImage-Strategy</div>
@@ -13586,22 +13595,57 @@ function start(){
   refresh();
   /* nel pannello del Ponte, le dichiarazioni della postazione sono quelle del profilo di N.I.N.A. */
   postazioneDalPonte('apertura');
+  comeUnaApp();
   copiaPerSenzaRete();
 }
+/* Il sito, o questa macchina per provarlo: solo li' la pagina diventa un'app e tiene la copia per quando manca la rete.
+   Dal file sul disco no: lo standalone ha gia' tutto dentro, e i file accanto a lui non ci sono. */
+const sulSitoOQui=()=>location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 /* AIS ANCHE SENZA RETE (21 ottobre 2026). Sul sito, e su questa macchina per provarlo, la pagina registra `sw.js`, il
    lavoratore di sfondo che tiene la copia della pagina e dei dati, e gli dice che cosa ha appena caricato: alla prima
    visita le richieste dei dati sono partite prima di lui, e senza questo elenco la copia comincerebbe solo dalla
-   seconda. Dal file sul disco non si registra niente: lo standalone ha gia' tutto dentro. Senza rete si dice da dove
-   vengono pagina e dati. */
+   seconda. Nell'elenco vanno anche il manifesto e le icone dell'app, che il browser chiede per conto suo. Dal file sul
+   disco non si registra niente: lo standalone ha gia' tutto dentro. Senza rete si dice da dove vengono pagina e dati. */
 function copiaPerSenzaRete(){
   if(navigator.onLine===false) toast('Senza rete: AIS usa la copia dell\u2019ultima visita. N.I.N.A. sullo stesso PC risponde lo stesso.');
   if(!('serviceWorker' in navigator)) return;
-  if(!(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
+  if(!sulSitoOQui()) return;
   navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(reg=>{
     const caricati=performance.getEntriesByType('resource').map(x=>x.name)
       .filter(u=>{ try{ return new URL(u).origin===location.origin; }catch(e){ return false; } });
-    if(reg.active) reg.active.postMessage({copia:[...new Set([location.href.split('#')[0],...caricati])]});
+    const app=[APP_MANIFESTO,APP_ICONA_DELLA_SCHEDA,APP_ICONA_IPHONE].map(f=>new URL(f,location.href).href);
+    if(reg.active) reg.active.postMessage({copia:[...new Set([location.href.split('#')[0],...caricati,...app])]});
   }).catch(()=>{});
+}
+/* AIS COME UN'APP (21 ottobre 2026). Alessandro: AIS il piu' autonomo possibile, con un'icona sua, anche sul telefono.
+   Sul sito la pagina mette nella testa il manifesto (`manifest.webmanifest`: il nome, l'icona, la finestra senza la
+   barra del browser) e le due icone che il manifesto non dice: quella della scheda e quella per la schermata Home
+   dell'iPhone. Le icone le fa `tools/fai-icone.js` dal logo dell'intestazione.
+   Chrome ed Edge, sul computer e su Android, offrono allora di installarla: col loro segno nella barra dell'indirizzo o
+   nel loro menu, e \u2014 quando la offrono, e solo allora \u2014 con \u00abInstalla l'app\u00bb nel menu di AIS. L'offerta del browser non
+   si toglie: la voce del menu si aggiunge. Safari non lo lascia fare alle pagine: su iPhone si usa Condividi \u2192 \u00abAggiungi
+   alla schermata Home\u00bb. Aperta come app, la voce non compare. */
+const APP_MANIFESTO='manifest.webmanifest', APP_ICONA_DELLA_SCHEDA='icone/ais-32.png', APP_ICONA_IPHONE='icone/ais-180.png';
+let OFFERTA_DI_INSTALLAZIONE=null;
+function comeUnaApp(){
+  if(!sulSitoOQui()) return;
+  const voce=$('btnInstalla');
+  const giaApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  if(!giaApp&&voce){
+    /* prima l'ascolto, poi il manifesto: il browser fa l'offerta dopo averlo letto */
+    window.addEventListener('beforeinstallprompt',e=>{ OFFERTA_DI_INSTALLAZIONE=e; voce.hidden=false; });
+    window.addEventListener('appinstalled',()=>{ OFFERTA_DI_INSTALLAZIONE=null; voce.hidden=true;
+      toast('AIS \u00e8 installata: la trovi fra le app, con la sua icona.'); });
+    voce.onclick=()=>{
+      const e=OFFERTA_DI_INSTALLAZIONE; OFFERTA_DI_INSTALLAZIONE=null; voce.hidden=true;
+      if(e&&typeof e.prompt==='function') Promise.resolve().then(()=>e.prompt()).catch(()=>{});
+    };
+  }
+  const testa=(rel,href,altro)=>{ const l=document.createElement('link'); l.rel=rel; l.href=href;
+    for(const k in altro||{}) l.setAttribute(k,altro[k]); document.head.appendChild(l); };
+  testa('icon',APP_ICONA_DELLA_SCHEDA,{type:'image/png',sizes:'32x32'});
+  testa('apple-touch-icon',APP_ICONA_IPHONE);
+  testa('manifest',APP_MANIFESTO);
 }
 
 /* =====================================================================

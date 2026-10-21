@@ -9,8 +9,9 @@
    nuova arriva come prima, al primo caricamento. Solo se la rete non risponde — o non risponde entro ATTESA_MS, che al
    telescopio con una rete lenta e' la stessa cosa — si serve la copia dell'ultima visita.
 
-   SOLO LE COSE DEL SITO. La pagina, i dati, la guida: le richieste a un'altra origine — N.I.N.A. sulla porta 1888, le
-   immagini del cielo, i cataloghi — passano senza che le tocchi, e senza rete semplicemente non rispondono, come oggi.
+   SOLO LE COSE DEL SITO. La pagina, i dati, la guida, il manifesto e le icone dell'app: le richieste a un'altra
+   origine — N.I.N.A. sulla porta 1888, le immagini del cielo, i cataloghi — passano senza che le tocchi, e senza rete
+   semplicemente non rispondono, come oggi.
    Solo le letture (GET): il resto non si mette da parte.
 
    Fuori dal sito, o aperta dal file sul disco, la pagina non registra questo lavoratore: lo standalone ha gia' tutto
@@ -70,12 +71,23 @@ async function dallaReteODallaCopia(r) {
   try {
     const primo = await Promise.race([dallaRete, tardi]);
     if (primo !== 'tardi') { clearTimeout(timer); return primo; }
-    const salvata = await copia.match(r, { ignoreSearch: true });
+    const salvata = await dallaCopia(copia, r);
     return salvata || await dallaRete;
   } catch (errore) {
     clearTimeout(timer);
-    const salvata = await copia.match(r, { ignoreSearch: true });
+    const salvata = await dallaCopia(copia, r);
     if (salvata) return salvata;
     throw errore;
   }
+}
+
+/* LA PAGINA HA DUE NOMI. AIS installata come app parte da «./» (il manifesto), e chi l'ha aperta la prima volta da
+   «index.html» ha in copia quel nome; o il contrario. Per una pagina da aprire, se il suo nome non c'e' si prova l'altro. */
+async function dallaCopia(copia, r) {
+  const salvata = await copia.match(r, { ignoreSearch: true });
+  if (salvata || r.mode !== 'navigate') return salvata;
+  const u = new URL(r.url);
+  const altro = u.pathname.endsWith('/') ? u.pathname + 'index.html'
+    : u.pathname.endsWith('/index.html') ? u.pathname.slice(0, -'index.html'.length) : null;
+  return altro ? copia.match(new URL(altro, u.origin).href, { ignoreSearch: true }) : undefined;
 }

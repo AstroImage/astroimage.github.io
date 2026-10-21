@@ -7,6 +7,10 @@ calcolati sulla tua strumentazione e sul tuo cielo.
 niente. Non ci sono account: il sito e la strumentazione che dichiari restano nel tuo browser. Le anteprime
 delle immagini si chiedono al CDS di Strasburgo, che così sa quale oggetto stai guardando.
 
+Se vuoi, AIS diventa **un'app** con la sua icona e una finestra sua: con Chrome o Edge, sul computer e su Android,
+«Installa l'app» nel menu quando il browser la offre, o il segno di installazione nella barra dell'indirizzo; sull'iPhone
+Condividi → «Aggiungi alla schermata Home». Aperta una volta con la rete, si apre anche senza.
+
 Per chi comincia c'è la **guida all'uso**, in PDF:
 [guida/AstroImage-Strategy-guida.pdf](guida/AstroImage-Strategy-guida.pdf). Dentro: i primi passi con le figure, un
 esempio vero coi suoi numeri, perché certe prescrizioni sorprendono, come ragiona l'app, le domande frequenti e un
