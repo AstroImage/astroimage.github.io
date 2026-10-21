@@ -2133,9 +2133,29 @@ function riconosciDalDriver(d){
         anche chi riprende (3,75 per una 2600 da 3,76);
       · 4500×3500 e' il valore di serie del Framing Assistant: non e' una geometria;
       · un sito a 0,0 non e' un sito.
-    Niente si applica da qui: e' chi guarda che sceglie. Sorvegliato da tools/gate-banco-da-nina.js. */
+    Niente si applica da qui: e' chi guarda che sceglie. La focale e il rapporto letti restano in `ottica.letto`: la
+    pagina li passa al motore come il servizio (`tel.focale_mm`, `tel.rapporto`), e li' la focale di N.I.N.A. vince sul
+    catalogo. Sorvegliato da tools/gate-banco-da-nina.js. */
 const FA_DI_SERIE=[4500,3500], PIXEL_DAL_PROFILO_UM=0.02;
-function bancoDalProfiloNina(P){
+/*  L'ORIZZONTE DEL PROFILO (21 ottobre 2026). `/profile/horizon` dell'Advanced API restituisce due elenchi, `Azimuths` e
+    `Altitudes`, un punto per grado da 0 a 360: su msi.station il file «Borno Casa», da 6,4 a 41 gradi. Diventa il profilo
+    per azimut del sito (`site.orizzonte`), lo stesso che il Ponte manda: il 360 che ripete lo 0 si toglie, l'altezza a
+    due decimali. Elenchi di lunghezza diversa, un punto solo o numeri fuori dominio non sono un orizzonte: null, e vale
+    l'orizzonte minimo che c'e'. */
+function orizzonteDaNina(R){
+  const Z=R&&R.Azimuths, A=R&&R.Altitudes;
+  if(!Array.isArray(Z)||!Array.isArray(A)||Z.length!==A.length) return null;
+  const visti=new Set(), punti=[];
+  for(let i=0;i<Z.length;i++){
+    const az=+Z[i], alt=+A[i];
+    if(!isFinite(az)||!isFinite(alt)||alt<-10||alt>90||az<0||az>360) return null;
+    const k=Math.round(n360(az)*100)/100;
+    if(visti.has(k)) continue;
+    visti.add(k); punti.push([k,Math.round(alt*100)/100]);
+  }
+  return punti.length>=2?punti.sort((a,b)=>a[0]-b[0]):null;
+}
+function bancoDalProfiloNina(P,H){
   const num=v=>(typeof v==='number'&&isFinite(v))?v:null;
   const T=(P&&P.TelescopeSettings)||{}, C=(P&&P.CameraSettings)||{}, A=(P&&P.AstrometrySettings)||{};
   const F=(P&&P.FramingAssistantSettings)||{}, W=(P&&P.FilterWheelSettings)||{};
@@ -2173,7 +2193,12 @@ function bancoDalProfiloNina(P){
   }
   camera.letto={driver:d.name||null,pixel_um:d.pixel_um,width_px:larghezza,height_px:altezza,geometriaDiSerie:diSerie,matrice};
   const filtri=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>({nome:String(f.Name),pos:num(f.Position)}));
-  return {profilo:(P&&P.Name)||null,sito,ottica,montatura,camera,filtri};
+  /*  l'orizzonte arriva da un'altra domanda (`H`); il profilo dice solo da quale file viene */
+  const file=String(A.HorizonFilePath||'').split(/[\\/]/).pop()||null;
+  const punti=H?orizzonteDaNina(H):null;
+  const orizzonte=punti?{punti,min:Math.min(...punti.map(x=>x[1])),max:Math.max(...punti.map(x=>x[1])),file}
+    :file?{punti:null,file}:null;
+  return {profilo:(P&&P.Name)||null,sito,ottica,montatura,camera,filtri,orizzonte};
 }
 
 const PEZZI_SETUP=['ottica','camera','montatura','riduttore'];
@@ -14327,6 +14352,13 @@ function cfgMotore(){
    *  (`buioDelBanco`, 16 settembre 2026). Prima che le capacita' esistano vale quella di serie. */
   let cap=null; try{ cap=NINACAP; }catch(e){ cap=null; }
   base.raffreddamento=cap?{raffredda:cap.raffredda!==false,tempC:cap.tempC}:null;
+  /*  LA FOCALE DI N.I.N.A. (21 ottobre 2026): se il banco in uso e' quello letto dal profilo — stesso telescopio, stesso
+      riduttore —, focale e rapporto del profilo entrano nel motore come nel servizio (`tel.focale_mm`, `tel.rapporto`):
+      la focale vince sul catalogo, e oltre il margine lo si dice in giallo. Cambiato il telescopio o il riduttore, non
+      valgono piu'. Sorvegliato da tools/gate-banco-da-nina.js. */
+  let bn=null; try{ bn=bancoDiNinaSalvato(); }catch(e){ bn=null; }
+  if(bn&&bn.tel===CFG.tel&&Math.abs(+bn.red-CFG.red)<1e-6&&bn.focale_mm>0)
+    base.tel=Object.assign({id:CFG.tel,focale_mm:+bn.focale_mm},bn.rapporto>0?{rapporto:+bn.rapporto}:{});
   return base;
 }
 
@@ -14968,7 +15000,14 @@ function refresh(){
   const samp=samplingVerdict(dv.scale,fwhm,giud);
   const degr=fwhm/Math.max(0.4,giud.seeing);
   const set=(id,html)=>{const e=$(id); if(e) e.innerHTML=html;};
-  set('d_fl',dv.F+' mm'); set('d_fl_n',esc(dv.r.label));
+  { const cf=((dv.banco&&dv.banco.ottica&&dv.banco.ottica.campi)||{}).focale_mm||{};
+    const dvg=((dv.banco&&dv.banco.divergenze)||[]).filter(x=>x.codice==='focale_diversa_dal_catalogo'||x.codice==='apertura_diversa_da_nina');
+    set('d_fl',dv.F+' mm');
+    set('d_fl_n',esc(dv.r.label)+(cf.fonte==='nina'?' · <span data-tip="La focale del profilo di N.I.N.A., letta con «Leggi il banco da N.I.N.A.»: vale finché telescopio e riduttore sono quelli applicati.">dal profilo di N.I.N.A.</span>'+
+      (cf.catalogo?' <span class="muted">(catalogo '+fmt(cf.catalogo,0)+' mm)</span>':''):'')+
+      dvg.map(x=>' <span class="p-warn">'+(x.codice==='focale_diversa_dal_catalogo'
+        ?'la focale di N.I.N.A. è oltre il '+fmt(x.margine*100,0)+' % da quella del catalogo'
+        :'focale e rapporto di N.I.N.A. danno '+fmt(x.nina.apertura_mm,0)+' mm di apertura, il catalogo '+fmt(x.apertura.valore,0))+'</span>').join('')); }
   set('d_sc',fmt(dv.scale,2)+'″/px'+(dv.bin>1?` <span class="small muted">bin ${dv.bin}</span>`:''));
   set('d_sc_n',`<span class="pill ${samp.cls}" data-tip="${esc(G[samp.k==='corretto'?'samp_ok':samp.k==='sovracampionato'?'samp_over':'samp_under'])}">${samp.k}</span> `+
       `<span data-tip="Intervallo in cui il pixel è ben accoppiato alla FWHM delle stelle: il seeing del sito con la guida caratteristica della montatura. Il pixel non entra nel giudizio: si giudica proprio lui.">ottimale ${fmt(samp.lo,2)}–${fmt(samp.hi,2)}″/px</span>`+
@@ -17968,19 +18007,23 @@ async function leggiRuotaNina(){
     tools/gate-banco-da-nina.js. */
 let BANCO_NINA=null;
 const STESSO_SITO_DEG=0.01;
+/*  IL BANCO LETTO RESTA: la focale e il rapporto del profilo, col telescopio e il riduttore a cui valgono. */
+const bancoDiNinaSalvato=()=>{ try{ const v=JSON.parse(localStorage.getItem('ap_banco_nina')||'null'); return v&&typeof v==='object'?v:null; }catch(e){ return null; } };
+const salvaBancoDiNina=v=>{ try{ localStorage.setItem('ap_banco_nina',JSON.stringify(v)); }catch(e){} };
 const sitoDiverso=s=>!!s&&(!SITE||Math.abs(s.lat-SITE.lat)>STESSO_SITO_DEG||Math.abs(s.lon-SITE.lon)>STESSO_SITO_DEG);
 const coord=x=>String(Math.round(x*1e4)/1e4).replace('.',',');
 async function leggiBancoNina(){
   const box=$('bancoNina'); const dillo=h=>{ if(box) box.innerHTML=h; };
   dillo('<span class="small muted">sto chiedendo a N.I.N.A.…</span>');
-  const r=await ninaChiedi('/profile/show?active=true');
+  /* il profilo e il suo orizzonte, che l'Advanced API da' a parte: senza orizzonte il banco si legge lo stesso */
+  const [r,h]=await Promise.all([ninaChiedi('/profile/show?active=true'),ninaChiedi('/profile/horizon')]);
   if(!r.ok||!r.dato){
     BANCO_NINA=null;
     dillo('<div class="warnbox" style="margin-top:8px"><b>N.I.N.A. non raggiunto.</b> '+esc(r.motivo||'nessun profilo')+
       '<br><span class="small muted">Serve N.I.N.A. aperto con il plugin Advanced API. Il banco resta quello che hai scelto qui.</span></div>');
     return;
   }
-  BANCO_NINA=bancoDalProfiloNina(r.dato);
+  BANCO_NINA=bancoDalProfiloNina(r.dato,h.ok?h.dato:null);
   dillo(htmlBancoNina(BANCO_NINA));
 }
 function htmlBancoNina(b){
@@ -17999,7 +18042,7 @@ function htmlBancoNina(b){
     o.voce?'dal nome scritto nel profilo':'il nome del profilo non è una voce del catalogo: il telescopio resta quello di adesso'));
   if(o.voce) righe.push(riga('Riduttore',o.letto.focale_mm?fmt(o.letto.focale_mm,0)+' mm':'—',
     rid&&rid.dentro?esc(rid.label||('×'+fmt(rid.factor,2)))+' · '+fmt(rid.focal_mm,0)+' mm':no,
-    rid?(rid.dentro?`la focale del catalogo più vicina, a ${fmt(rid.scarto*100,1)} %`
+    rid?(rid.dentro?`la focale del catalogo più vicina, a ${fmt(rid.scarto*100,1)} %; nei conti vale quella del profilo`
       :`<span class="p-warn">la focale più vicina del catalogo, ${fmt(rid.focal_mm,0)} mm, è a ${fmt(rid.scarto*100,1)} %: il riduttore resta quello di adesso</span>`)
       :'il profilo non ha la focale'));
   righe.push(riga('Montatura',m.letto.nome?'«'+esc(m.letto.nome)+'»':'<span class="muted">il profilo non la nomina</span>',
@@ -18014,6 +18057,12 @@ function htmlBancoNina(b){
     c.via==='nome_e_geometria'?'dal nome del driver, con la geometria'
     :c.via==='geometria'?'dalla geometria e dalla matrice: il driver non dice il modello, e lo stesso sensore sta in camere di marche diverse'
     :'resta quella di adesso'));
+  const oz=b.orizzonte;
+  righe.push(riga('Orizzonte',oz&&oz.punti?`${oz.punti.length} punti${oz.file?' · «'+esc(oz.file)+'»':''} · da ${fmt(oz.min,1)}° a ${fmt(oz.max,1)}°`
+      :oz&&oz.file?'«'+esc(oz.file)+'»':'<span class="muted">il profilo non ha un orizzonte</span>',
+    oz&&oz.punti?'il profilo per azimut':'—',
+    oz&&oz.punti?'le ore utili si contano sull\'orizzonte vero, grado per grado, non su un numero solo'
+      :oz&&oz.file?'N.I.N.A. non lo dà: resta l\'orizzonte minimo di adesso':'resta l\'orizzonte minimo di adesso'));
   righe.push(riga('Filtri',b.filtri.length?b.filtri.map(f=>esc(f.nome)).join(' · '):'—',b.filtri.length?'i nomi per N.I.N.A.':'—',
     b.filtri.length?'la sequenza chiamerà i filtri come li chiami in N.I.N.A.':'il profilo non ha una ruota'));
   return `<div class="warnbox" style="margin-top:8px;border-color:var(--line)"><div class="small" style="margin-bottom:6px">
@@ -18033,14 +18082,28 @@ function applicaBancoNina(){
   if(b.camera.voce&&esiste('cam',b.camera.voce)){ $('cam').value=b.camera.voce; LAST_GEAR.cam=b.camera.voce; }
   if(b.montatura.voce&&esiste('mnt',b.montatura.voce)){ $('mnt').value=b.montatura.voce; LAST_GEAR.mnt=b.montatura.voce; }
   CFG_SCELTA=true; readCfg(); syncRms();
+  /* la focale e il rapporto del profilo valgono per QUESTO banco: entrano nei conti finche' telescopio e riduttore sono
+     quelli applicati qui (`cfgMotore`) */
+  if(b.ottica.voce&&CFG.tel===b.ottica.voce&&b.ottica.letto.focale_mm>0)
+    salvaBancoDiNina({tel:CFG.tel,red:CFG.red,focale_mm:b.ottica.letto.focale_mm,rapporto:b.ottica.letto.rapporto,profilo:b.profilo});
   if(b.filtri.length) RUOTA_NINA=b.filtri.map(f=>({nome:f.nome,pos:f.pos}));
   if(b.sito&&sitoDiverso(b.sito)){
     $('lat').value=String(Math.round(b.sito.lat*1e4)/1e4); $('lon').value=String(Math.round(b.sito.lon*1e4)/1e4);
     $('site').value='__custom'; SITE_DEFAULT=false; autoSQM();
   }
+  /* l'orizzonte del profilo diventa quello del sito: il campo dice il suo minimo, perche' `readSite` lo tenga; un sito
+     tuo lo conserva, uno del catalogo no */
+  let notaOrizzonte='';
+  if(b.orizzonte&&b.orizzonte.punti){
+    SITE=Object.assign({},SITE||{},{orizzonte:b.orizzonte.punti}); $('hor').value=String(b.orizzonte.min);
+    const mio=SITES.find(s=>s.id===$('site').value);
+    if(mio){ mio.orizzonte=b.orizzonte.punti; mio.horizonMin=b.orizzonte.min; persistSites();
+      notaOrizzonte='; l\'orizzonte di N.I.N.A. resta nel sito «'+esc(mio.name)+'»'; }
+    else notaOrizzonte='; l\'orizzonte di N.I.N.A. vale finché non cambi sito: per tenerlo, «Salva sito…» in Condizioni';
+  }
   readSite(); refresh();
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
-    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+'.</span></div>';
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+'.</span></div>';
   BANCO_NINA=null;
 }
 /* Una sola porta verso N.I.N.A., e una sola regola per leggerne le risposte. */
