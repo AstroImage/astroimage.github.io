@@ -13566,6 +13566,22 @@ function start(){
   refresh();
   /* nel pannello del Ponte, le dichiarazioni della postazione sono quelle del profilo di N.I.N.A. */
   postazioneDalPonte('apertura');
+  copiaPerSenzaRete();
+}
+/* AIS ANCHE SENZA RETE (21 ottobre 2026). Sul sito, e su questa macchina per provarlo, la pagina registra `sw.js`, il
+   lavoratore di sfondo che tiene la copia della pagina e dei dati, e gli dice che cosa ha appena caricato: alla prima
+   visita le richieste dei dati sono partite prima di lui, e senza questo elenco la copia comincerebbe solo dalla
+   seconda. Dal file sul disco non si registra niente: lo standalone ha gia' tutto dentro. Senza rete si dice da dove
+   vengono pagina e dati. */
+function copiaPerSenzaRete(){
+  if(navigator.onLine===false) toast('Senza rete: AIS usa la copia dell\u2019ultima visita. N.I.N.A. sullo stesso PC risponde lo stesso.');
+  if(!('serviceWorker' in navigator)) return;
+  if(!(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
+  navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(reg=>{
+    const caricati=performance.getEntriesByType('resource').map(x=>x.name)
+      .filter(u=>{ try{ return new URL(u).origin===location.origin; }catch(e){ return false; } });
+    if(reg.active) reg.active.postMessage({copia:[...new Set([location.href.split('#')[0],...caricati])]});
+  }).catch(()=>{});
 }
 
 /* =====================================================================
