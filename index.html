@@ -2223,7 +2223,52 @@ function filtroDalNome(nome,filtri,posseduti){
      due, perche' nella ruota quella banda si chiama cosi'. Chi riprende sceglie quale c'e' davvero. */
   return {voce:null,via:null,candidati:cand.map(f=>f.id),dichiarati:via==='banda'?dichiarati.map(f=>f.id):[]};
 }
-function bancoDalProfiloNina(P,H){
+/*  LE PERIFERICHE DAL PROFILO (22 ottobre 2026). Alessandro: «Leggi il banco» prende dal profilo anche tutte le altre
+    periferiche. Le capacita' della sequenza (CAP_DEF) vengono dal profilo, e da due apparecchi collegati per quello che il
+    profilo non sa: se la camera si raffredda (`/equipment/camera/info`, CanSetTemperature) e se la montatura ha una
+    posizione di home (`/equipment/mount/info`, CanFindHome) — la capacita' «torna a casa» scrive un Find Home. Un valore
+    null vuol dire «non si sa»: con «Usa questo banco» quella capacita' resta com'e'.
+    Il ROTATORE MANUALE di N.I.N.A. non conta come rotatore: con lui la centratura chiede di girare a mano e la sequenza
+    si ferma ad aspettare. Cupola, pannello per i flat, interruttori, meteo e sicurezza si dicono, ma la sequenza di AIS
+    non li comanda. Misurato sul MiniX (tools/profilo-nina-minix-2600mc.json): EFW, EAF, PHD2, rotatore manuale,
+    raffreddamento in 5 minuti e riscaldamento in 4 a 0 °C, camera e montatura collegate. */
+const NESSUN_APPARECCHIO=/^(no_?device|no_?guider|none|)$/i;
+function perifericheDalProfilo(P,A){
+  const n=v=>(typeof v==='number'&&isFinite(v))?v:null;
+  const id=o=>o&&o.Id!=null?String(o.Id).trim():'';
+  const C=(P&&P.CameraSettings)||{}, G=(P&&P.GuiderSettings)||{};
+  const cam=A&&A.camera&&A.camera.Connected===true?A.camera:null, mnt=A&&A.mount&&A.mount.Connected===true?A.mount:null;
+  const capacita={}, voci=[];
+  const voce=(chiave,letto,valore,perche)=>{ if(valore!=null) capacita[chiave]=valore; voci.push({chiave,letto,valore,perche}); };
+  const c=cam&&typeof cam.CanSetTemperature==='boolean'?cam.CanSetTemperature:null;
+  voce('raffredda',cam?(c?'si raffredda':'non si raffredda'):'camera non collegata',c,
+    c==null?'il profilo non dice se la camera si raffredda: lo dice la camera collegata':'dalla camera collegata');
+  const tC=n(C.Temperature), mF=n(C.CoolingDuration), mC=n(C.WarmingDuration);
+  if(c!==false){
+    if(tC!=null) capacita.tempC=tC; if(mF!=null) capacita.minutiFreddo=mF; if(mC!=null) capacita.minutiCaldo=mC;
+    voci.push({chiave:'temperatura',letto:[tC!=null?tC+' °C':null,mF!=null?mF+' min a raffreddare':null,mC!=null?mC+' a riscaldare':null].filter(Boolean).join(' · ')||'—',
+      valore:tC!=null||mF!=null||mC!=null?true:null,perche:'dal profilo: la sequenza raffredda e riscalda così'});
+  }
+  /* un campo che il profilo non porta e' «non si sa», non «no»: «no» e' solo quello che N.I.N.A. scrive (No_Device) */
+  const scritto=(o,k)=>o&&o[k]!=null?String(o[k]).trim():null;
+  const presente=(chiave,x)=>{ const v=x==null?null:!NESSUN_APPARECCHIO.test(x);
+    voce(chiave,x==null?'—':(NESSUN_APPARECCHIO.test(x)?'nessuno':x),v,v==null?'il profilo non lo dice':'dal profilo'); };
+  presente('ruota',scritto(P&&P.FilterWheelSettings,'Id'));
+  presente('focheggiatore',scritto(P&&P.FocuserSettings,'Id'));
+  presente('guida',scritto(G,'GuiderName'));
+  const r=scritto(P&&P.RotatorSettings,'Id'), manuale=r!=null&&/manual/i.test(r);
+  voce('rotatore',r==null?'—':(NESSUN_APPARECCHIO.test(r)?'nessuno':r),r==null?null:(!NESSUN_APPARECCHIO.test(r)&&!manuale),
+    manuale?'rotatore manuale: N.I.N.A. chiederebbe di girarlo a mano e la sequenza si fermerebbe ad aspettare; la centratura resta senza angolo'
+    :'dal profilo');
+  const h=mnt&&typeof mnt.CanFindHome==='boolean'?mnt.CanFindHome:null;
+  voce('home',mnt?(h?'ha la posizione di home':'non ha la posizione di home'):'montatura non collegata',h,
+    h==null?'il profilo non dice se la montatura ha la home: lo dice la montatura collegata':'dalla montatura collegata');
+  const altre=[['cupola','DomeSettings'],['pannello per i flat','FlatDeviceSettings'],['interruttori','SwitchSettings'],
+    ['meteo','WeatherDataSettings'],['sicurezza','SafetyMonitorSettings']].map(([nome,k])=>({nome,id:id(P&&P[k])}))
+    .filter(x=>x.id&&!NESSUN_APPARECCHIO.test(x.id));
+  return {capacita,voci,altre};
+}
+function bancoDalProfiloNina(P,H,Ap){
   const num=v=>(typeof v==='number'&&isFinite(v))?v:null;
   const T=(P&&P.TelescopeSettings)||{}, C=(P&&P.CameraSettings)||{}, A=(P&&P.AstrometrySettings)||{};
   const F=(P&&P.FramingAssistantSettings)||{}, W=(P&&P.FilterWheelSettings)||{};
@@ -2267,7 +2312,7 @@ function bancoDalProfiloNina(P,H){
   const punti=H?orizzonteDaNina(H):null;
   const orizzonte=punti?{punti,min:Math.min(...punti.map(x=>x[1])),max:Math.max(...punti.map(x=>x[1])),file}
     :file?{punti:null,file}:null;
-  return {profilo:(P&&P.Name)||null,sito,ottica,montatura,camera,filtri,orizzonte};
+  return {profilo:(P&&P.Name)||null,sito,ottica,montatura,camera,filtri,orizzonte,periferiche:perifericheDalProfilo(P,Ap)};
 }
 
 const PEZZI_SETUP=['ottica','camera','montatura','riduttore'];
@@ -18149,7 +18194,13 @@ async function leggiBancoNina(){
       'Il banco resta quello che hai scelto qui.</span></div>');
     return;
   }
-  BANCO_NINA=Object.assign(bancoDalProfiloNina(r.dato,h.ok?h.dato:null),{dalPonte:!!r.ponte});
+  /* gli apparecchi collegati dicono quello che il profilo non sa (raffreddamento, home); non collegati, non rispondono */
+  let A=null;
+  if(!r.ponte){
+    const [ic,im]=await Promise.all([ninaChiedi('/equipment/camera/info'),ninaChiedi('/equipment/mount/info')]);
+    A={camera:ic.ok?ic.dato:null,mount:im.ok?im.dato:null};
+  }
+  BANCO_NINA=Object.assign(bancoDalProfiloNina(r.dato,h.ok?h.dato:null,A),{dalPonte:!!r.ponte});
   dillo(htmlBancoNina(BANCO_NINA));
   postazioneVista(r.dato);
 }
@@ -18207,6 +18258,15 @@ function htmlBancoNina(b){
       :f.candidati&&f.candidati.length?'il nome non basta: scegli quale, o resta fuori dalla prescrizione'
       :'nessun filtro del catalogo ha questo nome: scegli quale, o resta fuori dalla prescrizione'));
   });
+  /* LE PERIFERICHE, una per riga, coi nomi della sezione N.I.N.A. dei Risultati */
+  const pf=b.periferiche;
+  if(pf){
+    const nomeCap=k=>k==='temperatura'?'raffreddamento':(CAP_LBL[k]?CAP_LBL[k][0]:k);
+    for(const v of pf.voci) righe.push(riga(esc(nomeCap(v.chiave)),esc(v.letto),
+      v.valore==null?'<span class="muted">resta com\'è</span>':v.chiave==='temperatura'?'questi valori':v.valore?'sì':'no',esc(v.perche)));
+    if(pf.altre.length) righe.push(riga('altre periferiche',pf.altre.map(x=>esc(x.nome)+' «'+esc(x.id)+'»').join(' · '),'—',
+      'la sequenza di AIS non le comanda'));
+  }
   if(b.filtri.length){
     const ids=filtriDellaRuota(b.filtri).ids;
     const tolti=OWNED.filter(id=>!ids.includes(id));
@@ -18257,6 +18317,14 @@ function applicaBancoNina(){
      definitiva anche per i filtri). I posseduti sono esattamente i filtri riconosciuti della ruota: gli altri si tolgono —
      restano nella postazione di un altro profilo. Ogni filtro porta il suo nome in N.I.N.A. (`ap_nomiruota`), e i nomi
      scritti a mano per canale si azzerano: da qui in poi i nomi veri sono quelli della ruota. */
+  /* LE PERIFERICHE DIVENTANO LE CAPACITA' DELLA SEQUENZA (22 ottobre 2026): quelle che il profilo o gli apparecchi
+     dicono; quelle che non si sanno restano com'erano. */
+  let notaPeriferiche='';
+  if(b.periferiche&&Object.keys(b.periferiche.capacita).length){
+    NINACAP=Object.assign({},NINACAP,b.periferiche.capacita);
+    try{ localStorage.setItem('ap_ninacap',JSON.stringify(NINACAP)); }catch(e){}
+    notaPeriferiche='; le periferiche sono quelle del profilo';
+  }
   let notaFiltri='';
   const dr=filtriDellaRuota(b.filtri);
   if(dr.ids.length){
@@ -18285,7 +18353,7 @@ function applicaBancoNina(){
   }
   readSite(); refresh();
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
-    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+notaFiltri+'.</span></div>';
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.</span></div>';
   BANCO_NINA=null;
 }
 /* IL PONTE COME OSPITE (21 ottobre 2026). Nel pannello del Ponte, dentro N.I.N.A., AIS gira in un WebView2: c'e'
