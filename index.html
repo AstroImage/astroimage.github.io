@@ -18338,9 +18338,8 @@ function alProfiloDelPonte(){
     o scegliendo un'altra postazione salvata anche senza N.I.N.A.
     Il profilo attivo si rilegge quando AIS lo chiede gia' (Leggi il banco, Manda a N.I.N.A.), quando si torna sulla sua
     finestra, e all'apertura — ma solo se su questo browser N.I.N.A. e' gia' stato letto: da un sito il browser chiede il
-    permesso per la rete locale, e chi N.I.N.A. non l'ha non deve vederselo chiedere. La connessione per gli avvisi
-    dell'Advanced API (`/v2/socket`, PROFILE-CHANGED) non si usa: dal sito in https Edge la blocca anche col permesso
-    concesso (misurato il 22 ottobre 2026), e senza cambi automatici basta rileggere al ritorno.
+    permesso per la rete locale, e chi N.I.N.A. non l'ha non deve vederselo chiedere. Dove la linea degli avvisi
+    dell'Advanced API si apre, si rilegge anche al cambio di profilo, subito (piu' sotto, `apriLaLinea`).
     Nel pannello del Ponte (`chrome.webview`) le dichiarazioni le tiene il Ponte nel profilo stesso: qui non parte niente. */
 const POSTAZIONI_KEY='ap_postazioni';
 const POSTAZIONI_SPENTE=!!(window.chrome&&window.chrome.webview);
@@ -18363,6 +18362,7 @@ function postazioneVista(P){
     toast('Le dichiarazioni di adesso sono la postazione del profilo «'+a.nome+'» di N.I.N.A.: ogni profilo avrà la sua.');
   } else if(v.voci[a.id]){ v.voci[a.id].nome=a.nome; v.voci[a.id].ruota=a.ruota; scriviPostazioni(v); }
   rigaDellaPostazione();
+  apriLaLinea();
 }
 function postazioneLocaleCambiata(){
   if(POSTAZIONI_SPENTE) return;
@@ -18412,11 +18412,40 @@ function rigaDellaPostazione(){
       altre.map(id=>` <button type="button" class="chip" onclick="togliPostazione(${jsAttr(id)})">«${esc(v.voci[id].nome)}» ✕</button>`).join(''):''}</div>
   </div>`;
 }
-async function controllaNina(){
+async function controllaNina(dallAvviso){
   if(POSTAZIONI_SPENTE||!leggiPostazioni()) return;
   ULTIMO_CONTROLLO=Date.now();
+  const prima=NINA_ATTIVO&&NINA_ATTIVO.id;
   const r=await ninaChiedi('/profile/show?active=true');
-  if(r.ok&&r.dato) postazioneVista(r.dato); else { NINA_ATTIVO=null; rigaDellaPostazione(); }
+  if(r.ok&&r.dato) postazioneVista(r.dato); else { NINA_ATTIVO=null; rigaDellaPostazione(); return; }
+  /* l'avviso di N.I.N.A. arriva anche mentre si guarda un'altra sezione: si dice, e la postazione resta quella */
+  const v=leggiPostazioni();
+  if(dallAvviso&&NINA_ATTIVO&&NINA_ATTIVO.id!==prima)
+    toast('In N.I.N.A. adesso è attivo «'+NINA_ATTIVO.nome+'».'+(v&&v.uso&&v.uso!==NINA_ATTIVO.id&&v.voci[v.uso]
+      ?' La postazione resta «'+v.voci[v.uso].nome+'»: in Strumentazione puoi passare alla sua.':''));
+}
+/*  LA LINEA DEGLI AVVISI (22 ottobre 2026). L'Advanced API manda «PROFILE-CHANGED» su `/v2/socket` quando in N.I.N.A.
+    si cambia profilo: con la linea aperta la riga della postazione si aggiorna subito, anche con AIS e N.I.N.A. affiancati
+    e senza tornare sulla finestra. Misurato: nel Chrome 155 vero di msi.station, dal sito, la linea si apre e l'avviso
+    arriva a ogni cambio, andata e ritorno; in Edge senza finestra, dal sito, e' bloccata.
+    Si apre solo dopo una lettura riuscita del profilo (N.I.N.A. risponde, e su questo browser e' gia' stato letto), mai
+    verso un altro PC da un sito in https. Se non si apre, in questa pagina non si riprova: ogni tentativo fallito il
+    browser lo scrive in console, e resta la rilettura al ritorno sulla finestra. Se si chiude — N.I.N.A. chiuso — si
+    riapre alla prossima lettura riuscita. L'avviso fa solo rileggere: la postazione non cambia da sola. */
+let LINEA=null, LINEA_FALLITA=false;
+function apriLaLinea(){
+  if(LINEA||LINEA_FALLITA||POSTAZIONI_SPENTE||!leggiPostazioni()||!('WebSocket' in window)) return;
+  if(ninaMisto(location.protocol,NINA_BASE())) return;
+  let indirizzo; try{ const u=new URL(NINA_BASE()); indirizzo=(u.protocol==='https:'?'wss:':'ws:')+'//'+u.host+'/v2/socket'; }catch(e){ return; }
+  let aperta=false;
+  try{ LINEA=new WebSocket(indirizzo); }catch(e){ LINEA=null; LINEA_FALLITA=true; return; }
+  LINEA.onopen=()=>{ aperta=true; };
+  LINEA.onerror=()=>{ if(!aperta) LINEA_FALLITA=true; };
+  LINEA.onclose=()=>{ LINEA=null; };
+  LINEA.onmessage=e=>{
+    let m=null; try{ m=JSON.parse(e.data); }catch(x){ return; }
+    if(m&&m.Response&&m.Response.Event==='PROFILE-CHANGED') setTimeout(()=>controllaNina(true),300);
+  };
 }
 function postazioniAllApertura(){
   if(POSTAZIONI_SPENTE) return;
