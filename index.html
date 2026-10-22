@@ -2192,6 +2192,37 @@ function orizzonteDaNina(R){
   }
   return punti.length>=2?punti.sort((a,b)=>a[0]-b[0]):null;
 }
+/*  IL FILTRO DAL NOME CHE HA NELLA RUOTA (22 ottobre 2026). Alessandro: letto il banco da N.I.N.A., anche i filtri devono
+    essere quelli della ruota, e la sequenza deve chiamarli come li chiama N.I.N.A. I nomi della ruota li scrive chi
+    riprende, abbreviati e nell'ordine suo: «LPS_P2 IDAS», «ENHA», «ULTIMATE», «HA 7NM», «V4 IDAS» sul MiniX (misurato,
+    tools/profilo-nina-minix-2600mc.json). Si spezzano in parole — maiuscole, i numeri attaccati all'unita' («7 nm» e'
+    «7NM») —, e un filtro del catalogo e' candidato se OGNI parola del nome sta fra le parole del suo nome o del suo id,
+    uguale o, da tre lettere in su, come inizio («ENHA» di «ENHANCE»). Un nome fatto solo di nomi di banda («H», «Ha»,
+    «Lum», «Red») prende per candidati i filtri di quella banda: «L» non e' la L di «L-Ultimate». Fra piu' candidati vince
+    quello gia' dichiarato da chi riprende, se e' uno solo; altrimenti il nome non basta, e si dice coi candidati: AIS non
+    indovina un filtro, perche' da lui dipendono pose e ore. */
+const BANDA_DAL_NOME={H:'Ha',HA:'Ha',HALPHA:'Ha',O:'OIII',OIII:'OIII',O3:'OIII',S:'SII',SII:'SII',S2:'SII',
+  L:'L',LUM:'L',LUMINANCE:'L',LUMINANZA:'L',R:'R',RED:'R',ROSSO:'R',G:'G',GREEN:'G',VERDE:'G',B:'B',BLUE:'B',BLU:'B'};
+const paroleDelFiltro=s=>String(s==null?'':s).toUpperCase().replace(/(\d)\s*NM\b/g,'$1NM').split(/[^A-Z0-9]+/).filter(Boolean);
+function filtroDalNome(nome,filtri,posseduti){
+  const parole=paroleDelFiltro(nome), elenco=Array.isArray(filtri)?filtri:[], miei=Array.isArray(posseduti)?posseduti:[];
+  if(!parole.length) return {voce:null,via:null,candidati:[]};
+  const bande=parole.map(p=>BANDA_DAL_NOME[p]);
+  let cand, via;
+  if(bande.every(Boolean)&&new Set(bande).size===1){ cand=elenco.filter(f=>f.band===bande[0]); via='banda'; }
+  else {
+    const sta=(p,qs)=>qs.some(q=>q===p||(p.length>=3&&q.startsWith(p)));
+    cand=elenco.filter(f=>{ const qs=paroleDelFiltro(f.name).concat(paroleDelFiltro(f.id)); return parole.every(p=>sta(p,qs)); });
+    via='nome';
+  }
+  if(cand.length===1) return {voce:cand[0].id,via,candidati:[]};
+  const dichiarati=cand.filter(f=>miei.includes(f.id));
+  if(dichiarati.length===1) return {voce:dichiarati[0].id,via:via+'_e_dichiarato',candidati:cand.map(f=>f.id)};
+  /* PIU' DICHIARATI E UN NOME DI SOLA BANDA («H» con l'Ha da 3 e da 7 nm dichiarati, misurato coi filtri di partenza):
+     il filtro non si indovina, ma non si perde nemmeno — quei filtri restano, e il nome in N.I.N.A. e' giusto per tutti e
+     due, perche' nella ruota quella banda si chiama cosi'. Chi riprende sceglie quale c'e' davvero. */
+  return {voce:null,via:null,candidati:cand.map(f=>f.id),dichiarati:via==='banda'?dichiarati.map(f=>f.id):[]};
+}
 function bancoDalProfiloNina(P,H){
   const num=v=>(typeof v==='number'&&isFinite(v))?v:null;
   const T=(P&&P.TelescopeSettings)||{}, C=(P&&P.CameraSettings)||{}, A=(P&&P.AstrometrySettings)||{};
@@ -2229,7 +2260,8 @@ function bancoDalProfiloNina(P,H){
       :{voce:null,via:null,daConfermare:false,candidati:geo.map(y=>y.id)};
   }
   camera.letto={driver:d.name||null,pixel_um:d.pixel_um,width_px:larghezza,height_px:altezza,geometriaDiSerie:diSerie,matrice};
-  const filtri=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>({nome:String(f.Name),pos:num(f.Position)}));
+  const filtri=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>Object.assign({nome:String(f.Name),pos:num(f.Position)},
+    filtroDalNome(f.Name,DB.filters,typeof OWNED!=='undefined'?OWNED:[])));
   /*  l'orizzonte arriva da un'altra domanda (`H`); il profilo dice solo da quale file viene */
   const file=String(A.HorizonFilePath||'').split(/[\\/]/).pop()||null;
   const punti=H?orizzonteDaNina(H):null;
@@ -17414,13 +17446,13 @@ function rxPlanHtml(pr,e,dv,t){
       RUOTA_NINA.map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist>`:''}
     <div class="row" style="gap:8px;flex-wrap:wrap">${
       CANALI_FILTRO.map(c=>{
-        const usato=loadFilterNames()[c]||NINA_FILTER[c];
+        const usato=nomiPerLaSequenza()[c]||NINA_FILTER[c];
         /* Il confronto e' esatto e senza fantasia: N.I.N.A. cerca il nome com'e'. */
         const orfano=RUOTA_NINA&&!RUOTA_NINA.some(f=>f.nome===usato);
         return `<label class="f${orfano?' orfano':''}" style="max-width:104px"
           ${orfano?'data-tip="'+esc('«'+usato+'» non è fra i filtri della ruota che N.I.N.A. ha in profilo. Se lo lasci così, il sequenziatore userà il primo filtro senza avvisare.')+'"':''}>
           <span>${esc(c)}${orfano?' <b class="p-warn">!</b>':''}</span>
-          <input type="text" maxlength="24" list="ruotaFiltri" placeholder="${esc(NINA_FILTER[c])}"
+          <input type="text" maxlength="24" list="ruotaFiltri" placeholder="${esc(nomiPerLaSequenza()[c]||NINA_FILTER[c])}"
             value="${esc(loadFilterNames()[c]||'')}" onchange="setFilterName('${esc(c)}',this.value)"></label>`;
       }).join('')}</div>
     <div style="margin-top:10px"><button class="chip" onclick="resetCap()">Rimetti i valori di partenza</button></div>
@@ -18158,14 +18190,53 @@ function htmlBancoNina(b){
     oz&&oz.punti?'il profilo per azimut':'—',
     oz&&oz.punti?'le ore utili si contano sull\'orizzonte vero, grado per grado, non su un numero solo'
       :oz&&oz.file?'N.I.N.A. non lo dà: resta l\'orizzonte minimo di adesso':'resta l\'orizzonte minimo di adesso'));
-  righe.push(riga('Filtri',b.filtri.length?b.filtri.map(f=>esc(f.nome)).join(' · '):'—',b.filtri.length?'i nomi per N.I.N.A.':'—',
-    b.filtri.length?'la sequenza chiamerà i filtri come li chiami in N.I.N.A.':'il profilo non ha una ruota'));
+  /* I FILTRI DELLA RUOTA, uno per riga (22 ottobre 2026): con «Usa questo banco» diventano i filtri della postazione, e la
+     sequenza li chiama come la ruota. Quello che il nome non basta a riconoscere si sceglie qui, o resta fuori. */
+  const nomeF=id=>{ const v=(DB.filters||[]).find(x=>x.id===id); return v?v.name:id; };
+  if(!b.filtri.length) righe.push(riga('Filtri','—','—','il profilo non ha una ruota: i filtri restano quelli di adesso'));
+  b.filtri.forEach((f,i)=>{
+    const ids=[...new Set((f.candidati||[]).concat((DB.filters||[]).map(x=>x.id)))];
+    const scelta=`<select onchange="filtroDellaRuota(${i},this.value)"><option value="">non riconosciuto: scegli…</option>${
+      ids.map(id=>`<option value="${esc(id)}"${id===f.voce?' selected':''}>${esc(nomeF(id))}</option>`).join('')}</select>`;
+    righe.push(riga('Filtro '+(f.pos!=null?f.pos:i),'«'+esc(f.nome)+'»',f.voce&&f.via!=='a_mano'?esc(nomeF(f.voce)):scelta,
+      f.via==='nome'?'dal nome nella ruota':f.via==='banda'?'il nome dice la banda, e di quella banda il filtro è uno solo'
+      :/_e_dichiarato$/.test(f.via||'')?'il nome da solo non basta: è quello che avevi già dichiarato'
+      :f.via==='a_mano'?'scelto qui'
+      :f.dichiarati&&f.dichiarati.length?'il nome dice solo la banda: restano '+f.dichiarati.map(id=>esc(nomeF(id))).join(' e ')+
+        ', che avevi dichiarato, e in N.I.N.A. si chiamano «'+esc(f.nome)+'»; scegli quale c\'è davvero, perché decide le ore'
+      :f.candidati&&f.candidati.length?'il nome non basta: scegli quale, o resta fuori dalla prescrizione'
+      :'nessun filtro del catalogo ha questo nome: scegli quale, o resta fuori dalla prescrizione'));
+  });
+  if(b.filtri.length){
+    const ids=filtriDellaRuota(b.filtri).ids;
+    const tolti=OWNED.filter(id=>!ids.includes(id));
+    righe.push(riga('Filtri posseduti',OWNED.length+' adesso',ids.length?ids.length+' della ruota':'—',ids.length
+      ?'diventano quelli della ruota'+(tolti.length?'; si tolgono '+tolti.map(id=>esc(nomeF(id))).join(', '):'')+
+        '. La sequenza chiama ogni filtro col suo nome in N.I.N.A.'
+      :'nessun filtro riconosciuto: restano quelli di adesso'));
+  }
   return `<div class="warnbox" style="margin-top:8px;border-color:var(--line)"><div class="small" style="margin-bottom:6px">
       Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b>${b.dalPonte?' <span class="muted">· letto dal Ponte, dentro N.I.N.A.</span>':''}</div>
     <div style="overflow-x:auto"><table class="small" style="width:100%"><thead><tr><th></th><th>In N.I.N.A.</th><th>Proposta</th><th>Perché</th></tr></thead>
     <tbody>${righe.join('')}</tbody></table></div>
     <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="applicaBancoNina()">Usa questo banco</button>
     <button type="button" class="chip" onclick="BANCO_NINA=null;$('bancoNina').innerHTML=''">Lascia com'è</button></div></div>`;
+}
+/* I filtri che la ruota porta nella postazione: i riconosciuti, e — per un nome di sola banda con piu' filtri dichiarati —
+   quei dichiarati, tutti col nome della ruota. `fuori` sono i nomi che restano fuori finche' non si sceglie. */
+function filtriDellaRuota(filtri){
+  const ids=[], nomi={}; let fuori=0;
+  for(const f of filtri){
+    const suoi=f.voce?[f.voce]:(f.dichiarati||[]);
+    if(!suoi.length){ fuori++; continue; }
+    for(const id of suoi){ if(!ids.includes(id)) ids.push(id); if(!nomi[id]) nomi[id]=f.nome; }
+  }
+  return {ids,nomi,fuori};
+}
+function filtroDellaRuota(i,id){
+  const b=BANCO_NINA; if(!b||!b.filtri[i]) return;
+  b.filtri[i].voce=id||null; b.filtri[i].via=id?'a_mano':null;
+  $('bancoNina').innerHTML=htmlBancoNina(b);
 }
 function applicaBancoNina(){
   const b=BANCO_NINA; if(!b) return;
@@ -18182,6 +18253,22 @@ function applicaBancoNina(){
   if(b.ottica.voce&&CFG.tel===b.ottica.voce&&b.ottica.letto.focale_mm>0)
     salvaBancoDiNina({tel:CFG.tel,red:CFG.red,focale_mm:b.ottica.letto.focale_mm,rapporto:b.ottica.letto.rapporto,profilo:b.profilo});
   if(b.filtri.length) RUOTA_NINA=b.filtri.map(f=>({nome:f.nome,pos:f.pos}));
+  /* I FILTRI DELLA RUOTA DIVENTANO QUELLI DELLA POSTAZIONE (22 ottobre 2026, Alessandro: letto il banco, la scelta e'
+     definitiva anche per i filtri). I posseduti sono esattamente i filtri riconosciuti della ruota: gli altri si tolgono —
+     restano nella postazione di un altro profilo. Ogni filtro porta il suo nome in N.I.N.A. (`ap_nomiruota`), e i nomi
+     scritti a mano per canale si azzerano: da qui in poi i nomi veri sono quelli della ruota. */
+  let notaFiltri='';
+  const dr=filtriDellaRuota(b.filtri);
+  if(dr.ids.length){
+    const tolti=OWNED.filter(id=>!dr.ids.includes(id)).length;
+    OWNED=dr.ids.slice(); persistOwned();
+    salvaNomiRuota(dr.nomi);
+    try{ localStorage.removeItem('ap_ninafilters'); }catch(e){}
+    const dascegliere=b.filtri.filter(f=>!f.voce&&f.dichiarati&&f.dichiarati.length).length;
+    notaFiltri='; i filtri sono quelli della ruota, '+dr.ids.length+(tolti?', '+tolti+' tolti':'')+
+      (dascegliere?', '+dascegliere+' da scegliere fra quelli che avevi dichiarato':'')+
+      (dr.fuori?', '+dr.fuori+' non riconosciuti restano fuori':'');
+  }
   if(b.sito&&sitoDiverso(b.sito)){
     $('lat').value=String(Math.round(b.sito.lat*1e4)/1e4); $('lon').value=String(Math.round(b.sito.lon*1e4)/1e4);
     $('site').value='__custom'; SITE_DEFAULT=false; autoSQM();
@@ -18198,7 +18285,7 @@ function applicaBancoNina(){
   }
   readSite(); refresh();
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
-    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+'.</span></div>';
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+notaFiltri+'.</span></div>';
   BANCO_NINA=null;
 }
 /* IL PONTE COME OSPITE (21 ottobre 2026). Nel pannello del Ponte, dentro N.I.N.A., AIS gira in un WebView2: c'e'
@@ -18248,7 +18335,7 @@ const VIA_BERSAGLI_DEL_PONTE='/ponte/bersagli', VIA_CONSEGNA_DEL_PONTE='/ponte/c
     cui si e' letto: il Ponte lo ricontrolla. Fuori dal pannello niente di tutto questo parte. */
 const VIA_DICHIARAZIONI_DEL_PONTE='/ponte/dichiarazioni';
 const CHIAVI_DELLA_POSTAZIONE=['ap_cfg','ap_bin','ap_banco_nina','ap_site','ap_sites','ap_filters','ap_using','ap_roles',
-  'ap_ninafilters','ap_ninacap','ap_opset','ap_tetto_dichiarato'];
+  'ap_ninafilters','ap_ninacap','ap_opset','ap_tetto_dichiarato','ap_nomiruota'];
 const VERSIONE_DELLA_POSTAZIONE=1;
 let POSTAZIONE_LETTA=null, POSTAZIONE_ATTESA=null, POSTAZIONE_GIRO=null;
 /* COMANDA L'ULTIMA PAGINA APERTA (21 ottobre 2026, visto su msi.station). Quando si passa a un altro profilo, N.I.N.A.
@@ -18593,7 +18680,7 @@ async function mandaANina(notte){
   /* La notte porta anche il proprio tempo: la sera e i due istanti utili. Prima qui
      passava un numero e delle pose, e la data restava indietro. */
   const args=[{n:nt.n,date:nt.date,from:nt.from,to:nt.to,availH:nt.availH,subs:sp.subs},pl,t,dv,SITE,
-    {rot,off,filterNames:loadFilterNames(),cap:NINACAP,ditherEvery:OPSET.ditherEvery,
+    {rot,off,filterNames:nomiPerLaSequenza(),cap:NINACAP,ditherEvery:OPSET.ditherEvery,
      /* gli stessi pezzi che il servizio manda al Ponte: il modello e' uno solo, e chi lo guarda vede le stesse cose */
      poseCanale:MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET), serieCorta:MOTORE.posa.pezziDellaSerieCorta(expo), clockH:sp.clockH,
      name:`${(t.names&&t.names[0])||t.id} — ASTROFOTO notte ${nt.n} (${fmtDate(nt.date)})`}];
@@ -18626,11 +18713,27 @@ async function mandaANina(notte){
     ${riga('focale',modello.ottica.focale_mm+' mm',((P.TelescopeSettings||{}).FocalLength||'—')+' mm')}`
     :'<div class="small muted">Il profilo non è leggibile: il confronto non si può fare.</div>';
 
+  /* UN NOME CHE LA RUOTA NON HA SI SCEGLIE DALLA RUOTA (22 ottobre 2026, Alessandro: un menu a tendina). Per ogni canale
+     della sequenza il cui nome non sta nella ruota che conta — quella della postazione, se N.I.N.A. ha attivo un altro
+     profilo —, una tendina coi nomi della ruota: la scelta diventa il nome del canale nella postazione, e il riquadro si
+     rifa'. */
+  const ruotaCheConta=altro?(pz.ruota||[]):P?(((P.FilterWheelSettings||{}).FilterWheelFilters||[]).map(f=>f&&f.Name).filter(x=>x!=null).map(String)):[];
+  const mancanti=[];
+  if(ruotaCheConta.length&&modello.cap&&modello.cap.ruota) for(const bl of modello.blocchi){
+    if(ruotaCheConta.includes(bl.filtro)) continue;
+    const ch=(modello.ottica&&modello.ottica.matrice&&(bl.canali||[]).every(x=>BB_BANDS.includes(x)))?'RGB':(bl.canali||[])[0];
+    if(ch&&!mancanti.some(x=>x.ch===ch)) mancanti.push({ch,nome:bl.filtro});
+  }
+  const sceltaDallaRuota=mancanti.length?`<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">${mancanti.map(m=>
+    `<label class="f" style="max-width:240px"><span>${esc(m.ch)}: «${esc(m.nome)}» → nella ruota è</span>
+      <select onchange="nomeDallaRuota(${jsAttr(m.ch)},this.value,${nt.n})"><option value="">scegli…</option>${
+        ruotaCheConta.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select></label>`).join('')}</div>`:'';
   const avvisi=diff.length?`<div class="warnbox" style="margin-top:8px">
       <b>${diff.length===1?'Una differenza':diff.length+' differenze'} fra il tuo setup e il profilo ${altro?'attivo adesso in':'di'} N.I.N.A.</b>
       ${diff.map(x=>`<div style="margin-top:6px">${x.grave?'<b class="p-warn">⚠</b> ':''}
         <b>${esc(x.che)}</b>: <b>${esc(x.qui)}</b> qui, <b>${esc(x.la)}</b> in N.I.N.A.
         <br><span class="small muted">${esc(x.perche)}</span></div>`).join('')}
+      ${sceltaDallaRuota}
       <div class="small muted" style="margin-top:8px">Strategy non corregge niente, né qui né là:
         decidi tu.</div></div>`
     :'<div class="small" style="margin-top:8px"><span class="pill p-ok">setup coerente</span> '+
@@ -18875,10 +18978,30 @@ async function ninaInviaDavvero(){
     <div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div></div>`);
   NINAINVIO=null;
 }
+function nomeDallaRuota(canale,nome,notte){ if(!nome) return; setFilterName(canale,nome); mandaANina(notte); }
 function ninaAnnulla(){ NINAINVIO=null;
   const box=document.getElementById('ninaInvio'); if(box) box.innerHTML=''; }
 
 const loadFilterNames=()=>{try{return JSON.parse(localStorage.getItem('ap_ninafilters')||'null')||{}}catch(e){return{}}};
+/* I NOMI DELLA RUOTA (22 ottobre 2026): per ogni filtro riconosciuto con «Usa questo banco», il suo nome in N.I.N.A. */
+const loadNomiRuota=()=>{ try{ const v=JSON.parse(localStorage.getItem('ap_nomiruota')||'null'); return v&&typeof v==='object'&&!Array.isArray(v)?v:{}; }catch(e){ return {}; } };
+const salvaNomiRuota=m=>{ try{ localStorage.setItem('ap_nomiruota',JSON.stringify(m)); }catch(e){} };
+/* Il filtro che il motore usa davvero per un canale della sequenza: le bande con filterFor, il dual-band quello di
+   bandSpec, la banda larga di una camera a matrice il filtro montato (il ruolo L). */
+function filtroDelCanale(c){
+  const cam=DB.cameras.find(x=>x.id===CFG.cam); if(!cam) return null;
+  try{
+    if(c==='Ha+OIII'){ const s=bandSpec('Ha+OIII',cam); return s&&s.dual&&s.filter?s.filter:null; }
+    return filterFor(c==='RGB'?'L':c,cam)||null;
+  }catch(e){ return null; }
+}
+/* I NOMI PER LA SEQUENZA: per ogni canale il nome in N.I.N.A. del filtro che il motore usa, se e' della ruota letta; un
+   nome scritto a mano per il canale vince, perche' e' una scelta. Senza ruota letta restano i nomi di sempre. */
+function nomiPerLaSequenza(){
+  const a_mano=loadFilterNames(), ruota=loadNomiRuota(), out=Object.assign({},a_mano);
+  for(const c of CANALI_FILTRO){ if(out[c]) continue; const f=filtroDelCanale(c); if(f&&ruota[f.id]) out[c]=ruota[f.id]; }
+  return out;
+}
 function setFilterName(canale,valore){
   const m=loadFilterNames();
   const v=String(valore||'').trim();
@@ -18917,7 +19040,7 @@ function ninaExportNight(n){ ninaExportAll(n); }
 function ninaExportAll(only){
   if(!RXPLAN||!RXPLAN.pl.ok) return;
   const {pl,expo,t,dv,rot,off}=RXPLAN;
-  const names=loadFilterNames();
+  const names=nomiPerLaSequenza();
   let done=0;
   pl.nights.filter(x=>only==null||x.n===only).forEach(x=>{
     const sp=MOTORE.posa.subPlan(x.blocks,expo,Object.assign({},OPSET,{night:x.n,notti:pl.nights}));
