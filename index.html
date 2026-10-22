@@ -351,6 +351,9 @@ button.primary:hover{filter:brightness(1.1);border-color:var(--acc)}
 .ninaconf{border:1px solid var(--line);border-radius:10px;background:var(--sunken);padding:12px}
 /* La coppia conferma/annulla e UN oggetto solo: stessa altezza, stesso corpo. Prima
    il rosso si stirava a 58 px e l annulla restava a 29, e la riga sembrava rotta. */
+/* la postazione in uso e la carta d'identita' dell'invio (22 ottobre 2026) */
+.postazione{display:flex;gap:6px 14px;align-items:flex-end;flex-wrap:wrap;margin-top:10px}
+.cartainvio{display:grid;gap:3px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:8px}
 .ninaconf .confbt{min-height:44px;align-self:center;font-size:14px;padding:0 16px}
 /* Il menu «dove» (11 ottobre 2026) prende la riga che resta e non la sfonda: sul telefono una voce lunga si accorcia
    nel campo, non allarga la pagina. */
@@ -1560,6 +1563,7 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
             data-tip="Con AIS aperto sul PC dove gira N.I.N.A., chiede al suo plugin Advanced API il profilo attivo: telescopio e focale, camera, montatura, sito e nomi dei filtri. Propone le voci del catalogo e dice perché; applica solo se premi «Usa questo banco».">Leggi il banco da N.I.N.A.</button>
           <span class="small muted">con AIS aperto sul PC dove gira N.I.N.A.: telescopio, focale, camera, montatura, sito e filtri del profilo attivo</span>
         </div>
+        <div id="postazioneNina"></div>
         <div id="bancoNina"></div>
         <div class="subhead" style="margin-top:16px">La mia strumentazione
           <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">
@@ -13595,6 +13599,7 @@ function start(){
   refresh();
   /* nel pannello del Ponte, le dichiarazioni della postazione sono quelle del profilo di N.I.N.A. */
   postazioneDalPonte('apertura');
+  postazioniAllApertura();
   comeUnaApp();
   copiaPerSenzaRete();
 }
@@ -15218,6 +15223,7 @@ function refresh(){
   renderRx(np);
   renderSummary();
   postazioneCambiata();
+  postazioneLocaleCambiata();
 }
 const cell=(k,v,n)=>`<div class="dcell"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n||''}</div></div>`;
 
@@ -18109,6 +18115,7 @@ async function leggiBancoNina(){
   }
   BANCO_NINA=Object.assign(bancoDalProfiloNina(r.dato,h.ok?h.dato:null),{dalPonte:!!r.ponte});
   dillo(htmlBancoNina(BANCO_NINA));
+  postazioneVista(r.dato);
 }
 function htmlBancoNina(b){
   const nome=(elenco,id)=>{ const v=(elenco||[]).find(x=>x.id===id); return v?(v.name||v.id):id; };
@@ -18321,6 +18328,113 @@ function alProfiloDelPonte(){
   clearTimeout(POSTAZIONE_ATTESA); POSTAZIONE_LETTA=null;
   postazioneDalPonte('profilo');
 }
+/*  LE POSTAZIONI PER PROFILO DI N.I.N.A., NEL BROWSER (22 ottobre 2026). Alessandro: AIS il piu' autonomo possibile,
+    senza il Ponte. Borno e Milano sono due profili di N.I.N.A., con banco, sito e filtri diversi: AIS tiene le
+    dichiarazioni della postazione — le stesse CHIAVI_DELLA_POSTAZIONE del Ponte — una volta per profilo, riconosciuto dal
+    suo Id, che resta lo stesso se il profilo si rinomina. La prima lettura del profilo fa delle dichiarazioni di adesso la
+    sua postazione: non si perde niente.
+    AIS E' ANCHE UN PLANNER (Alessandro): si prepara la sessione di Milano mentre N.I.N.A. ha attivo Borno. Quindi la
+    postazione NON CAMBIA MAI DA SOLA: AIS dice quale sta usando e quale profilo ha attivo N.I.N.A., e si passa con un clic,
+    o scegliendo un'altra postazione salvata anche senza N.I.N.A.
+    Il profilo attivo si rilegge quando AIS lo chiede gia' (Leggi il banco, Manda a N.I.N.A.), quando si torna sulla sua
+    finestra, e all'apertura — ma solo se su questo browser N.I.N.A. e' gia' stato letto: da un sito il browser chiede il
+    permesso per la rete locale, e chi N.I.N.A. non l'ha non deve vederselo chiedere. La connessione per gli avvisi
+    dell'Advanced API (`/v2/socket`, PROFILE-CHANGED) non si usa: dal sito in https Edge la blocca anche col permesso
+    concesso (misurato il 22 ottobre 2026), e senza cambi automatici basta rileggere al ritorno.
+    Nel pannello del Ponte (`chrome.webview`) le dichiarazioni le tiene il Ponte nel profilo stesso: qui non parte niente. */
+const POSTAZIONI_KEY='ap_postazioni';
+const POSTAZIONI_SPENTE=!!(window.chrome&&window.chrome.webview);
+const leggiPostazioni=()=>{ try{ const v=JSON.parse(localStorage.getItem(POSTAZIONI_KEY)||'null');
+  return v&&v.versione===VERSIONE_DELLA_POSTAZIONE&&v.voci&&typeof v.voci==='object'?v:null; }catch(e){ return null; } };
+const scriviPostazioni=v=>{ try{ localStorage.setItem(POSTAZIONI_KEY,JSON.stringify(v)); }catch(e){} };
+/* il profilo come lo da' `/profile/show?active=true`: l'Id, il nome, i nomi dei filtri della sua ruota */
+const profiloDelDato=P=>P&&P.Id?{id:String(P.Id),nome:String(P.Name||'senza nome'),
+  ruota:((P.FilterWheelSettings||{}).FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>String(f.Name))}:null;
+let NINA_ATTIVO=null, USO_ALL_APERTURA=null, ULTIMO_CONTROLLO=0;
+function postazioneVista(P){
+  if(POSTAZIONI_SPENTE) return;
+  const a=profiloDelDato(P); if(!a) return;
+  NINA_ATTIVO=a;
+  const v=leggiPostazioni();
+  if(!v){
+    const nuova={versione:VERSIONE_DELLA_POSTAZIONE,uso:a.id,voci:{}};
+    nuova.voci[a.id]={nome:a.nome,chiavi:fotoDellaPostazione(),ruota:a.ruota};
+    scriviPostazioni(nuova); USO_ALL_APERTURA=a.id;
+    toast('Le dichiarazioni di adesso sono la postazione del profilo «'+a.nome+'» di N.I.N.A.: ogni profilo avrà la sua.');
+  } else if(v.voci[a.id]){ v.voci[a.id].nome=a.nome; v.voci[a.id].ruota=a.ruota; scriviPostazioni(v); }
+  rigaDellaPostazione();
+}
+function postazioneLocaleCambiata(){
+  if(POSTAZIONI_SPENTE) return;
+  const v=leggiPostazioni(); if(!v||!v.uso||!v.voci[v.uso]) return;
+  const foto=fotoDellaPostazione();
+  if(improntaDellaPostazione(foto)===improntaDellaPostazione(v.voci[v.uso].chiavi)) return;
+  v.voci[v.uso].chiavi=foto; scriviPostazioni(v);
+}
+/* si passa a una postazione salvata, o si crea quella del profilo attivo come copia di quella in uso; poi si riparte,
+   cosi' tutto si rilegge come all'avvio */
+function passaAllaPostazione(id){
+  const v=leggiPostazioni(); if(!v||POSTAZIONI_SPENTE||!id||id===v.uso) return;
+  if(v.uso&&v.voci[v.uso]) v.voci[v.uso].chiavi=fotoDellaPostazione();
+  let nuova=false;
+  if(!v.voci[id]){
+    if(!NINA_ATTIVO||NINA_ATTIVO.id!==id) return;
+    v.voci[id]={nome:NINA_ATTIVO.nome,chiavi:fotoDellaPostazione(),ruota:NINA_ATTIVO.ruota}; nuova=true;
+  }
+  v.uso=id; scriviPostazioni(v); scriviLaPostazione(v.voci[id].chiavi);
+  try{ sessionStorage.setItem('ap_postazione_locale',JSON.stringify({nome:v.voci[id].nome,nuova})); }catch(e){}
+  location.reload();
+}
+function togliPostazione(id){
+  const v=leggiPostazioni(); if(!v||!v.voci[id]||id===v.uso) return;
+  if(!confirm('Togliere la postazione «'+v.voci[id].nome+'»? Le sue dichiarazioni si perdono.')) return;
+  delete v.voci[id]; scriviPostazioni(v); rigaDellaPostazione();
+}
+function rigaDellaPostazione(){
+  const box=document.getElementById('postazioneNina'); if(!box) return;
+  const v=POSTAZIONI_SPENTE?null:leggiPostazioni();
+  if(!v){ box.innerHTML=''; return; }
+  const ids=Object.keys(v.voci), uso=v.uso&&v.voci[v.uso]?v.uso:null, a=NINA_ATTIVO;
+  const opzioni=(uso?'':'<option value="" selected>—</option>')+
+    ids.map(id=>`<option value="${esc(id)}"${id===uso?' selected':''}>${esc(v.voci[id].nome)}</option>`).join('');
+  const nina=!a?'<span class="muted">il profilo attivo in N.I.N.A. non è letto adesso</span>'
+    :a.id===uso?'<span class="pill p-ok">è il profilo attivo in N.I.N.A.</span>'
+    :`<span>in N.I.N.A. è attivo <b>«${esc(a.nome)}»</b></span>
+       <button type="button" class="chip fn fn-cfg" onclick="passaAllaPostazione(${jsAttr(a.id)})">${
+         v.voci[a.id]?'Passa alla sua postazione':'Crea la sua postazione e passaci'}</button>`;
+  const altre=ids.filter(id=>id!==uso);
+  box.innerHTML=`<div class="postazione">
+    <label class="f" style="max-width:340px"><span>Postazione</span>
+      <select id="sceltaPostazione" onchange="passaAllaPostazione(this.value)">${opzioni}</select></label>
+    <div class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:44px">${nina}</div>
+    <div class="small muted" style="flex-basis:100%">Una per profilo di N.I.N.A.: banco, sito, filtri e nomi per N.I.N.A.
+      AIS non cambia postazione da sola, perché puoi preparare una sessione per un altro banco.${altre.length?' Togli:'+
+      altre.map(id=>` <button type="button" class="chip" onclick="togliPostazione(${jsAttr(id)})">«${esc(v.voci[id].nome)}» ✕</button>`).join(''):''}</div>
+  </div>`;
+}
+async function controllaNina(){
+  if(POSTAZIONI_SPENTE||!leggiPostazioni()) return;
+  ULTIMO_CONTROLLO=Date.now();
+  const r=await ninaChiedi('/profile/show?active=true');
+  if(r.ok&&r.dato) postazioneVista(r.dato); else { NINA_ATTIVO=null; rigaDellaPostazione(); }
+}
+function postazioniAllApertura(){
+  if(POSTAZIONI_SPENTE) return;
+  const v=leggiPostazioni(); USO_ALL_APERTURA=v?v.uso:null;
+  rigaDellaPostazione();
+  let nota=null;
+  try{ nota=JSON.parse(sessionStorage.getItem('ap_postazione_locale')||'null'); sessionStorage.removeItem('ap_postazione_locale'); }catch(e){}
+  if(nota) toast(nota.nuova?'La postazione «'+nota.nome+'» parte come copia di quella di prima: in Strumentazione la proposta del suo banco da N.I.N.A.'
+    :'Postazione «'+nota.nome+'»: banco, sito e filtri sono i suoi.');
+  if(nota&&nota.nuova){ go('strumentazione'); leggiBancoNina(); }
+  else if(v) controllaNina();
+  const alRitorno=()=>{ if(document.visibilityState==='visible'&&Date.now()-ULTIMO_CONTROLLO>5000) controllaNina(); };
+  window.addEventListener('focus',alRitorno); document.addEventListener('visibilitychange',alRitorno);
+  /* due schede di AIS sulla stessa memoria: se l'altra cambia postazione, questa riparte con lei */
+  window.addEventListener('storage',e=>{ if(e.key!==POSTAZIONI_KEY) return; const w=leggiPostazioni();
+    if((w?w.uso:null)!==USO_ALL_APERTURA) location.reload(); });
+  setInterval(postazioneLocaleCambiata,5000);
+}
 async function ninaDalPonte(via,opt){
   const r=await chiediAlPonte({azione:'nina',via,metodo:(opt&&opt.method)||'GET',corpo:opt&&opt.body!=null?String(opt.body):null},
     opt&&opt.method==='POST'?20000:4000);
@@ -18364,7 +18478,7 @@ async function ninaChiedi(via,opt){
    mostrano affiancati, e a guardarli ci pensa chi sa. Si confrontano invece i numeri,
    dove una differenza e' una differenza: focale, passo del pixel, matrice contro mono,
    sito. E i nomi dei filtri, che li' un errore non si vede e costa una notte. */
-function confrontoSetup(m,prof){
+function confrontoSetup(m,prof,opz){
   const d=[];
   if(!prof) return d;
   const T=prof.TelescopeSettings||{}, C=prof.CameraSettings||{}, A=prof.AstrometrySettings||{};
@@ -18388,11 +18502,22 @@ function confrontoSetup(m,prof){
   /* I filtri: un nome che nella ruota non c'e' N.I.N.A. lo sostituisce in silenzio
      col primo. E il difetto peggiore dell'intero percorso, e va detto per nome. */
   const ruota=((prof.FilterWheelSettings||{}).FilterWheelFilters||[]).map(f=>f.Name);
+  const usati=[...new Set(m.blocchi.map(b=>b.filtro))];
+  const GRAVE='N.I.N.A. NON dà errore: mette il primo filtro della ruota e va avanti. Riprenderesti ore con il filtro sbagliato senza accorgertene.';
+  /* PREPARATA PER UN ALTRO PROFILO (22 ottobre 2026): quando la sequenza girera', la ruota sara' quella del profilo della
+     postazione, non quella del profilo attivo adesso. Contro quella il confronto resta grave; contro questa e' un'informazione. */
+  const altra=opz&&opz.altroProfilo;
+  if(m.cap.ruota&&altra&&Array.isArray(opz.ruotaDellaPostazione)&&opz.ruotaDellaPostazione.length){
+    const mancanti=usati.filter(x=>!opz.ruotaDellaPostazione.includes(x));
+    if(mancanti.length) d.push({grave:true,che:'filtri che nella ruota del profilo «'+opz.nome+'» non esistono',
+      qui:mancanti.join(', '),la:opz.ruotaDellaPostazione.join(' · '),perche:GRAVE});
+  }
   if(m.cap.ruota&&ruota.length){
-    const mancanti=[...new Set(m.blocchi.map(b=>b.filtro))].filter(x=>!ruota.includes(x));
-    if(mancanti.length) d.push({grave:true,che:'filtri che nella ruota non esistono',
+    const mancanti=usati.filter(x=>!ruota.includes(x));
+    if(mancanti.length) d.push(altra?{che:'filtri che nella ruota del profilo attivo adesso non ci sono',
       qui:mancanti.join(', '),la:ruota.join(' · '),
-      perche:'N.I.N.A. NON dà errore: mette il primo filtro della ruota e va avanti. Riprenderesti ore con il filtro sbagliato senza accorgertene.'});
+      perche:'Contano quando la sequenza gira: se la esegui col profilo «'+opz.nome+'», conta la sua ruota.'}
+      :{grave:true,che:'filtri che nella ruota non esistono',qui:mancanti.join(', '),la:ruota.join(' · '),perche:GRAVE});
   }
   return d;
 }
@@ -18425,6 +18550,7 @@ async function mandaANina(notte){
   }
   const prof=await ninaChiedi('/profile/show?active=true');
   const P=prof.ok?prof.dato:null;
+  if(P) postazioneVista(P);
 
   /* la sequenza della notte scelta: lo stesso artefatto del file */
   const {pl,expo,t,dv,rot,off}=RXPLAN;
@@ -18444,7 +18570,11 @@ async function mandaANina(notte){
   if(!chk.ok){ dillo('<div class="warnbox">Il file non è coerente ('+
     (chk.dup.length?'id duplicati':'riferimenti pendenti')+'): non lo mando. Segnalalo.</div>'); return; }
 
-  const diff=confrontoSetup(modello,P);
+  /* la postazione per cui la sequenza e' preparata, e se N.I.N.A. ha attivo un altro profilo */
+  const tutte=leggiPostazioni(), pz=tutte&&tutte.uso&&tutte.voci[tutte.uso]?Object.assign({id:tutte.uso},tutte.voci[tutte.uso]):null;
+  const attivo=P?profiloDelDato(P):null, altro=!!(pz&&attivo&&pz.id!==attivo.id);
+  const diff=confrontoSetup(modello,P,altro?{altroProfilo:true,nome:pz.nome,ruotaDellaPostazione:pz.ruota}:null);
+  const carta=cartaDellInvio({nome:(t.names&&t.names[0])||t.id,nt,modello,attivo,pz,altro,dalPonte});
   /*  DOVE VA (11 ottobre 2026): come sequenza nuova, o al posto di un bersaglio che il Sequenziatore ha gia' — il menu
       a tendina dell'Assistente di inquadratura, con `set-target` (nel motore, accanto a `bersagliNina`). I bersagli si
       leggono adesso per il menu, e si rileggono al clic. */
@@ -18464,7 +18594,7 @@ async function mandaANina(notte){
     :'<div class="small muted">Il profilo non è leggibile: il confronto non si può fare.</div>';
 
   const avvisi=diff.length?`<div class="warnbox" style="margin-top:8px">
-      <b>${diff.length===1?'Una differenza':diff.length+' differenze'} fra il tuo setup e il profilo di N.I.N.A.</b>
+      <b>${diff.length===1?'Una differenza':diff.length+' differenze'} fra il tuo setup e il profilo ${altro?'attivo adesso in':'di'} N.I.N.A.</b>
       ${diff.map(x=>`<div style="margin-top:6px">${x.grave?'<b class="p-warn">⚠</b> ':''}
         <b>${esc(x.che)}</b>: <b>${esc(x.qui)}</b> qui, <b>${esc(x.la)}</b> in N.I.N.A.
         <br><span class="small muted">${esc(x.perche)}</span></div>`).join('')}
@@ -18490,6 +18620,7 @@ async function mandaANina(notte){
     </select></label>`;
 
   dillo(`<div class="ninaconf">
+    ${carta}
     <div class="small muted" style="margin-bottom:6px">${dalPonte?'N.I.N.A., attraverso il Ponte '+esc(v.dato||''):'N.I.N.A. '+esc(v.dato)} · notte ${nt.n} ·
       ${sp.subs.length} blocchi · ${fmt(JSON.stringify(root).length/1024,1)} kB</div>
     ${testaConfronto}${avvisi}
@@ -18503,6 +18634,39 @@ async function mandaANina(notte){
   </div>`);
 }
 
+/* LA CARTA D'IDENTITA' DELLA SESSIONE (22 ottobre 2026). Alessandro: AIS e' anche un planner, e «Manda a N.I.N.A.» puo'
+   mandare la sequenza di una notte futura, preparata per un altro banco di quello che N.I.N.A. ha attivo adesso. Prima
+   dell'invio si dice che cosa parte — l'oggetto, la notte con la data e le ore, se e' stanotte o un'altra sessione, la
+   postazione e il banco per cui e' preparata — e dove arriva, col profilo attivo. Un profilo diverso non ferma niente: lo si
+   dice, e si dice che cosa conta quando la sequenza girera'. */
+function quandoLaNotte(data,ora){
+  const sera=new Date(ora||Date.now()); if(sera.getHours()<12) sera.setDate(sera.getDate()-1);
+  const g=x=>x.getFullYear()*10000+(x.getMonth()+1)*100+x.getDate();
+  const a=g(new Date(data)), b=g(sera);
+  return a===b?'stanotte':a>b?'sessione futura':'notte passata';
+}
+function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte}){
+  const giorno=new Date(nt.date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const ora=x=>x?new Date(x).toTimeString().slice(0,5):null;
+  const ore=ora(nt.from)&&ora(nt.to)?` · dalle ${ora(nt.from)} alle ${ora(nt.to)}`:'';
+  const quando=quandoLaNotte(nt.date);
+  const o=modello.ottica||{};
+  const banco=[o.tel?o.tel+(o.riduttore&&o.riduttore!==1?' '+fmt(o.riduttore,2)+'×':''):null,o.camera,o.montatura]
+    .filter(Boolean).map(esc).join(' · ');
+  const sel=$('site'), opz=sel&&sel.selectedOptions&&sel.selectedOptions[0];
+  const sito=sel&&sel.value&&sel.value!=='__custom'&&opz?opz.textContent.trim():fmt(SITE.lat,2)+'° '+fmt(SITE.lon,2)+'°';
+  let host=''; try{ host=new URL(NINA_BASE()).hostname; }catch(e){}
+  const dove=dalPonte?'N.I.N.A., attraverso il Ponte':/^(localhost|127\.0\.0\.1|\[::1\])$/.test(host)?'N.I.N.A. su questo PC':'N.I.N.A. su «'+esc(host)+'»';
+  return `<div class="cartainvio">
+    <div><b>${esc(nome)}</b> · notte ${nt.n} · ${esc(giorno)}${ore}
+      <span class="pill${quando==='stanotte'?' p-ok':quando==='notte passata'?' p-warn':''}">${quando}</span></div>
+    <div class="small">Preparata ${pz?'per la postazione <b>«'+esc(pz.nome)+'»</b>':'per il banco di adesso'}: ${banco} · ${esc(sito)}</div>
+    <div class="small">Va a ${dove}${attivo?', profilo attivo <b>«'+esc(attivo.nome)+'»</b>':''}</div>
+    ${altro?`<div class="warnbox" style="margin-top:6px">In N.I.N.A. adesso è attivo un altro profilo. Se la stai preparando
+      per un'altra sessione va bene: quando la esegui, attiva in N.I.N.A. il profilo <b>«${esc(pz.nome)}»</b>, perché i nomi
+      dei filtri sono quelli della sua ruota. Il confronto qui sotto è col profilo attivo adesso.</div>`:''}
+  </div>`;
+}
 /* Lo stato del bersaglio in N.I.N.A., quando non e' quello di uno da fare: N.I.N.A. esegue solo cio' che e' da fare. */
 const STATO_DEL_BERSAGLIO={FINISHED:'già eseguito',SKIPPED:'saltato',FAILED:'non riuscito',DISABLED:'disattivato'};
 const testoDelTasto=(dove,differenze)=>dove==='nuova'?(differenze?'Invia comunque':'Invia a N.I.N.A.')
@@ -19284,7 +19448,8 @@ function exportState(){
   const gear={};
   for(const k of Object.keys(GEAR_KEY)) gear[k]=gearList(k).filter(x=>x.user);
   const payload={schema_version:'1.2',updated:new Date().toISOString(),
-    projects:STATE, sites:SITES, gear, targets:UTGT.concat(UTGT_SCARTATE), reducers:reducerMap()};
+    projects:STATE, sites:SITES, gear, targets:UTGT.concat(UTGT_SCARTATE), reducers:reducerMap(),
+    postazioni:leggiPostazioni()};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='progetti.json'; a.click();
@@ -19308,6 +19473,15 @@ $('impIn').addEventListener('change',ev=>{
       }
       if(Array.isArray(j.targets)){ UTGT=accettaSchedeUtente(j.targets,'nel file importato'); persistTargets(); }
       if(j.reducers){ applyReducerMap(j.reducers); persistReducers(); fillReducers($('tel').value); }
+      /* le postazioni del file si aggiungono; quella in uso qui resta com'e' */
+      const jp=j.postazioni;
+      if(!POSTAZIONI_SPENTE&&jp&&jp.versione===VERSIONE_DELLA_POSTAZIONE&&jp.voci&&typeof jp.voci==='object'){
+        const v=leggiPostazioni()||{versione:VERSIONE_DELLA_POSTAZIONE,uso:null,voci:{}};
+        let n=0;
+        for(const [id,x] of Object.entries(jp.voci)){ if(id===v.uso||!x||!x.chiavi) continue; v.voci[id]=x; n++; }
+        scriviPostazioni(v); rigaDellaPostazione();
+        if(n) toast(n===1?'Importata una postazione: la scegli in Strumentazione.':'Importate '+n+' postazioni: le scegli in Strumentazione.');
+      }
       renderState(); refresh();
     }catch(e){ alert('File non valido: '+e.message) }
   };
