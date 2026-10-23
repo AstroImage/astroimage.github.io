@@ -2257,6 +2257,9 @@ function filtroDalNome(nome,filtri,posseduti){
     non li comanda. Misurato sul MiniX (tools/profilo-nina-minix-2600mc.json): EFW, EAF, PHD2, rotatore manuale,
     raffreddamento in 5 minuti e riscaldamento in 4 a 0 °C, camera e montatura collegate. */
 const NESSUN_APPARECCHIO=/^(no_?device|no_?guider|none|)$/i;
+const CONSIGLIO_SENZA_RUOTA='il profilo non ha una ruota. Se cambi i filtri a mano, in un cassetto, scegli in N.I.N.A. come '+
+  'ruota la «Manual Filter Wheel» coi nomi dei tuoi filtri: a ogni cambio N.I.N.A. si ferma e chiede quello giusto. Senza, '+
+  'la sequenza di AIS si ferma prima di ogni cambio di filtro';
 function perifericheDalProfilo(P,A){
   const n=v=>(typeof v==='number'&&isFinite(v))?v:null;
   const id=o=>o&&o.Id!=null?String(o.Id).trim():'';
@@ -2277,7 +2280,14 @@ function perifericheDalProfilo(P,A){
   const scritto=(o,k)=>o&&o[k]!=null?String(o[k]).trim():null;
   const presente=(chiave,x)=>{ const v=x==null?null:!NESSUN_APPARECCHIO.test(x);
     voce(chiave,x==null?'—':(NESSUN_APPARECCHIO.test(x)?'nessuno':x),v,v==null?'il profilo non lo dice':'dal profilo'); };
-  presente('ruota',scritto(P&&P.FilterWheelSettings,'Id'));
+  /*  LA RUOTA MANUALE E NESSUNA RUOTA (23 ottobre 2026, Alessandro: un filtro per volta, in un cassetto). La «Manual Filter
+      Wheel» di N.I.N.A. e' una ruota: la sequenza scrive il cambio filtro, e a ogni cambio di posizione N.I.N.A. si ferma e
+      chiede il filtro (`ManualFilterWheel.Position` della 3.3.0.1068 decompilato; `FilterWheelVM.ChangeFilter` non tocca la
+      posizione se e' gia' quella). Senza ruota si dice la strada che toglie il problema alla radice (Alessandro): quella. */
+  const w=scritto(P&&P.FilterWheelSettings,'Id');
+  if(w!=null&&/manual/i.test(w)) voce('ruota',w,true,'ruota manuale: a ogni cambio di filtro N.I.N.A. si ferma e chiede quello giusto');
+  else if(w!=null&&NESSUN_APPARECCHIO.test(w)) voce('ruota','nessuna',false,CONSIGLIO_SENZA_RUOTA);
+  else presente('ruota',w);
   presente('focheggiatore',scritto(P&&P.FocuserSettings,'Id'));
   presente('guida',scritto(G,'GuiderName'));
   const r=scritto(P&&P.RotatorSettings,'Id'), manuale=r!=null&&/manual/i.test(r);
@@ -10949,6 +10959,27 @@ function sequenceModel(night,plan,tg,dv,site,opts){
      andare li'. Il nome resta quello dell'oggetto. */
   const fc=framingCenter(tg,+(o.rot||0),o.off);
 
+  /*  DOVE LA NOTTE CAMBIA FILTRO (23 ottobre 2026, Alessandro: un filtro per volta, in un cassetto). Senza ruota la
+      sequenza non scrive il cambio filtro e i blocchi vanno uno dopo l'altro: il secondo filtro si sarebbe ripreso con
+      quello rimasto nel cassetto, senza fermarsi. Il motore dice dove la notte cambia filtro — il primo, e prima di quale
+      blocco, da quale a quale, dopo quante ore di orologio dall'inizio delle riprese e verso che ora se la sequenza parte
+      all'inizio della notte utile —: senza ruota chi scrive la sequenza ci mette una fermata, e con la «Manual Filter
+      Wheel» di N.I.N.A. sono le volte che N.I.N.A. chiedera' il filtro. Sempre, con o senza ruota: un campo solo, e
+      `cap.ruota` dice chi si ferma. I pezzi, non la frase: il Ponte parla due lingue. */
+  const cambiDiFiltro=!blocchi.length?null:(()=>{
+    const integ=blocchi.reduce((a,b)=>a+b.sec*b.n,0);
+    const orologio=(o.clockH!=null&&isFinite(o.clockH)&&integ>0)?o.clockH*3600/integ:1;
+    const da=night&&night.from instanceof Date&&isFinite(night.from.getTime())?night.from.getTime():null;
+    const cambi=[]; let prima=0;
+    blocchi.forEach((b,i)=>{
+      if(i>0&&b.filtro!==blocchi[i-1].filtro){ const h=prima*orologio/3600;
+        cambi.push({primaDelBlocco:i,da:blocchi[i-1].filtro,a:b.filtro,oreDopo:perLaMacchina(h,3),
+          oreDopoHM:oreEMinuti(h),verso:da!=null?new Date(da+h*3600e3).toISOString():null}); }
+      prima+=b.sec*b.n;
+    });
+    return {primo:blocchi[0].filtro,cambi};
+  })();
+
   return {
     notte:night.n, quando:quandoDi(night), nome:o.name||null,
     /* Nessuna scheda, nessun oggetto del motore: solo numeri e stringhe. E' cio' che
@@ -10967,6 +10998,7 @@ function sequenceModel(night,plan,tg,dv,site,opts){
        cose che il ponte confrontera con il profilo di N.I.N.A. */
     sito:site?{lat:site.lat,lon:site.lon}:null,
     cap,
+    cambiDiFiltro,
     /* «canale» serviva a fondere i blocchi e non serve piu dopo: «canali» dice la
        stessa cosa e ne dice di piu. In un contratto due campi di cui uno e il primo
        elemento dell altro sono un invito a scegliere quello sbagliato. */
@@ -11162,7 +11194,26 @@ function ninaRender(m){
     se.Parent=ref(imgC);
     return se;
   });
-  imgC.Items=coll(T_ITEM,smarts);
+  /*  LE FERMATE DEL CAMBIO A MANO, solo senza ruota (`cambiDiFiltro` nel modello): prima del blocco che cambia filtro, il messaggio del
+      Sequenziatore — `Utility.MessageBox`, che ferma la sequenza finche' non si conferma (3.3.0.1068 decompilato) — e, col
+      focheggiatore, un autofocus: un filtro messo a mano non e' per forza parafocale, e senza ruota N.I.N.A. non sa che e'
+      cambiato, quindi il suo «autofocus dopo il cambio filtro» non scatterebbe. Le graffe non entrano nel testo: N.I.N.A.
+      le calcola come espressioni (`ExpressionExpander`). */
+  const fermate=(!cap.ruota&&m.cambiDiFiltro&&m.cambiDiFiltro.cambi)||[];
+  const senzaGraffe=s=>String(s).replace(/[{}]/g,'');
+  const riprese=[];
+  smarts.forEach((se,i)=>{
+    const f=fermate.find(x=>x.primaDelBlocco===i);
+    if(f){
+      riprese.push(seq(`${NN}.SequenceItem.Utility.MessageBox, ${NN}`,{Text:senzaGraffe(
+        `Cambio filtro a mano: togli «${f.da}», metti «${f.a}» e conferma. La sequenza riprende da sola.`),
+        Parent:ref(imgC),ErrorBehavior:0,Attempts:1}));
+      if(cap.focheggiatore) riprese.push(seq(`${NN}.SequenceItem.Autofocus.RunAutofocus, ${NN}`,
+        {Parent:ref(imgC),ErrorBehavior:0,Attempts:1}));
+    }
+    riprese.push(se);
+  });
+  imgC.Items=coll(T_ITEM,riprese);
   // il flip al meridiano lo sa fare N.I.N.A.: non lo riscriviamo
   const mf=seq(`${NN}.Trigger.MeridianFlip.MeridianFlipTrigger, ${NN}`);
   mf.Parent=ref(imgC);
@@ -18634,7 +18685,9 @@ const leggiPostazioni=()=>{ try{ const v=JSON.parse(localStorage.getItem(POSTAZI
 const scriviPostazioni=v=>{ try{ localStorage.setItem(POSTAZIONI_KEY,JSON.stringify(v)); }catch(e){} };
 /* il profilo come lo da' `/profile/show?active=true`: l'Id, il nome, i nomi dei filtri della sua ruota */
 const profiloDelDato=P=>P&&P.Id?{id:String(P.Id),nome:String(P.Name||'senza nome'),
-  ruota:((P.FilterWheelSettings||{}).FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>String(f.Name))}:null;
+  ruota:((P.FilterWheelSettings||{}).FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>String(f.Name)),
+  /* la «Manual Filter Wheel»: a ogni cambio N.I.N.A. chiede il filtro, e la carta dell'invio dice quante volte */
+  manuale:/manual/i.test(String((P.FilterWheelSettings||{}).Id||''))}:null;
 let NINA_ATTIVO=null, USO_ALL_APERTURA=null, ULTIMO_CONTROLLO=0;
 function postazioneVista(P){
   if(POSTAZIONI_SPENTE) return;
@@ -18643,10 +18696,10 @@ function postazioneVista(P){
   const v=leggiPostazioni();
   if(!v){
     const nuova={versione:VERSIONE_DELLA_POSTAZIONE,uso:a.id,voci:{}};
-    nuova.voci[a.id]={nome:a.nome,chiavi:fotoDellaPostazione(),ruota:a.ruota};
+    nuova.voci[a.id]={nome:a.nome,chiavi:fotoDellaPostazione(),ruota:a.ruota,manuale:a.manuale};
     scriviPostazioni(nuova); USO_ALL_APERTURA=a.id;
     toast('Le dichiarazioni di adesso sono la postazione del profilo «'+a.nome+'» di N.I.N.A.: ogni profilo avrà la sua.');
-  } else if(v.voci[a.id]){ v.voci[a.id].nome=a.nome; v.voci[a.id].ruota=a.ruota; scriviPostazioni(v); }
+  } else if(v.voci[a.id]){ v.voci[a.id].nome=a.nome; v.voci[a.id].ruota=a.ruota; v.voci[a.id].manuale=a.manuale; scriviPostazioni(v); }
   rigaDellaPostazione();
   apriLaLinea();
 }
@@ -18665,7 +18718,7 @@ function passaAllaPostazione(id){
   let nuova=false;
   if(!v.voci[id]){
     if(!NINA_ATTIVO||NINA_ATTIVO.id!==id) return;
-    v.voci[id]={nome:NINA_ATTIVO.nome,chiavi:fotoDellaPostazione(),ruota:NINA_ATTIVO.ruota}; nuova=true;
+    v.voci[id]={nome:NINA_ATTIVO.nome,chiavi:fotoDellaPostazione(),ruota:NINA_ATTIVO.ruota,manuale:NINA_ATTIVO.manuale}; nuova=true;
   }
   v.uso=id; scriviPostazioni(v); scriviLaPostazione(v.voci[id].chiavi);
   try{ sessionStorage.setItem('ap_postazione_locale',JSON.stringify({nome:v.voci[id].nome,nuova})); }catch(e){}
@@ -18889,7 +18942,9 @@ async function mandaANina(notte){
   const tutte=leggiPostazioni(), pz=tutte&&tutte.uso&&tutte.voci[tutte.uso]?Object.assign({id:tutte.uso},tutte.voci[tutte.uso]):null;
   const attivo=P?profiloDelDato(P):null, altro=!!(pz&&attivo&&pz.id!==attivo.id);
   const diff=confrontoSetup(modello,P,altro?{altroProfilo:true,nome:pz.nome,ruotaDellaPostazione:pz.ruota}:null);
-  const carta=cartaDellInvio({nome:(t.names&&t.names[0])||t.id,nt,modello,attivo,pz,altro,dalPonte});
+  /* la ruota manuale del profilo per cui la sequenza e' preparata: dal profilo letto adesso, anche senza Id */
+  const manuale=altro?!!(pz&&pz.manuale):!!(P&&/manual/i.test(String((P.FilterWheelSettings||{}).Id||'')));
+  const carta=cartaDellInvio({nome:(t.names&&t.names[0])||t.id,nt,modello,attivo,pz,altro,dalPonte,manuale});
   /*  DOVE VA (11 ottobre 2026): come sequenza nuova, o al posto di un bersaglio che il Sequenziatore ha gia' — il menu
       a tendina dell'Assistente di inquadratura, con `set-target` (nel motore, accanto a `bersagliNina`). I bersagli si
       leggono adesso per il menu, e si rileggono al clic. */
@@ -18976,7 +19031,7 @@ function quandoLaNotte(data,ora){
   const a=g(new Date(data)), b=g(sera);
   return a===b?'stanotte':a>b?'sessione futura':'notte passata';
 }
-function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte}){
+function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte,manuale}){
   const giorno=new Date(nt.date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const ora=x=>x?new Date(x).toTimeString().slice(0,5):null;
   const ore=ora(nt.from)&&ora(nt.to)?` · dalle ${ora(nt.from)} alle ${ora(nt.to)}`:'';
@@ -18993,10 +19048,35 @@ function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte}){
       <span class="pill${quando==='stanotte'?' p-ok':quando==='notte passata'?' p-warn':''}">${quando}</span></div>
     <div class="small">Preparata ${pz?'per la postazione <b>«'+esc(pz.nome)+'»</b>':'per il banco di adesso'}: ${banco} · ${esc(sito)}</div>
     <div class="small">Va a ${dove}${attivo?', profilo attivo <b>«'+esc(attivo.nome)+'»</b>':''}</div>
+    ${cambiDiFiltroDetti(modello,nt,!!manuale)}
     ${altro?`<div class="warnbox" style="margin-top:6px">In N.I.N.A. adesso è attivo un altro profilo. Se la stai preparando
       per un'altra sessione va bene: quando la esegui, attiva in N.I.N.A. il profilo <b>«${esc(pz.nome)}»</b>, perché i nomi
       dei filtri sono quelli della sua ruota. Il confronto qui sotto è col profilo attivo adesso.</div>`:''}
   </div>`;
+}
+/*  IL CAMBIO A MANO, NELLA CARTA (23 ottobre 2026): con quale filtro partire e quante volte si cambia a mano, dopo quante
+    ore di riprese e verso che ora se la sequenza parte all'inizio della notte utile. Senza ruota si ferma la sequenza di
+    AIS, e si dice la strada che toglie il problema alla radice (Alessandro), la «Manual Filter Wheel» di N.I.N.A.; con la
+    «Manual Filter Wheel» del profilo per cui e' preparata e' N.I.N.A. a chiedere. Con una ruota motorizzata non si dice
+    niente. Una notte con un filtro solo non si ferma mai: si dice solo quale mettere. */
+function cambiDiFiltroDetti(m,nt,manuale){
+  const cm=m&&m.cambiDiFiltro, senza=!(m&&m.cap&&m.cap.ruota);
+  if(!cm||!(senza||manuale)) return '';
+  const ora=x=>x?new Date(x).toTimeString().slice(0,5):null;
+  const quando=f=>`prima di <b>«${esc(f.a)}»</b>, dopo ${hmDaPezzi(f.oreDopoHM)} di riprese${
+    f.verso&&ora(nt.from)?' (verso le '+ora(f.verso)+' se parte alle '+ora(nt.from)+')':''}`;
+  const n=cm.cambi.length, quanti=n===1?'un cambio':n+' cambi';
+  if(!senza){
+    if(!n) return `<div class="small">Ruota manuale: prima di avviare metti il filtro <b>«${esc(cm.primo)}»</b>; stanotte non si cambia.</div>`;
+    return `<div class="small" style="margin-top:4px"><b>Ruota manuale: ${quanti} di filtro a mano.</b> Prima di avviare metti
+      <b>«${esc(cm.primo)}»</b>; N.I.N.A. ti chiederà il filtro ${cm.cambi.map(quando).join('; ')}.</div>`;
+  }
+  const consiglio='Meglio: in N.I.N.A. scegli come ruota la «Manual Filter Wheel» coi nomi dei tuoi filtri e rileggi il banco; '+
+    'N.I.N.A. chiederà il filtro da sé a ogni cambio.';
+  if(!n) return `<div class="small">Senza ruota portafiltri: prima di avviare metti il filtro <b>«${esc(cm.primo)}»</b>.</div>`;
+  return `<div class="warnbox" style="margin-top:6px"><b>Senza ruota portafiltri: ${quanti} di filtro a mano.</b>
+    Prima di avviare metti <b>«${esc(cm.primo)}»</b>; la sequenza si ferma ${cm.cambi.map(quando).join('; ')},
+    e riparte quando confermi.<br><span class="small muted">${consiglio}</span></div>`;
 }
 /* Lo stato del bersaglio in N.I.N.A., quando non e' quello di uno da fare: N.I.N.A. esegue solo cio' che e' da fare. */
 const STATO_DEL_BERSAGLIO={FINISHED:'già eseguito',SKIPPED:'saltato',FAILED:'non riuscito',DISABLED:'disattivato'};
@@ -19226,7 +19306,7 @@ function resetCap(){ NINACAP=Object.assign({},CAP_DEF);
    scritto due volte. */
 const CANALI_FILTRO=Object.keys(NINA_FILTER);
 const CAP_LBL={raffredda:['camera raffreddata','Se la camera non raffredda, le istruzioni di raffreddamento e riscaldamento non hanno nulla da comandare e non vengono scritte.'],
-  ruota:['ruota portafiltri','Senza ruota il cambio filtro non si scrive. Su una camera a colori con un filtro avvitato a mano, lascialo spento.'],
+  ruota:['ruota portafiltri','Se cambi i filtri a mano, in un cassetto, scegli in N.I.N.A. come ruota la «Manual Filter Wheel» coi nomi dei tuoi filtri e tieni accesa questa casella: a ogni cambio N.I.N.A. si ferma e chiede il filtro giusto. Spenta, il cambio filtro non si scrive, e se la notte ha più filtri la sequenza si ferma prima di ogni cambio. Spenta anche per un filtro avvitato che non cambi mai.'],
   focheggiatore:['focheggiatore motorizzato','Comanda la voce «esegui autofocus» all\u2019inizio del target.'],
   guida:['autoguida','Comanda «inizia l\u2019autoguida» e il dithering fra le pose: senza guida non c\u2019\u00e8 niente da spostare.'],
   rotatore:['rotatore','Con il rotatore la centratura porta anche l\u2019angolo di posizione. Prima veniva dedotto dall\u2019angolo scelto, che \u00e8 un indizio, non una capacit\u00e0.'],
