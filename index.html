@@ -2174,6 +2174,21 @@ function riconosciDalDriver(d){
     pagina li passa al motore come il servizio (`tel.focale_mm`, `tel.rapporto`), e li' la focale di N.I.N.A. vince sul
     catalogo. Sorvegliato da tools/gate-banco-da-nina.js. */
 const FA_DI_SERIE=[4500,3500], PIXEL_DAL_PROFILO_UM=0.02;
+/*  LE TOLLERANZE DEL BANCO LETTO (23 ottobre 2026). Alessandro: le generalizzazioni devono abbracciare il parco hardware
+    che si trova sul mercato, finche' non cambiano nettamente la prescrizione. Misurato sul catalogo:
+      · CAMERE, larghezza e altezza a parita' di pixel (PIXEL_DAL_PROFILO_UM) e di matrice: anche al 15% gli unici scambi
+        sono fra camere con lo STESSO sensore (ASI 2600MM e QHY268M, IMX571; ASI 6200MM e QHY600M, IMX455). Le varianti
+        di mercato — Player One Poseidon 6252×4176, QHY268 6280×4210, ToupTek 6224×4168 contro i 6248×4176 della ZWO —
+        stanno sotto l'1%. Fra due marche dello stesso sensore la prescrizione cambia al piu' del 7,8% (NGC 7000, 2600MM
+        contro QHY268M: i modi di guadagno sono dell'elettronica). Tolleranza 5%; con piu' candidate dello stesso sensore
+        si propone la piu' vicina, da confermare.
+      · TELESCOPI dal nome che il catalogo non ha: apertura (focale / rapporto del profilo) e una focale, nativa o con un
+        riduttore, entro il 3%. Al 3% si confondono solo C8 ed EdgeHD 8" (ore uguali entro lo 0,5%); al 5% gia' Evostar
+        72ED e FRA400, GT81 ed Esprit 80ED, con ore che cambiano fino all'8,7% su M31, NGC 7000 e M27 — un cambio che si
+        vede (Alessandro: «la tolleranza forse e' troppo alta»). Da confermare, sempre.
+    La camera tiene il 5% perche' la geometria non scambia sensori diversi nemmeno al 15%: lo scarto fra due marche dello
+    stesso sensore c'e' a qualunque tolleranza, appena se ne sceglie una. */
+const TOLLERANZA_GEOMETRIA=0.05, TOLLERANZA_OTTICA=0.03;
 /*  L'ORIZZONTE DEL PROFILO (21 ottobre 2026). `/profile/horizon` dell'Advanced API restituisce due elenchi, `Azimuths` e
     `Altitudes`, un punto per grado da 0 a 360: su msi.station il file «Borno Casa», da 6,4 a 41 gradi. Diventa il profilo
     per azimut del sito (`site.orizzonte`), lo stesso che il Ponte manda: il 360 che ripete lo 0 si toglie, l'altezza a
@@ -2207,6 +2222,15 @@ const paroleDelFiltro=s=>String(s==null?'':s).toUpperCase().replace(/(\d)\s*NM\b
 function filtroDalNome(nome,filtri,posseduti){
   const parole=paroleDelFiltro(nome), elenco=Array.isArray(filtri)?filtri:[], miei=Array.isArray(posseduti)?posseduti:[];
   if(!parole.length) return {voce:null,via:null,candidati:[]};
+  /* PRIMA IL NOME ESATTO (Alessandro, 23 ottobre 2026: se un modello corrisponde esattamente si propone quello, e la
+     larghezza serve solo quando non c'e'). Misurato: 8 filtri del catalogo su 37, scritti col loro nome o col loro id,
+     non tornavano se stessi — «IDAS NBZ» stava anche in «IDAS NBZ-II», «Ha 5 nm» in «Ha 3.5» e «Ha 6.5 nm»,
+     «Luminanza L» era la banda L intera. */
+  /* il nome del modello, non il codice interno del catalogo: «idas» e' il codice dell'LPS P2, ma chi scrive «IDAS» nella
+     ruota nomina una marca, e potrebbe avere un NBZ */
+  const intero=s=>paroleDelFiltro(s).join(' '), scritto=parole.join(' ');
+  const esatti=elenco.filter(f=>intero(f.name)===scritto);
+  if(esatti.length===1) return {voce:esatti[0].id,via:'nome_esatto',candidati:[]};
   const bande=parole.map(p=>BANDA_DAL_NOME[p]);
   let cand, via;
   if(bande.every(Boolean)&&new Set(bande).size===1){ cand=elenco.filter(f=>f.band===bande[0]); via='banda'; }
@@ -2277,10 +2301,23 @@ function bancoDalProfiloNina(P,H,Ap){
     ?{lat,lon,quota:num(A.Elevation)}:null;
   const nomeTel=String(T.Name||'').trim(), focale=num(T.FocalLength), rapporto=num(T.FocalRatio);
   const wt=voceScritta(DB.telescopes,nomeTel);
-  const ottica={letto:{nome:nomeTel||null,focale_mm:focale,rapporto},voce:wt.voce?wt.voce.id:null,candidati:wt.candidati,riduttore:null};
-  if(wt.voce&&focale>0){
-    const rs=(wt.voce.reducers&&wt.voce.reducers.length?wt.voce.reducers:[{factor:1,focal_mm:wt.voce.focal_mm}])
-      .map(r=>({factor:r.factor,focal_mm:r.focal_mm||wt.voce.focal_mm*r.factor,label:r.label||null}));
+  /* il nome non e' nel catalogo: apertura e focale del profilo, entro TOLLERANZA_OTTICA, propongono la voce piu' vicina */
+  let dallOttica=null;
+  if(!wt.voce&&focale>0&&rapporto>0){
+    const ap=focale/rapporto, r=(a,b)=>Math.abs(a-b)/Math.max(a,b);
+    const focali=x=>[x.focal_mm].concat((x.reducers||[]).map(q=>q.focal_mm||x.focal_mm*q.factor));
+    const c=(DB.telescopes||[]).filter(x=>x.aperture_mm>0&&x.focal_mm>0)
+      .map(x=>({x,d:Math.max(r(x.aperture_mm,ap),Math.min(...focali(x).map(f=>r(f,focale))))}))
+      .filter(o=>o.d<=TOLLERANZA_OTTICA).sort((a,b)=>a.d-b.d);
+    if(c.length) dallOttica={voce:c[0].x,scarto:c[0].d,simili:c.slice(1).map(o=>o.x.id)};
+  }
+  const voceT=wt.voce||(dallOttica&&dallOttica.voce)||null;
+  const ottica={letto:{nome:nomeTel||null,focale_mm:focale,rapporto},voce:voceT?voceT.id:null,candidati:wt.candidati,riduttore:null,
+    via:wt.voce?'nome':dallOttica?'ottica':null,daConfermare:!wt.voce&&!!dallOttica,
+    scarto:dallOttica?dallOttica.scarto:null,simili:dallOttica?dallOttica.simili:[]};
+  if(voceT&&focale>0){
+    const rs=(voceT.reducers&&voceT.reducers.length?voceT.reducers:[{factor:1,focal_mm:voceT.focal_mm}])
+      .map(r=>({factor:r.factor,focal_mm:r.focal_mm||voceT.focal_mm*r.factor,label:r.label||null}));
     const vicino=rs.reduce((a,b)=>Math.abs(b.focal_mm-focale)<Math.abs(a.focal_mm-focale)?b:a);
     const scarto=Math.abs(vicino.focal_mm-focale)/vicino.focal_mm;
     ottica.riduttore=Object.assign({},vicino,{scarto,dentro:scarto<=MARGINE_BANCO});
@@ -2295,13 +2332,29 @@ function bancoDalProfiloNina(P,H,Ap){
   const d={name:String(C.Id||''),pixel_um:num(C.PixelSize),width_px:diSerie?null:larghezza,height_px:diSerie?null:altezza,
            sensor:matrice};
   const dalNome=riconosciDalDriver(d);
+  /* una camera aggiunta da un profilo porta il nome del suo driver (`driver_nina`): si riconosce da li', per prima. Ma il
+     driver ASCOM e' di una marca, non di un modello («ASCOM.ASICamera2.Camera» per ogni ZWO): la camera aggiunta deve
+     avere anche il pixel, la matrice e, quando il profilo le ha, le dimensioni di quella letta */
+  const stessa=y=>(d.pixel_um==null||Math.abs(y.pixel_um-d.pixel_um)<=PIXEL_DAL_PROFILO_UM)
+    &&(matrice===null||(matrice==='colore')===!!y.cfa_penalty)
+    &&(!(d.width_px>0&&d.height_px>0)||(Math.abs(y.width_px-d.width_px)<=0.5&&Math.abs(y.height_px-d.height_px)<=0.5));
+  const aggiunte=d.name?(DB.cameras||[]).filter(y=>y.driver_nina&&y.driver_nina===d.name&&stessa(y)):[];
+  const aggiunta=aggiunte.length===1?aggiunte[0]:null;
   let camera;
-  if(dalNome.base) camera={voce:dalNome.base.id,via:'nome_e_geometria',daConfermare:false};
+  if(aggiunta) camera={voce:aggiunta.id,via:'aggiunta_dal_profilo',daConfermare:false};
+  else if(dalNome.base) camera={voce:dalNome.base.id,via:'nome_e_geometria',daConfermare:false};
   else {
-    const geo=(d.width_px>0&&d.height_px>0)?(DB.cameras||[]).filter(y=>Math.abs(y.width_px-d.width_px)<=0.5
-      &&Math.abs(y.height_px-d.height_px)<=0.5&&(d.pixel_um==null||Math.abs(y.pixel_um-d.pixel_um)<=PIXEL_DAL_PROFILO_UM)
-      &&(matrice===null||(matrice==='colore')===!!y.cfa_penalty)):[];
-    camera=geo.length===1?{voce:geo[0].id,via:'geometria',daConfermare:true}
+    const scarto=y=>Math.max(Math.abs(y.width_px-d.width_px)/y.width_px,Math.abs(y.height_px-d.height_px)/y.height_px);
+    const geo=(d.width_px>0&&d.height_px>0)?(DB.cameras||[]).filter(y=>y.width_px>0&&y.height_px>0&&scarto(y)<=TOLLERANZA_GEOMETRIA
+      &&(d.pixel_um==null||Math.abs(y.pixel_um-d.pixel_um)<=PIXEL_DAL_PROFILO_UM)
+      &&(matrice===null||(matrice==='colore')===!!y.cfa_penalty)).sort((a,b)=>scarto(a)-scarto(b)):[];
+    /* la geometria esatta al pixel con una candidata sola resta quella di sempre; la tolleranza serve quando l'esatto
+       non basta. Piu' candidate dello STESSO sensore sono la stessa fisica: si propone la piu' vicina */
+    const esatte=geo.filter(y=>Math.abs(y.width_px-d.width_px)<=0.5&&Math.abs(y.height_px-d.height_px)<=0.5);
+    const unSensore=geo.length>1&&geo.every(y=>y.sensor&&y.sensor===geo[0].sensor);
+    camera=esatte.length===1?{voce:esatte[0].id,via:'geometria',daConfermare:true}
+      :geo.length===1||unSensore?{voce:geo[0].id,via:geo.length===1?'geometria':'stesso_sensore',daConfermare:true,
+        sensore:geo[0].sensor||null,simili:geo.slice(1).map(y=>y.id)}
       :{voce:null,via:null,daConfermare:false,candidati:geo.map(y=>y.id)};
   }
   camera.letto={driver:d.name||null,pixel_um:d.pixel_um,width_px:larghezza,height_px:altezza,geometriaDiSerie:diSerie,matrice};
@@ -13870,6 +13923,7 @@ function gearDelFromManager(kind,id){
 }
 
 function openGearForm(kind,editId){
+  AGGIUNTA_DA_NINA=null;
   const item=editId?gearList(kind).find(x=>x.id===editId):null;
   const isEdit=!!(item&&item.user);
   let body=`<h3>${isEdit?'Modifica':'Aggiungi'} ${GEAR_LBL[kind]}</h3>`;
@@ -14044,6 +14098,9 @@ function saveGear(kind,editId){
          rms_long_fl_arcsec:num('rmsl')||rms*1.3, max_sub_s:num('sub')||600};
   }
 
+  /* aggiunta dal profilo di N.I.N.A.: la camera porta il nome del suo driver, cosi' la prossima lettura la riconosce */
+  const daNina=AGGIUNTA_DA_NINA&&AGGIUNTA_DA_NINA.kind===kind?AGGIUNTA_DA_NINA:null;
+  if(daNina&&kind==='cam'&&daNina.driver) obj.driver_nina=daNina.driver;
   obj.user=true;
   if(editId){
     const i=gearList(kind).findIndex(x=>x.id===editId);
@@ -14058,6 +14115,7 @@ function saveGear(kind,editId){
   readCfg(); refresh();
   $('gearSheet').classList.remove('on');
   gearMsg('ok',`«${esc(name)}» ${editId?'aggiornato':'aggiunto'}. Resta salvato in questo browser ed entra in progetti.json quando esporti.`);
+  if(daNina){ AGGIUNTA_DA_NINA=null; go('strumentazione'); leggiBancoNina(); }
 }
 
 function delGear(kind,id){
@@ -18210,31 +18268,37 @@ function htmlBancoNina(b){
   const no='<span class="p-warn">non riconosciuto</span>';
   const riga=(pezzo,letto,proposta,perche)=>`<tr><td><b>${pezzo}</b></td><td>${letto}</td><td>${proposta}</td><td class="muted">${perche}</td></tr>`;
   const o=b.ottica, m=b.montatura, c=b.camera, rid=o.riduttore;
+  const aggiungi=k=>` <button type="button" class="chip" onclick="aggiungiDalProfilo('${k}')">Aggiungi${k==='mnt'?'la':k==='cam'?'la':'lo'} dal profilo</button>`;
   const righe=[];
   righe.push(riga('Sito',b.sito?`${coord(b.sito.lat)} · ${coord(b.sito.lon)}${b.sito.quota!=null?' · '+fmt(b.sito.quota,0)+' m':''}`:'—',
     b.sito?(sitoDiverso(b.sito)?'queste coordinate':'il sito di adesso'):'—',
     b.sito?(sitoDiverso(b.sito)?'il sito diventa questo, e l\'SQM si stima dalle coordinate':'entro un chilometro è lo stesso sito: resta col suo nome e il suo cielo')
       :'il profilo non ha un sito'));
   righe.push(riga('Telescopio',`«${esc(o.letto.nome||'—')}»${o.letto.focale_mm?' · '+fmt(o.letto.focale_mm,0)+' mm':''}${o.letto.rapporto?' · f/'+fmt(o.letto.rapporto,1):''}`,
-    o.voce?esc(nome(DB.telescopes,o.voce)):no+simili(DB.telescopes,o.candidati),
-    o.voce?'dal nome scritto nel profilo':'il nome del profilo non è una voce del catalogo: il telescopio resta quello di adesso'));
+    (o.voce?esc(nome(DB.telescopes,o.voce))+(o.daConfermare?' <span class="p-warn">da confermare</span>':''):no+simili(DB.telescopes,o.candidati))+
+      (!o.voce||o.daConfermare?aggiungi('tel'):''),
+    o.via==='ottica'?`il nome non è nel catalogo: questo ha apertura e focale entro il ${fmt(o.scarto*100,1)} % (${fmt(o.letto.focale_mm/o.letto.rapporto,0)} mm, ${fmt(o.letto.focale_mm,0)} mm); se non è lui, aggiungi il tuo`
+    :o.voce?'dal nome scritto nel profilo':'il nome del profilo non è una voce del catalogo: aggiungilo dal profilo, o il telescopio resta quello di adesso'));
   if(o.voce) righe.push(riga('Riduttore',o.letto.focale_mm?fmt(o.letto.focale_mm,0)+' mm':'—',
     rid&&rid.dentro?esc(rid.label||('×'+fmt(rid.factor,2)))+' · '+fmt(rid.focal_mm,0)+' mm':no,
     rid?(rid.dentro?`la focale del catalogo più vicina, a ${fmt(rid.scarto*100,1)} %; nei conti vale quella del profilo`
       :`<span class="p-warn">la focale più vicina del catalogo, ${fmt(rid.focal_mm,0)} mm, è a ${fmt(rid.scarto*100,1)} %: il riduttore resta quello di adesso</span>`)
       :'il profilo non ha la focale'));
   righe.push(riga('Montatura',m.letto.nome?'«'+esc(m.letto.nome)+'»':'<span class="muted">il profilo non la nomina</span>',
-    m.voce?esc(nome(DB.mounts,m.voce)):no+simili(DB.mounts,m.candidati),
-    m.voce?'dal nome della montatura nel profilo':'resta quella di adesso'));
+    m.voce?esc(nome(DB.mounts,m.voce)):no+simili(DB.mounts,m.candidati)+(m.letto.nome?aggiungi('mnt'):''),
+    m.voce?'dal nome della montatura nel profilo':m.letto.nome?'aggiungila dal profilo, o resta quella di adesso':'resta quella di adesso'));
   const L=c.letto;
   const lettoCam=[L.driver?(/^[0-9a-f-]{30,}$/i.test(L.driver)?'un codice del driver, non il modello':'«'+esc(L.driver)+'»'):null,
     L.pixel_um?fmt(L.pixel_um,2)+' µm':null,
     L.geometriaDiSerie?'geometria di serie del Framing Assistant':(L.width_px&&L.height_px?L.width_px+'×'+L.height_px:null),
     L.matrice].filter(Boolean).join(' · ')||'—';
-  righe.push(riga('Camera',lettoCam,c.voce?esc(nome(DB.cameras,c.voce))+(c.daConfermare?' <span class="p-warn">da confermare</span>':''):no+simili(DB.cameras,c.candidati),
-    c.via==='nome_e_geometria'?'dal nome del driver, con la geometria'
+  righe.push(riga('Camera',lettoCam,(c.voce?esc(nome(DB.cameras,c.voce))+(c.daConfermare?' <span class="p-warn">da confermare</span>':''):no+simili(DB.cameras,c.candidati))+
+      (!c.voce||c.daConfermare?aggiungi('cam'):''),
+    c.via==='aggiunta_dal_profilo'?'la camera che hai aggiunto da questo profilo'
+    :c.via==='nome_e_geometria'?'dal nome del driver, con la geometria'
+    :c.via==='stesso_sensore'?'dalla geometria e dalla matrice: è il sensore '+esc(c.sensore||'')+', che il catalogo ha in più camere; proposta la più vicina'
     :c.via==='geometria'?'dalla geometria e dalla matrice: il driver non dice il modello, e lo stesso sensore sta in camere di marche diverse'
-    :'resta quella di adesso'));
+    :'non è nel catalogo: aggiungila dal profilo, o resta quella di adesso'));
   const oz=b.orizzonte;
   righe.push(riga('Orizzonte',oz&&oz.punti?`${oz.punti.length} punti${oz.file?' · «'+esc(oz.file)+'»':''} · da ${fmt(oz.min,1)}° a ${fmt(oz.max,1)}°`
       :oz&&oz.file?'«'+esc(oz.file)+'»':'<span class="muted">il profilo non ha un orizzonte</span>',
@@ -18250,7 +18314,7 @@ function htmlBancoNina(b){
     const scelta=`<select onchange="filtroDellaRuota(${i},this.value)"><option value="">non riconosciuto: scegli…</option>${
       ids.map(id=>`<option value="${esc(id)}"${id===f.voce?' selected':''}>${esc(nomeF(id))}</option>`).join('')}</select>`;
     righe.push(riga('Filtro '+(f.pos!=null?f.pos:i),'«'+esc(f.nome)+'»',f.voce&&f.via!=='a_mano'?esc(nomeF(f.voce)):scelta,
-      f.via==='nome'?'dal nome nella ruota':f.via==='banda'?'il nome dice la banda, e di quella banda il filtro è uno solo'
+      f.via==='nome_esatto'?'il nome nella ruota è quello del catalogo':f.via==='nome'?'dal nome nella ruota':f.via==='banda'?'il nome dice la banda, e di quella banda il filtro è uno solo'
       :/_e_dichiarato$/.test(f.via||'')?'il nome da solo non basta: è quello che avevi già dichiarato'
       :f.via==='a_mano'?'scelto qui'
       :f.dichiarati&&f.dichiarati.length?'il nome dice solo la banda: restano '+f.dichiarati.map(id=>esc(nomeF(id))).join(' e ')+
@@ -18270,8 +18334,9 @@ function htmlBancoNina(b){
   if(b.filtri.length){
     const ids=filtriDellaRuota(b.filtri).ids;
     const tolti=OWNED.filter(id=>!ids.includes(id));
-    righe.push(riga('Filtri posseduti',OWNED.length+' adesso',ids.length?ids.length+' della ruota':'—',ids.length
-      ?'diventano quelli della ruota'+(tolti.length?'; si tolgono '+tolti.map(id=>esc(nomeF(id))).join(', '):'')+
+    righe.push(riga('Filtri posseduti',OWNED.length+' adesso',ids.length?ids.length+' della ruota':'—',
+      ids.length&&!b.camera.voce?'diventano quelli della ruota quando la camera è nel catalogo: quali filtri servono dipende da lei'
+      :ids.length?'diventano quelli della ruota'+(tolti.length?'; si tolgono '+tolti.map(id=>esc(nomeF(id))).join(', '):'')+
         '. La sequenza chiama ogni filtro col suo nome in N.I.N.A.'
       :'nessun filtro riconosciuto: restano quelli di adesso'));
   }
@@ -18279,6 +18344,7 @@ function htmlBancoNina(b){
       Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b>${b.dalPonte?' <span class="muted">· letto dal Ponte, dentro N.I.N.A.</span>':''}</div>
     <div style="overflow-x:auto"><table class="small" style="width:100%"><thead><tr><th></th><th>In N.I.N.A.</th><th>Proposta</th><th>Perché</th></tr></thead>
     <tbody>${righe.join('')}</tbody></table></div>
+    ${avvisoMezzoBanco(b)}
     <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="applicaBancoNina()">Usa questo banco</button>
     <button type="button" class="chip" onclick="BANCO_NINA=null;$('bancoNina').innerHTML=''">Lascia com'è</button></div></div>`;
 }
@@ -18292,6 +18358,55 @@ function filtriDellaRuota(filtri){
     for(const id of suoi){ if(!ids.includes(id)) ids.push(id); if(!nomi[id]) nomi[id]=f.nome; }
   }
   return {ids,nomi,fuori};
+}
+/* IL BANCO CHE AIS NON CONOSCE (23 ottobre 2026). Misurato: con telescopio o camera fuori dal catalogo «Usa questo banco»
+   applicava sito, filtri e periferiche e lasciava ottica e camera di prima, dicendo «applicato»: M31 usciva per RC8 +
+   2600MM invece che per il Photoline 102 con l'Atik del profilo, e con una camera a colori sconosciuta su una 2600MM i
+   filtri a colori della ruota non davano nessuna prescrizione. Adesso:
+     · nella tabella, accanto a cio' che non e' riconosciuto (o e' solo proposto), «Aggiungilo dal profilo» apre il modulo
+       «+ Aggiungi…» gia' compilato coi dati del profilo; salvato, il banco si rilegge e il pezzo e' riconosciuto;
+     · finche' telescopio o camera mancano lo si dice prima di applicare e dopo, e i filtri della ruota non si applicano
+       senza la camera: quali filtri servono dipende dalla camera, mono o a colori. */
+const mancaDelBanco=b=>[!b.ottica.voce&&'il telescopio',!b.camera.voce&&'la camera'].filter(Boolean);
+function avvisoMezzoBanco(b){
+  const manca=mancaDelBanco(b); if(!manca.length) return '';
+  const tel=DB.telescopes.find(x=>x.id===CFG.tel), cam=DB.cameras.find(x=>x.id===CFG.cam);
+  return '<div class="small" style="margin-top:8px"><span class="pill p-warn">attenzione</span> '+esc(manca.join(' e '))+
+    (manca.length>1?' non sono':' non è')+' nel catalogo di AIS: aggiungi'+(manca.length>1?'li':(manca[0]==='la camera'?'la':'lo'))+
+    ' dal profilo coi tasti qui sopra. Se applichi così, restano '+esc([tel&&tel.name,cam&&cam.name].filter(Boolean).join(' + '))+
+    ' e le ore sono per quelli'+(!b.camera.voce?'; i filtri restano quelli di adesso finché la camera non c\'è':'')+'.</div>';
+}
+let AGGIUNTA_DA_NINA=null;
+/* il tipo d'ottica dal nome, per cominciare: chi aggiunge lo conferma */
+const tipoDalNome=n=>{ const s=String(n||'');
+  return /\bRC\b|ritchey/i.test(s)?'rc':/schmidt|\bSCT?\b|edge\s?hd|\bC(6|8|9|11|14)\b|celestron c/i.test(s)?'sct'
+    :/mak|maksutov/i.test(s)?'mak':/newton|quattro|\d+\/\d+\s*N\b/i.test(s)?'newton'
+    :/samyang|rokinon|canon|nikon|sigma|obiettiv|\blens\b/i.test(s)?'obiettivo':'rifrattore'; };
+/* il nome del driver ripulito, come punto di partenza per il nome del modello */
+const nomeDalDriver=dr=>String(dr||'').replace(/^ASCOM\./i,'').replace(/\.Camera$/i,'').replace(/[_]+/g,' ')
+  .replace(/^ZWOptical\s+/i,'').replace(/\s+/g,' ').trim();
+function aggiungiDalProfilo(kind){
+  const b=BANCO_NINA; if(!b) return;
+  openGearForm(kind);
+  AGGIUNTA_DA_NINA={kind,driver:kind==='cam'?b.camera.letto.driver:null};
+  const metti=(id,v)=>{ const e=$('gf_'+id); if(!e||v==null||v==='') return;
+    e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})); };
+  let nota='';
+  if(kind==='tel'){ const L=b.ottica.letto;
+    metti('name',L.nome); metti('type',tipoDalNome(L.nome));
+    if(L.focale_mm>0) metti('fl',Math.round(L.focale_mm));
+    if(L.focale_mm>0&&L.rapporto>0) metti('ap',Math.round(L.focale_mm/L.rapporto));
+    nota='Dal profilo di N.I.N.A.: nome, focale e apertura (focale diviso rapporto). Controlla il tipo di ottica; se la focale di N.I.N.A. è già col riduttore, scrivi qui la focale nativa e il fattore fra i riduttori.'; }
+  if(kind==='cam'){ const L=b.camera.letto;
+    metti('name',nomeDalDriver(L.driver)); metti('cfa',L.matrice==='colore'?'osc':L.matrice==='mono'?'mono':null); metti('px',L.pixel_um);
+    if(!L.geometriaDiSerie){ metti('w',L.width_px); metti('h',L.height_px); }
+    nota='Dal profilo di N.I.N.A.: pixel, '+(L.geometriaDiSerie?'':'risoluzione, ')+'mono o a colori. N.I.N.A. dà il nome del driver, non del modello: scrivi il modello.'+
+      (L.geometriaDiSerie?' La risoluzione N.I.N.A. la scrive solo con la camera collegata: scrivila, o collega la camera e rileggi il banco.':'')+
+      ' Rumore di lettura e QE restano ai valori tipici, se non li conosci.'; }
+  if(kind==='mnt'){ metti('name',b.montatura.letto.nome);
+    nota='Dal profilo di N.I.N.A.: il nome. L\'RMS di guida il profilo non lo dice: scrivi quello che ottieni davvero.'; }
+  const box=$('gearBody'), h=box&&box.querySelector('h3');
+  if(h) h.insertAdjacentHTML('afterend','<p class="small"><span class="pill p-ok">dal profilo</span> <span class="muted">'+esc(nota)+'</span></p>');
 }
 function filtroDellaRuota(i,id){
   const b=BANCO_NINA; if(!b||!b.filtri[i]) return;
@@ -18327,7 +18442,7 @@ function applicaBancoNina(){
   }
   let notaFiltri='';
   const dr=filtriDellaRuota(b.filtri);
-  if(dr.ids.length){
+  if(dr.ids.length&&b.camera.voce){
     const tolti=OWNED.filter(id=>!dr.ids.includes(id)).length;
     OWNED=dr.ids.slice(); persistOwned();
     salvaNomiRuota(dr.nomi);
@@ -18352,8 +18467,20 @@ function applicaBancoNina(){
     else notaOrizzonte='; l\'orizzonte di N.I.N.A. vale finché non cambi sito: per tenerlo, «Salva sito…» in Condizioni';
   }
   readSite(); refresh();
+  const manca=mancaDelBanco(b);
+  if(manca.length){
+    /* mezzo banco: lo si dice, e la tabella resta coi tasti per aggiungere quello che manca */
+    const tel=DB.telescopes.find(x=>x.id===CFG.tel), cam=DB.cameras.find(x=>x.id===CFG.cam);
+    $('bancoNina').innerHTML='<div class="warnbox" style="margin-top:8px"><b>Il banco di AIS non è quello di N.I.N.A.</b> '+
+      esc(manca.join(' e '))+(manca.length>1?' non sono':' non è')+' nel catalogo: restano '+
+      esc([tel&&tel.name,cam&&cam.name].filter(Boolean).join(' + '))+', e le ore sono per quelli. Aggiungi quello che manca dal profilo, '+
+      'coi tasti nella tabella: il banco si rilegge da solo.<br><span class="small muted">Applicato il resto'+notaOrizzonte+notaFiltri+notaPeriferiche+
+      (!b.camera.voce&&b.filtri.length?'; i filtri della ruota no, finché la camera non c\'è':'')+'.</span></div>'+htmlBancoNina(b);
+    return;
+  }
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
-    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.</span></div>';
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+
+    (b.ottica.daConfermare?'; il telescopio è proposto da apertura e focale, controllalo':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.</span></div>';
   BANCO_NINA=null;
 }
 /* IL PONTE COME OSPITE (21 ottobre 2026). Nel pannello del Ponte, dentro N.I.N.A., AIS gira in un WebView2: c'e'
