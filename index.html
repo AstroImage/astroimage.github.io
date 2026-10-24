@@ -17104,7 +17104,7 @@ function rotLines(t,dv,rot){
        Si passa da <b>${bb.from}</b> a <b>${bb.panels}</b> pannelli:
        le ore del progetto scendono di un fattore ${fmt(bb.ratio,1)}. È l'unico caso in cui
        ruotare ha una conseguenza sulle ore, ed è il motivo per cui il consiglio compare solo qui.</span>
-       <button class="chip fn fn-frame" style="margin-left:8px" onclick="setRot(${bb.rot})">applica</button>`
+       <button class="chip fn fn-frame" style="margin-left:8px" onclick="setRot(${bb.rot})">ruota così</button>`
     : (t.pa_deg==null||!isFinite(t.pa_deg))
       ? `<span class="muted">L'angolo di posizione di questo oggetto non è in catalogo:
          l'ingombro qui sopra è una stima isotropa, e ruotare la camera non la cambia —
@@ -17128,31 +17128,91 @@ function rotLines(t,dv,rot){
    (245° si riscriveva in 65° al terzo tasto premuto), ed è il difetto che si
    vedeva usandolo. */
 const rot360=v=>{const x=Math.round(+v||0)%360; return x<0?x+360:x;};
+/*  L'INQUADRATURA COME IN N.I.N.A. (24 ottobre 2026, Alessandro: si trascina il cielo e il sensore resta fermo; poi un
+    tasto porta quell'inquadratura nella prescrizione e nella sequenza). Letto nell'Assistente di inquadratura di N.I.N.A.
+    3.3.0.1068 (`FramingAssistantVM`): nella vista dinamica trascinare sposta la vista (`ShiftViewport`) e il rettangolo
+    si ricalcola al suo centro; a trascinamento finito il bersaglio prende le coordinate del centro del rettangolo, e
+    «Muovi e centra» e «Aggiungi target alla sequenza» usano quel centro e quella rotazione.
+    Qui: il riquadro azzurro si ridisegna al centro della vista a ogni spostamento di Aladin (`positionChanged`), la
+    rotazione lo gira sul posto, e niente si salva finche' non si preme «Usa questa inquadratura»: allora lo spostamento
+    dall'oggetto (assi del sensore, primi d'arco al centesimo) e la rotazione vanno nel magazzino, e la prescrizione si
+    rifa' — le sequenze per N.I.N.A. leggono quelli. Prima c'erano due caselle «sposta» al primo intero e un «centra sulla
+    vista», e ogni tocco ricreava Aladin da capo. Sorvegliato da tools/gate-inquadratura.js. */
 function setRot(v,fromInput){
   SHEET_ROT=rot360(v);
   const sl=$('rotSlider'), nu=$('rotNum');
   if(sl) sl.value=String(SHEET_ROT);
   // mentre si digita il campo non si riscrive da solo: "245" deve poter esistere
   if(nu&&!fromInput) nu.value=String(SHEET_ROT);
-  saveRotFor(SHEET_T,SHEET_ROT);
-  if(SHEET_T&&SHEET_DV){ rotLines(SHEET_T,SHEET_DV,SHEET_ROT); drawField(SHEET_T,SHEET_DV,SHEET_ROT); }
+  if(SHEET_T&&SHEET_DV){ rotLines(SHEET_T,SHEET_DV,SHEET_ROT); ridisegnaCampo(); }
 }
-let SHEET_T=null, SHEET_DV=null, SHEET_OFF={du:0,dv:0};
-function setOff(du,dv,fromInput){
-  SHEET_OFF={du:Math.round(+du||0),dv:Math.round(+dv||0)};
-  const u=$('offU'), v=$('offV');
-  if(u&&!fromInput) u.value=String(SHEET_OFF.du);
-  if(v&&!fromInput) v.value=String(SHEET_OFF.dv);
-  saveOffFor(SHEET_T,SHEET_OFF);
-  const m=$('offMsg');
-  if(m) m.innerHTML = (SHEET_OFF.du||SHEET_OFF.dv)
-    ? `<span class="pill p-warn">campo spostato di ${fmt(Math.hypot(SHEET_OFF.du,SHEET_OFF.dv),1)}′</span>
-       <span class="muted">le coordinate nella sequenza N.I.N.A. saranno quelle di questo centro</span>`
-    : '<span class="muted">il campo è centrato sull\'oggetto</span>';
-  if(SHEET_T&&SHEET_DV){ rotLines(SHEET_T,SHEET_DV,SHEET_ROT); drawField(SHEET_T,SHEET_DV,SHEET_ROT); }
+/* il sensore (e i pannelli del mosaico) al centro della vista, con la rotazione di adesso */
+function ridisegnaCampo(){
+  const c=centroDellaVista(), t=SHEET_T, dv=SHEET_DV;
+  if(!c||!t||!dv) return;
+  const {A,ov,mo}=ALADIN_DELLA_SCHEDA, rot=SHEET_ROT, w=dv.fovX/60, h=dv.fovY/60;
+  ov.removeAll(); mo.removeAll();
+  ov.add(A.polyline(fieldCorners(c[0],c[1],w,h,rot)));
+  const mos=mosaicPanels(t,dv,undefined,rot);
+  if(mos.cols*mos.rows>1){
+    const th=(rot||0)*Math.PI/180, cdc=Math.max(0.02,Math.cos(c[1]*Math.PI/180));
+    for(let i=0;i<mos.cols;i++) for(let j=0;j<mos.rows;j++){
+      /* i pannelli si spostano lungo gli assi DEL SENSORE, non lungo AR/Dec:
+         con la camera ruotata un mosaico allineato al cielo lascerebbe buchi */
+      const du=(i-(mos.cols-1)/2)*mos.stepX, dv2=(j-(mos.rows-1)/2)*mos.stepY;
+      const east=du*Math.cos(th)+dv2*Math.sin(th), north=-du*Math.sin(th)+dv2*Math.cos(th);
+      mo.add(A.polyline(fieldCorners(c[0]+east/cdc,c[1]+north,w,h,rot)));
+    }
+  }
+  aggiornaInquadratura();
+}
+/* SHEET_OFF e' lo spostamento IN USO (quello salvato); la vista di Aladin e' la proposta */
+let SHEET_T=null, SHEET_DV=null, SHEET_OFF={du:0,dv:0}, ALADIN_DELLA_SCHEDA=null;
+/* lo spostamento del centro (ra,de) dall'oggetto, sugli assi del sensore ruotato: l'inversa esatta di `framingCenter` */
+function offDallaVista(t,ra,de,rot){
+  const cd=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
+  let dRa=ra-t.ra_deg; if(dRa>180) dRa-=360; if(dRa<-180) dRa+=360;
+  const east=dRa*cd*60, north=(de-t.dec_deg)*60;         // primi d'arco sul cielo
+  const th=(rot||0)*Math.PI/180, c=Math.cos(th), sn=Math.sin(th);
+  const r2=x=>Math.round(x*100)/100;
+  return {du:r2(east*c-north*sn), dv:r2(east*sn+north*c)};
+}
+/* il centro che si sta guardando: e' il centro del sensore */
+const centroDellaVista=()=>ALADIN_DELLA_SCHEDA&&ALADIN_DELLA_SCHEDA.al&&ALADIN_DELLA_SCHEDA.al.getRaDec?ALADIN_DELLA_SCHEDA.al.getRaDec():null;
+/* la proposta e' quella in uso? Stessa rotazione e centro entro 0,05′ (3″) */
+function inquadraturaInUso(){
+  const t=SHEET_T, c=centroDellaVista(); if(!t||!c) return true;
+  const o=offDallaVista(t,c[0],c[1],SHEET_ROT);
+  return rot360(rotFor(t))===SHEET_ROT&&Math.abs(o.du-SHEET_OFF.du)<0.05&&Math.abs(o.dv-SHEET_OFF.dv)<0.05;
+}
+function aggiornaInquadratura(){
+  const t=SHEET_T, c=centroDellaVista(), m=$('offMsg'), b=$('frameUse');
+  if(!t||!c){ if(m) m.innerHTML=''; if(b) b.disabled=true; return; }
+  const o=offDallaVista(t,c[0],c[1],SHEET_ROT), lontano=Math.hypot(o.du,o.dv);
+  const dove=`centro ${coordinateDette(c[0],c[1])} · ${lontano<0.05?'sull\'oggetto':'a '+fmt(lontano,1)+'′ dall\'oggetto'}${
+    SHEET_ROT?' · rotazione '+SHEET_ROT+'°':''}`;
+  const inUso=inquadraturaInUso();
+  if(b) b.disabled=inUso;
+  if(m) m.innerHTML=inUso
+    ? `<span class="pill p-ok">in uso</span> <span class="muted">${dove} — è quella della prescrizione e della sequenza per N.I.N.A.</span>`
+    : `<span class="pill p-warn">non ancora in uso</span> <span class="muted">${dove} — premi «Usa questa inquadratura» per portarla
+       nella prescrizione e nella sequenza per N.I.N.A.</span>`;
+}
+/* «Usa questa inquadratura»: la proposta diventa quella in uso, e la prescrizione si rifa' */
+function usaInquadratura(){
+  const t=SHEET_T, c=centroDellaVista(); if(!t||!c) return;
+  SHEET_OFF=offDallaVista(t,c[0],c[1],SHEET_ROT);
+  saveOffFor(t,SHEET_OFF); saveRotFor(t,SHEET_ROT);
+  refresh();
+  aggiornaInquadratura();
+}
+/* «Centra sull'oggetto»: la vista torna sull'oggetto, e il sensore con lei */
+function centraSullOggetto(){
+  const t=SHEET_T; if(!t) return;
+  if(ALADIN_DELLA_SCHEDA&&ALADIN_DELLA_SCHEDA.al&&ALADIN_DELLA_SCHEDA.al.gotoRaDec){ ALADIN_DELLA_SCHEDA.al.gotoRaDec(t.ra_deg,t.dec_deg); ridisegnaCampo(); }
 }
 function wireRotation(t,dv){
-  SHEET_T=t; SHEET_DV=dv;
+  SHEET_T=t; SHEET_DV=dv; ALADIN_DELLA_SCHEDA=null;
   SHEET_ROT=rot360(rotFor(t));      // l'angolo scelto sopravvive alla chiusura della scheda
   const sl=$('rotSlider'), nu=$('rotNum');
   if(sl){ sl.value=String(SHEET_ROT);
@@ -17162,70 +17222,44 @@ function wireRotation(t,dv){
     nu.addEventListener('blur',()=>{ nu.value=String(SHEET_ROT); }); }
   if($('rotReset')) $('rotReset').onclick=()=>setRot(0);
   SHEET_OFF=offFor(t);
-  const ou=$('offU'), ov=$('offV');
-  if(ou){ ou.value=String(SHEET_OFF.du); ou.addEventListener('input',()=>setOff(ou.value,SHEET_OFF.dv,true)); }
-  if(ov){ ov.value=String(SHEET_OFF.dv); ov.addEventListener('input',()=>setOff(SHEET_OFF.du,ov.value,true)); }
-  if($('offReset')) $('offReset').onclick=()=>setOff(0,0);
-  /* «Centra sulla vista»: si legge dove sta guardando Aladin e si converte in uno
-     scostamento sugli assi del sensore. È il modo più naturale di inquadrare —
-     sposti l'immagine finché vedi quello che vuoi, e il sensore ti segue. */
-  if($('offHere')) $('offHere').onclick=()=>{
-    if(!_alInst||!_alInst.getRaDec){ setOff(0,0); return; }
-    const [ra,de]=_alInst.getRaDec();
-    const cd=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
-    let dRa=ra-t.ra_deg; if(dRa>180) dRa-=360; if(dRa<-180) dRa+=360;
-    const east=dRa*cd*60, north=(de-t.dec_deg)*60;         // primi d'arco sul cielo
-    const th=(SHEET_ROT||0)*Math.PI/180, c=Math.cos(th), sn=Math.sin(th);
-    setOff(east*c-north*sn, east*sn+north*c);              // inversa della rotazione
-  };
-  setOff(SHEET_OFF.du,SHEET_OFF.dv);
+  if($('offReset')) $('offReset').onclick=centraSullOggetto;
+  if($('frameUse')) $('frameUse').onclick=usaInquadratura;
   rotLines(t,dv,SHEET_ROT);
+  aggiornaInquadratura();
 }
 
 function drawField(t,dv,rot){
   const box=$('aladin'); if(!box) return;
-  const fc=framingCenter(t,rot,SHEET_OFF);
+  /* la vista parte sull'inquadratura in uso; cambiando l'immagine di riferimento resta dove si stava guardando */
+  const prima=centroDellaVista();
+  const fc=prima?{ra:prima[0],dec:prima[1]}:framingCenter(t,rot,SHEET_OFF);
   const w=dv.fovX/60, h=dv.fovY/60;
   const obj=Math.max(t.size_arcmin[0],t.size_arcmin[1])/60;
-  const mos=mosaicPanels(t,dv,undefined,rot);
   const span=Math.max(w,h,obj)*1.7;
+  ALADIN_DELLA_SCHEDA=null;
   box.innerHTML='<div class="small muted" style="padding:14px">Carico l\'immagine del campo…</div>';
   ensureAladin().then(A=>{
     box.innerHTML='';
     // il selettore, non l'elemento: e' la forma documentata dell'API v3
     const al=A.aladin('#aladin',{survey:$('alSurvey')?$('alSurvey').value:'P/DSS2/color',
-      fov:span, target:`${t.ra_deg} ${t.dec_deg}`, cooFrame:'ICRSd',
+      fov:span, target:`${fc.ra} ${fc.dec}`, cooFrame:'ICRSd',
       showReticle:false, showShareControl:false, showSimbadPointerControl:false,
       showProjectionControl:false, showFullscreenControl:true, showGotoControl:false,
       showLayersControl:true, projection:'TAN'});
     _alInst=al;
+    /* sotto il sensore i pannelli del mosaico, sopra l'oggetto: tre strati che si ridisegnano senza ricreare Aladin */
+    const mo=A.graphicOverlay({color:'rgba(210,153,34,.85)',lineWidth:1});
     const ov=A.graphicOverlay({color:'#58a6ff',lineWidth:2});
-    al.addOverlay(ov);
-    ov.add(A.polyline(fieldCorners(fc.ra,fc.dec,w,h,rot)));
-    /* Una crocetta sull'oggetto, così si vede di quanto ci si è spostati. */
-    if(fc.off){
-      const mk=A.graphicOverlay({color:'rgba(240,136,62,.9)',lineWidth:1});
-      al.addOverlay(mk);
-      const d=Math.max(w,h)*0.035, cd2=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
-      mk.add(A.polyline([[t.ra_deg-d/cd2,t.dec_deg],[t.ra_deg+d/cd2,t.dec_deg]]));
-      mk.add(A.polyline([[t.ra_deg,t.dec_deg-d],[t.ra_deg,t.dec_deg+d]]));
-    }
-    // i pannelli del mosaico, quando ne serve più di uno
-    if(mos.cols*mos.rows>1){
-      const mo=A.graphicOverlay({color:'rgba(210,153,34,.85)',lineWidth:1});
-      al.addOverlay(mo);
-      for(let i=0;i<mos.cols;i++) for(let j=0;j<mos.rows;j++){
-        if(i===0&&j===0&&mos.cols===1&&mos.rows===1) continue;
-        /* i pannelli si spostano lungo gli assi DEL SENSORE, non lungo AR/Dec:
-           con la camera ruotata un mosaico allineato al cielo lascerebbe buchi */
-        const du=(i-(mos.cols-1)/2)*mos.stepX, dv2=(j-(mos.rows-1)/2)*mos.stepY;
-        const th=(rot||0)*Math.PI/180;
-        const east=du*Math.cos(th)+dv2*Math.sin(th), north=-du*Math.sin(th)+dv2*Math.cos(th);
-        const cx=fc.ra+east/Math.max(0.02,Math.cos(fc.dec*Math.PI/180));
-        const cy=fc.dec+north;
-        mo.add(A.polyline(fieldCorners(cx,cy,w,h,rot)));
-      }
-    }
+    const mk=A.graphicOverlay({color:'rgb(240,136,62)',lineWidth:1.5});
+    al.addOverlay(mo); al.addOverlay(ov); al.addOverlay(mk);
+    /* una crocetta sull'oggetto, cosi' si vede di quanto ci si e' spostati */
+    const d=Math.max(w,h)*0.035, cd2=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
+    mk.add(A.polyline([[t.ra_deg-d/cd2,t.dec_deg],[t.ra_deg+d/cd2,t.dec_deg]]));
+    mk.add(A.polyline([[t.ra_deg,t.dec_deg-d],[t.ra_deg,t.dec_deg+d]]));
+    ALADIN_DELLA_SCHEDA={A,al,ov,mo,mk};
+    /* trascinare sposta il cielo: il sensore si ridisegna al centro della vista, come in N.I.N.A. */
+    if(al.on) al.on('positionChanged',()=>ridisegnaCampo());
+    ridisegnaCampo();
   }).catch(err=>{
     box.innerHTML=`<div class="small muted" style="padding:14px">
       <span class="pill p-dim">campo non disponibile</span>
@@ -19811,15 +19845,13 @@ function openSheet(i){
           <input type="number" id="rotNum" min="0" max="360" step="1" value="0"></label>
         <button class="fn fn-frame" id="rotReset" title="Torna a camera non ruotata">0°</button>
       </div>
-      <div class="row" style="gap:8px;margin-top:6px;align-items:flex-end">
-        <label class="f" style="max-width:150px" data-tip="Sposta il sensore verso destra nell'immagine, in primi d'arco. Le coordinate che finiscono nella sequenza N.I.N.A. sono quelle del centro che scegli qui, non quelle di catalogo dell'oggetto.">Sposta →  ′
-          <input type="number" id="offU" step="1" value="0"></label>
-        <label class="f" style="max-width:150px" data-tip="Sposta il sensore verso l'alto nell'immagine, in primi d'arco.">Sposta ↑  ′
-          <input type="number" id="offV" step="1" value="0"></label>
-        <button class="fn fn-frame" id="offHere" data-tip="Sposta il campo dove stai guardando: fai pan e zoom sull'immagine fino a inquadrare quello che vuoi, poi premi qui.">centra sulla vista</button>
-        <button class="fn fn-frame" id="offReset" title="Torna al centro dell'oggetto">centra sull'oggetto</button>
-        <div id="offMsg" class="small muted" style="align-self:center"></div>
+      <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+        <button class="fn hero-go" id="frameUse" disabled data-tip="Il centro e la rotazione del riquadro azzurro diventano quelli della prescrizione e della sequenza per N.I.N.A.: la prescrizione si rifà, e «Manda a N.I.N.A.» ed «Esporta le sequenze» usano queste coordinate.">Usa questa inquadratura</button>
+        <button class="fn fn-frame" id="offReset" title="Riporta la vista, e il sensore con lei, sul centro dell'oggetto">centra sull'oggetto</button>
+        <div id="offMsg" class="small muted" style="flex:1 1 280px;min-width:0"></div>
       </div>
+      <p class="small muted" style="margin:6px 0 0">Trascina l'immagine: il cielo si sposta e il sensore resta fermo al
+        centro, come nell'Assistente di inquadratura di N.I.N.A. La rotella ingrandisce.</p>
       <div id="rotAdvice" class="small" style="margin-top:6px"></div>
       <div id="aladin"></div>
       <p class="small muted" style="margin-top:6px">Il riquadro azzurro è il tuo sensore a
