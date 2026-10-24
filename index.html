@@ -11314,6 +11314,30 @@ function perCheNinaTace(pagina,base,tipo){
   return 'nessuna risposta da '+origine+': N.I.N.A. è chiuso, '+NINA_CORS+
     (ninaLocale(base)?'':', o il firewall di quella macchina chiude la porta');
 }
+/*  LA RIGA SOTTO L'INDIRIZZO DIPENDE DA DOVE STA LA PAGINA (24 ottobre 2026, Alessandro: l'app funziona dal PC dove gira
+    N.I.N.A.). Dal sito, e dall'app installata che e' lo stesso sito, il browser non lascia parlare con N.I.N.A. su un
+    altro PC (`ninaMisto`), e la riga diceva «un altro PC: il suo nome e la porta»: chi la seguiva riceveva solo un errore.
+    Da https si dice questo PC, e la porta per chi l'ha cambiata nell'Advanced API; un altro PC gia' scritto si dice
+    subito, e come fare. Dalla pagina aperta dal disco, o da una pagina locale, l'altro PC funziona e la riga resta.
+    `riga` sta sotto la casella, `nota` compare passandoci sopra. Sorvegliato da tools/gate-indirizzo-nina.js. */
+function consiglioIndirizzo(pagina,base){
+  const p=NINA_PORTA_DI_SERIE, origine=String(base||'').replace(/\/v2\/api$/,'').replace(/^https?:\/\//,'');
+  if(pagina!=='https:') return {avviso:false,
+    riga:'vuoto = questa macchina · un altro PC: il suo nome e la porta, per esempio nome-del-pc:'+p,
+    nota:'Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.» e «Leggi la ruota» parlano con lui. Vuoto = '+
+      'questa macchina (localhost:'+p+'). Per un altro PC scrivi il suo nome e la porta, per esempio nome-del-pc:'+p+'. Dal '+
+      'sito, in https, il browser non lascia parlare con un altro PC: usa «Esporta le sequenze», o apri l\'app sul PC dove '+
+      'gira N.I.N.A.'};
+  const nota='Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.», «Leggi il banco» e «Leggi la ruota» '+
+    'parlano con lui. Dal sito, e dall\'app installata, il browser lascia parlare solo col N.I.N.A. di questo PC: vuoto vuol '+
+    'dire lui, porta '+p+'. Se nelle opzioni dell\'Advanced API hai cambiato la porta, scrivi localhost e la porta, per '+
+    'esempio localhost:1999. Per un N.I.N.A. su un altro PC apri l\'app su quel PC, anche dal desktop remoto, o usa '+
+    '«Esporta le sequenze».';
+  if(ninaMisto(pagina,base)) return {avviso:true,nota,
+    riga:'«'+origine+'» è un altro PC: dal sito il browser non lo lascia raggiungere. Svuota la casella e apri l\'app sul PC '+
+      'dove gira N.I.N.A.'};
+  return {avviso:false,nota,riga:'vuoto = questo PC, porta '+p+' · se in N.I.N.A. hai cambiato la porta, scrivi localhost e la porta'};
+}
 /*  IL CARICAMENTO DIRETTO HA UNA VERSIONE (11 ottobre 2026). `sequence/load` con la sequenza nel corpo della richiesta
     esiste dalla 2.2.6.0 dell'Advanced API (registro delle modifiche del plugin): con una versione piu' vecchia il rifiuto
     arriva senza una parola per chi legge. Si confronta la versione che N.I.N.A. dichiara, e prima di offrire l'invio si
@@ -17557,17 +17581,19 @@ function rxPlanHtml(pr,e,dv,t){
 
   /* IL SETUP CHE N.I.N.A. NON PUO' INDOVINARE. Chiuso di default: chi ha il banco
      completo non lo apre mai, e chi non ce l'ha lo apre una volta sola. */
+  /* la riga e la nota dell'indirizzo dipendono da dove sta la pagina (`consiglioIndirizzo`, nel motore) */
+  const consiglioQui=consiglioIndirizzo(location.protocol,NINA_BASE());
   const capBox=`<details class="ninacap" ${CAPAPERTO?'open':''}
     ontoggle="CAPAPERTO=this.open"><summary>Il tuo setup per N.I.N.A.</summary>
     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
-      <label class="f" style="max-width:240px" data-tip="${esc('Dove gira N.I.N.A. con il plugin Advanced API: «Manda a N.I.N.A.» e «Leggi la ruota» parlano con lui. Vuoto = questa macchina (localhost:1888). Per un altro PC scrivi il suo nome e la porta, per esempio nome-del-pc:1888. Dalla pagina pubblica, in https, il browser non lascia parlare con un altro PC: usa «Esporta le sequenze», o apri la pagina sul PC dove gira N.I.N.A.')}">
+      <label class="f" style="max-width:240px" data-tip="${esc(consiglioQui.nota)}">
         <span>Indirizzo di N.I.N.A.</span>
         <input type="text" id="ninaUrl" maxlength="120" placeholder="localhost:1888"
           value="${esc(NINA_URL_STORPIO!=null?NINA_URL_STORPIO:(()=>{ try{ const v=indirizzoNina(localStorage.getItem('ap_ninaurl')); return v?v.replace(/\/v2\/api$/,''):''; }catch(e){ return ''; } })())}"
           onchange="setNinaUrl(this.value)"></label>
-      <span class="small ${NINA_URL_STORPIO!=null?'p-warn':'muted'}" style="padding-bottom:8px">${NINA_URL_STORPIO!=null
+      <span class="small ${NINA_URL_STORPIO!=null||consiglioQui.avviso?'p-warn':'muted'}" id="ninaUrlRiga" style="padding-bottom:8px">${NINA_URL_STORPIO!=null
         ? '«'+esc(NINA_URL_STORPIO)+'» non è un indirizzo: resta '+esc(NINA_BASE().replace(/\/v2\/api$/,''))
-        : 'vuoto = questa macchina · un altro PC: il suo nome e la porta, per esempio nome-del-pc:1888'}</span>
+        : esc(consiglioQui.riga)}</span>
     </div>
     <div class="small muted" style="margin:6px 0 8px;max-width:74ch">
       Queste non sono proprietà della camera o della montatura: sono proprietà del tuo banco,
