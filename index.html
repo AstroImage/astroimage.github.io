@@ -295,6 +295,9 @@ html[data-night="1"] .step.on .sn{color:#1a0000}
 .sumk{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2);
   margin-bottom:5px}
 .sumv{font-size:15.5px;color:var(--fg);line-height:1.45}
+/* il target e, accanto, il tasto della sua scheda (25 ottobre 2026) */
+.sumtgt{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sumtgt .bc-scheda{flex:none}
 .sumv.big{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .sumv .u{font-size:12px;color:var(--dim);font-weight:400}
 .sumn{font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.5}
@@ -20121,8 +20124,12 @@ function renderSummary(){
   if(t){
     const arch=(TG.archetypes[t.archetype]||{}).label||'';
     const alias=(t.names||[]).slice(1,3).map(esc).join(' &middot; ');
+    /* LA SCHEDA DA OGNI SEZIONE (25 ottobre 2026, Alessandro: il tasto della scheda non c'e' sempre, passando fra le
+       sezioni; lo vuole accanto al target, nel riepilogo, che si vede da tutte). Lo stesso tasto della riga della
+       lista, e la stessa via dei Risultati (`rxOpenSheet`). Sorvegliato da tools/gate-scheda-dal-riepilogo.js. */
     h+=sumBlock('Target selezionato',
-      `<b>${esc(t.names[0])}</b>`+
+      `<div class="sumtgt"><b>${esc(t.names[0])}</b><button type="button" class="bc-scheda" id="sumScheda"
+        onclick="rxOpenSheet(${jsAttr(t.id)})" data-tip="La scheda di ${esc(t.names[0])}: com'è fatto, le tecniche per riprenderlo, l'inquadratura sulla tua strumentazione. Si apre da qualunque sezione.">Scheda</button></div>`+
       (alias?`<div class="sumn" style="margin-top:2px">${alias}</div>`:'')+
       (arch?`<div class="sumchips" style="margin-top:7px">
               <span class="fchip fc-def" style="color:var(--fn-frame)">${esc(arch)}</span></div>`:''));
