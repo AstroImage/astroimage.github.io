@@ -5715,8 +5715,15 @@ function prescriviSuCapacita(e,dv,site,notti,opts){
   const pr=(capacita>0&&Math.abs(capacita-oreOrologio)>1e-6)
     ? prescribe(e,capacita,dv,P,opts) : pr0;
   /*  Il verdetto con le sue notti: quanto del progetto coprono le notti chieste, e quante ne servono per il minimo. */
-  if(pr&&pr.disponibile!==false)
-    pr.verdetto=nottiDelVerdetto(pr,tg,dv,site,nn,vivi,posaRif,oreDichiarate,opts);
+  if(pr&&pr.disponibile!==false){
+    /*  CON LE ORE GIA' RIPRESE IL MINIMO ARRIVA PRIMA (26 ottobre 2026): si contano al buio, come le toglie il piano
+        (`giaRipreseAlBuio`), dentro i canali della strada e fino al progetto di ciascuno. Chi non le passa — il servizio —
+        riceve il verdetto di prima. */
+    let giaFatte=0;
+    const fatte=opts.giaRiprese?giaRipreseAlBuio(opts.giaRiprese,tg,dv,site,pr.alloc,posaRif):null;
+    if(fatte) for(const g of pr.alloc) if(!g.dropped&&g.hours>0&&fatte[g.id]) giaFatte+=Math.min(fatte[g.id].alBuio/P,g.hours)*P;
+    pr.verdetto=nottiDelVerdetto(pr,tg,dv,site,nn,vivi,posaRif,oreDichiarate,opts,giaFatte);
+  }
 
   return {pr,capacita,oreOrologio,oreDichiarate,panels:P,copertura:cop,
           pannelliDichiarati:dich!==null?P:null,posaRiferimento:posaRif};
@@ -5730,9 +5737,11 @@ function prescriviSuCapacita(e,dv,site,notti,opts){
     nullo vuol dire che nella stagione, da qui, il minimo non si raggiunge. Con le ore dichiarate le notti non decidono
     niente, e il verdetto non le nomina. */
 const NOTTI_DEL_VERDETTO_MAX=60;
-function nottiDelVerdetto(pr,tg,dv,site,notti,vivi,posaRif,oreDichiarate,opts){
+function nottiDelVerdetto(pr,tg,dv,site,notti,vivi,posaRif,oreDichiarate,opts,giaFatte){
   const op=pr&&pr.ore_di_progetto;
   if(!op||!notti||!notti.length||oreDichiarate!==null) return null;
+  /* le ore gia' riprese, al buio, si tolgono dalle soglie e dal pieno prima di contare le notti */
+  const gia=Math.max(0,numeroFinito(giaFatte)||0), meno=h=>h==null?null:Math.max(0,h-gia);
   const pieno=numeroDichiarato(op.pieno), soglie=numeroDichiarato(op.soglie), spese=numeroDichiarato(op.spese);
   const capacitaDi=x=>x.availH*((vivi&&vivi.length)?mixPenalty(vivi,dv,tg,site,x,posaRif):1);
   const cumulo=[]; let c=0;
@@ -5751,11 +5760,12 @@ function nottiDelVerdetto(pr,tg,dv,site,notti,vivi,posaRif,oreDichiarate,opts){
     for(let k=0;k<w.nights.length;k++){ v+=capacitaDi(w.nights[k]); if(v>=h-1e-9) return notti.length+k+1; }
     return null;
   };
-  return {notti:notti.length,
+  /* il campo delle ore gia' riprese c'e' solo quando ce ne sono: senza, il verdetto e' quello di prima, campo per campo */
+  return Object.assign({notti:notti.length,
           coperturaPercento:(pieno>0&&spese!=null)?Math.round(100*spese/pieno):null,
-          perIlMinimo:primaChe(soglie),
-          perIlPieno:primaChe(pieno),
-          massimo:NOTTI_DEL_VERDETTO_MAX};
+          perIlMinimo:primaChe(meno(soglie)),
+          perIlPieno:primaChe(meno(pieno)),
+          massimo:NOTTI_DEL_VERDETTO_MAX},gia>0?{giaRiprese:gia}:{});
 }
 
 /* Quando non ci sta: quale ALTRA configurazione fra quelle che possiedi lo
@@ -7259,6 +7269,90 @@ const POLITICHE_DI_SESSIONE=[
 ];
 const POLITICA_DI_SERIE='sessione';
 const politicaValida=id=>POLITICHE_DI_SESSIONE.some(p=>p.id===id);
+/*  LE ORE GIA' RIPRESE SI TOLGONO DAL PROGETTO, AL BUIO (26 ottobre 2026, Alessandro: riaperto un progetto, «la
+    successiva prescrizione ne debba tenere conto [...] e determinare le ore che mancano da riprendere escludendo quelle
+    gia' riprese»). Il progetto resta quello delle notti dichiarate, e con lui la posa: le pose nuove si integrano con
+    quelle gia' fatte. Il piano e la sequenza ricevono quello che manca, canale per canale.
+    LE ORE SI CONFRONTANO AL BUIO. La prescrizione spartisce ore al buio — quelle che una notte senza Luna deposita —, e
+    il piano le riporta in ore di posa con la Luna delle sue notti: misurato su NGC 7635 da Borno, quattro notti, 21,5 h
+    al buio fanno 20,8 h di posa senza Luna, e 9,3 h al buio ne fanno 41 con la Luna piena. Le ore gia' riprese invece
+    sono ore di posa, lette dai light: si portano al buio notte per notte con la stessa resa della capacita'
+    (`mixPenalty` su un gruppo solo: la notte del 2 ottobre 2026, Luna al 60%, rende 0,67 in OIII e 0,92 in Hα).
+    Scartato: togliere le ore di posa cosi' come sono, che con la Luna promette una profondita' che non c'e'. Le ore senza
+    notte — scritte a mano, o di light senza data — contano piene, e una notte che `nightWindows` non restituisce (l'oggetto
+    sotto la soglia) conta piena; il sito e' quello di adesso, e la posa dei light non pesa (`mixPenalty` senza posa).
+    Per pannello si dividono per i riquadri; un gruppo di due bande (il dual-band su una matrice) ha fatto quanto la meno
+    ripresa delle due. Un canale gia' oltre il progetto non chiede niente, e l'eccesso non passa agli altri: e' profondita'
+    in piu' di quel canale. Senza ore gia' riprese dei canali della strada il risultato e' `null`, e chi chiama usa la
+    prescrizione com'e'. Sorvegliato da tools/gate-gia-riprese.js. */
+/*  CON LA POSA DEL PROGETTO. Il piano conta al buio anche il rendimento della posa — il rumore di lettura che una posa
+    piu' corta paga (`contoDelPiano`: al buio = posa × Luna × resa della posa) —, e le ore gia' riprese si contano con la
+    stessa: `mixPenalty` con la posa del progetto (`expo`). Su NGC 7635, quattro notti senza Luna, 8 h 00′ di posa OIII
+    da 600 s valgono 7 h 47′ al buio. La posa dei light si conta come quella del progetto; senza `expo`, solo la Luna. Le
+    ore senza notte, e quelle di una notte non valutata, valgono la sola resa della posa (una notte senza Luna). */
+function resaDellaNotte(tg,dv,site,g,notte,expo){
+  let x=null;
+  try{ x=nightWindows(tg,site,new Date(notte+'T12:00:00'),1,{suMatrice:!!(dv&&dv.c&&dv.c.cfa_penalty)}).nights[0]||null; }catch(err){}
+  const giorno=x&&x.date?x.date.getFullYear()+'-'+String(x.date.getMonth()+1).padStart(2,'0')+'-'+String(x.date.getDate()).padStart(2,'0'):null;
+  const g1=[Object.assign({},g,{hours:1})];
+  if(giorno!==notte) return {resa:Math.min(1,mixPenalty(g1,dv,tg,site,{dMagV:0},expo||null)),valutata:false,luna:null};
+  return {resa:Math.min(1,mixPenalty(g1,dv,tg,site,x,expo||null)),valutata:true,luna:x.moonK};
+}
+function giaRipreseAlBuio(st,tg,dv,site,alloc,expo){
+  if(!st) return null;
+  const notti=Array.isArray(st.notti)?st.notti.filter(n=>n&&/^\d{4}-\d\d-\d\d$/.test(String(n.notte))&&n.ore):[];
+  const out={};
+  for(const g of (alloc||[]).filter(g=>!g.dropped&&g.hours>0)){
+    const bande=String(g.id).split('+');
+    const posaDi=ore=>Math.min(...bande.map(b=>Math.max(0,numeroFinito(ore&&ore[b])||0)));
+    let posa=0,buio=0; const det=[];
+    for(const n of notti){
+      const p=posaDi(n.ore); if(!(p>0)) continue;
+      const r=resaDellaNotte(tg,dv,site,g,n.notte,expo);
+      posa+=p; buio+=p*r.resa; det.push(Object.assign({notte:n.notte,posa:p},r));
+    }
+    const resto=Math.max(0,posaDi(st.hours)-posa);
+    const r0=resto>0?Math.min(1,mixPenalty([Object.assign({},g,{hours:1})],dv,tg,site,{dMagV:0},expo||null)):1;
+    out[g.id]={posa:posa+resto,alBuio:buio+resto*r0,senzaNotte:resto,notti:det};
+  }
+  return out;
+}
+/*  IL PROGETTO COME LO CONSEGNANO LE POSE DEL PIANO: per gruppo le pose, le ore di posa e quanto valgono al buio, notte
+    per notte (`projH/h` del blocco). E' il numero della scheda del progetto — su NGC 7635, quattro notti senza Luna,
+    OIII 32 × 900 s, 8 h 00′ —, non quello della prescrizione prima che le pose si arrotondino notte per notte (8 h 19′):
+    le ore gia' riprese si tolgono da questo, perche' e' questo che la sequenza avrebbe ripreso. */
+function progettoDellePose(pl,expo,opts){
+  if(!pl||!pl.ok) return null;
+  const out={};
+  for(const nt of pl.nights){
+    const sp=subPlan(nt.blocks,expo,Object.assign({},opts||{},{night:nt.n,notti:pl.nights}));
+    for(const u of sp.subs){
+      const id=String(chiaveDellaPosa(u)).split('|')[0], b=nt.blocks.find(x=>x.id===id);
+      const h=u.n*u.sec/3600, k=b&&b.h>0?b.projH/b.h:1;
+      const o=out[id]||(out[id]={pose:0,posa:0,alBuio:0});
+      o.pose+=u.n; o.posa+=h; o.alBuio+=h*k;
+    }
+  }
+  return out;
+}
+function daRiprendere(pr,fatte,progetto){
+  if(!pr||pr.disponibile===false||!Array.isArray(pr.alloc)||!fatte) return null;
+  const P=Math.max(1,pr.panels||1);
+  const canali=pr.alloc.filter(g=>!g.dropped&&g.hours>0).map(g=>{
+    const f=fatte[g.id]||{posa:0,alBuio:0}, b=f.alBuio/P;
+    /* il progetto per pannello: quello delle pose, se c'e' (`progettoDellePose`), o quello della prescrizione */
+    const pp=progetto&&progetto[g.id], tot=pp?pp.alBuio/P:g.hours;
+    return {id:g.id,progetto:tot,progettoPose:pp?pp.pose:null,progettoPosa:pp?pp.posa:null,
+            fatte:Math.min(b,tot),oltre:Math.max(0,b-tot),daFare:Math.max(0,tot-b),
+            posa:f.posa,notti:f.notti||[],senzaNotte:f.senzaNotte||0};
+  });
+  if(!canali.some(c=>c.posa>1e-9)) return null;
+  const per=Object.fromEntries(canali.map(c=>[c.id,c]));
+  const alloc=pr.alloc.map(g=>per[g.id]?Object.assign({},g,{hours:per[g.id].daFare,giaRiprese:per[g.id].fatte}):g);
+  const spent=alloc.reduce((a,g)=>a+(g.dropped?0:g.hours),0);
+  return Object.assign({},pr,{alloc,spent,spentTotal:spent*P,
+    giaRiprese:{canali,panels:P,completo:canali.every(c=>c.daFare<=1e-9)}});
+}
 function planNights(pr,e,dv,nights,opts){
   const o=opts||{};
   const site=o.site;
@@ -7278,6 +7372,9 @@ function planNights(pr,e,dv,nights,opts){
   const stellar=!!(TG.archetypes[e.tg.archetype]||{}).stellar;
 
   const live=pr.alloc.filter(g=>!g.dropped&&g.hours>0);
+  /* le ore gia' riprese coprono tutto: non c'e' niente da distribuire, e lo si dice per quello che e' (`daRiprendere`) */
+  if(!live.length&&pr.giaRiprese&&pr.giaRiprese.completo) return {ok:false,reason:{code:'completo',
+    msg:'Il progetto è completo: le ore già riprese coprono tutti i suoi canali, e non c’è niente da distribuire sulle notti.'},nights:[]};
   const bounds=nightsBounds(pr,e.tg,site,start,{...o,panels,dv});
   const W=bounds.windows;
 
@@ -12804,7 +12901,11 @@ function evaluate(tg,dv,site,np,state,cov){
   const st=state[tg.id]||null;
   let progress=null;
   if(st){
-    const done=st.hours||{}; let num=0,den=0;
+    /* le ore gia' riprese al buio, con la Luna delle loro notti, come le toglie il piano (`giaRipreseAlBuio`, 26 ottobre
+       2026): il traguardo e' in ore al buio. Senza le notti valgono piene, e il numero e' quello di prima. */
+    const buio=giaRipreseAlBuio(st,tg,dv,site,Object.keys(budget).map(b=>({id:b,bands:[b],hours:1})))||{};
+    const done={}; for(const [b,v] of Object.entries(buio)) done[b]=v.alBuio;
+    let num=0,den=0;
     for(const [b,v] of Object.entries(budget)){
       if(v.useful<=0) continue;
       if(!inRoad(v,defRoad.id)) continue;
@@ -13573,7 +13674,9 @@ const MOTORE = {
      sera, perche' gli stessi numeri li vuole il servizio e quindi il Ponte. */
   posa:    { exposurePlan, subPlan, costoDelleModalita, righeDellaProfondita,
              poseDelCanale, chiaveDellaPosa, profonditaDelPiano, statoDellaBrillanza, pezziDellaSerieCorta },
-  piano:   { planNights, bestStart },                                 // come si spalma sulle notti
+  piano:   { planNights, bestStart,                                   // come si spalma sulle notti
+             /* e quello che manca, togliendo al buio le ore gia' riprese: 26 ottobre 2026 */
+             giaRipreseAlBuio, daRiprendere, progettoDellePose },
   esporta: { ninaSequence, ninaCheck },                               // che cosa esce verso N.I.N.A.
 };
 
@@ -16520,6 +16623,8 @@ function renderRx(np){
   }
 
   const dv=derive(cfgMotore());
+  /* con le ore gia' riprese centro e rotazione sono quelli dei light, prima che qualcuno li legga (26 ottobre 2026) */
+  allineaAiLight(t);
   /* Qui si chiude la catena. La notte si risolve UNA volta, e da qui in giu' —
      ore, Luna, soglie, posa, piano — vale quella risolta, non quella chiesta. */
   const RN=MOTORE.cielo.resolveNight(t,SITE,rxDate(),OPSET);
@@ -16574,7 +16679,9 @@ function renderRx(np){
       passava `rxHours()`, che e' `RXCAP` della passata PRECEDENTE, mentre il commento
       sopra pretendeva le ore di orologio. Erano due cose diverse.                   */
   const rxd=MOTORE.scelta.prescriviSuCapacita(e,dv,SITE,WA.nights.slice(0,NN),
-    {road:scelta,pannelli:ppRx.panels,copertura:covIntent(),rotazione:rotFor(t),posa:OPSET});
+    {road:scelta,pannelli:ppRx.panels,copertura:covIntent(),rotazione:rotFor(t),posa:OPSET,
+     /* il verdetto conta le ore gia' riprese, al buio (26 ottobre 2026) */
+     giaRiprese:togliGiaRiprese()?(STATE[t.id]||null):null});
   RXCAP=rxd.capacita>0?rxd.capacita:RXAVAIL;
   const pr=rxd.pr;
   RXCOV=ppRx;
@@ -17221,16 +17328,47 @@ function aggiornaInquadratura(){
   const o=offDallaVista(t,c[0],c[1],SHEET_ROT), lontano=Math.hypot(o.du,o.dv);
   const dove=`centro ${coordinateDette(c[0],c[1])} · ${lontano<0.05?'sull\'oggetto':'a '+fmt(lontano,1)+'′ dall\'oggetto'}${
     SHEET_ROT?' · rotazione '+SHEET_ROT+'°':''}`;
-  const inUso=inquadraturaInUso();
+  const inUso=inquadraturaInUso(), dl=INQ_DAI_LIGHT[t.id];
   if(b) b.disabled=inUso;
-  if(m) m.innerHTML=inUso
+  if(m) m.innerHTML=dl&&dl.usata
+    ? `<span class="pill p-ok">dai light</span> <span class="muted">${dove} — ${inUso?'è':'quella in uso è'} quella delle ore già riprese: le pose
+       nuove si integrano con quelle già fatte. Per un’inquadratura nuova togli le ore già riprese dal piano, nei Risultati.</span>`
+    : inUso
     ? `<span class="pill p-ok">in uso</span> <span class="muted">${dove} — è quella della prescrizione e della sequenza per N.I.N.A.</span>`
     : `<span class="pill p-warn">non ancora in uso</span> <span class="muted">${dove} — premi «Usa questa inquadratura» per portarla
        nella prescrizione e nella sequenza per N.I.N.A.</span>`;
 }
+/*  IL CENTRO E LA ROTAZIONE DEI LIGHT (26 ottobre 2026, Alessandro: «la rotazione e le coordinate si prendono sempre dai
+    dati delle ore gia' riprese, logicamente se non dovessero corrispondere»). Le pose nuove si integrano con quelle gia'
+    fatte solo sullo stesso campo: con le ore gia' riprese nel piano l'inquadratura dell'oggetto e' quella dei light
+    (`inquadraturaDeiLight`), e se quella in uso e' diversa — di 0,05′ nel centro o di 0,05° nella rotazione, la
+    tolleranza di «in uso» nella Scheda — la si riporta, e il riquadro delle ore gia' riprese lo dice. Senza OBJCTROT
+    la rotazione resta quella in uso. Un centro a piu' di 2° dall'oggetto non si usa: i light sono di un altro campo.
+    Togliendo le ore gia' riprese dal piano l'inquadratura torna libera. Chiamata all'inizio di `renderRx`, prima che
+    anteprima, pannelli e sequenza leggano rotazione e centro. */
+const INQ_DAI_LIGHT={};
+function allineaAiLight(t){
+  if(!t||!t.id) return null;
+  const q=STATE[t.id]&&STATE[t.id].inquadratura;
+  if(!q||q.ra==null||q.dec==null||!togliGiaRiprese()){ delete INQ_DAI_LIGHT[t.id]; return null; }
+  const cd=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
+  let dRa=q.ra-t.ra_deg; if(dRa>180) dRa-=360; if(dRa<-180) dRa+=360;
+  const lontano=Math.hypot(dRa*cd,q.dec-t.dec_deg);
+  if(lontano>2) return (INQ_DAI_LIGHT[t.id]={q,lontano,usata:false});
+  const rot=q.rot!=null?((q.rot%360)+360)%360:rotFor(t), off=offDallaVista(t,q.ra,q.dec,rot);
+  const r0=rotFor(t), o0=offFor(t);
+  const uguale=Math.abs(((r0-rot)%360+540)%360-180)<0.05&&Math.abs(o0.du-off.du)<0.05&&Math.abs(o0.dv-off.dv)<0.05;
+  const prima=uguale?((INQ_DAI_LIGHT[t.id]||{}).prima||null):{rot:r0,off:o0};
+  if(!uguale){ saveRotFor(t,rot); saveOffFor(t,off); }
+  return (INQ_DAI_LIGHT[t.id]={q,lontano,usata:true,prima});
+}
 /* «Usa questa inquadratura»: la proposta diventa quella in uso, e la prescrizione si rifa' */
 function usaInquadratura(){
   const t=SHEET_T, c=centroDellaVista(); if(!t||!c) return;
+  const dl=allineaAiLight(t);
+  if(dl&&dl.usata){ toast('Questo oggetto ha ore già riprese: centro e rotazione restano quelli dei light, perché le pose nuove si integrino con quelle già fatte. Per un’inquadratura nuova togli le ore già riprese dal piano, nei Risultati.');
+    if(ALADIN_DELLA_SCHEDA&&ALADIN_DELLA_SCHEDA.al&&ALADIN_DELLA_SCHEDA.al.gotoRaDec){ const f=framingCenter(t,rotFor(t),offFor(t)); ALADIN_DELLA_SCHEDA.al.gotoRaDec(f.ra,f.dec); }
+    SHEET_ROT=rot360(rotFor(t)); SHEET_OFF=offFor(t); ridisegnaCampo(); aggiornaInquadratura(); return; }
   SHEET_OFF=offDallaVista(t,c[0],c[1],SHEET_ROT);
   saveOffFor(t,SHEET_OFF); saveRotFor(t,SHEET_ROT);
   refresh();
@@ -17414,6 +17552,59 @@ function righeFuoriDallaTecnica(order,alloc){
   const prese=new Set((alloc||[]).flatMap(g=>g.bands||[g.id]));
   return RIGHE_DELL_ORDINE.filter(([b,,re])=>re.test(order)&&!prese.has(b)).map(([,nome])=>nome);
 }
+/*  IL RIQUADRO DELLE ORE GIA' RIPRESE, sopra il piano (26 ottobre 2026): per canale il progetto, quello che e' gia'
+    stato ripreso — di posa, e al buio con la Luna delle sue notti — e quello che manca; e la casella per vedere il piano
+    del progetto intero, perche' consigliere non vuol dire decidere al posto di chi riprende. Solo presentazione: i
+    conti sono di `giaRipreseAlBuio` e `daRiprendere`. */
+const togliGiaRiprese=()=>{ try{ return localStorage.getItem('ap_togli_riprese')!=='no'; }catch(e){ return true; } };
+function setTogliGiaRiprese(v){ try{ localStorage.setItem('ap_togli_riprese',v?'si':'no'); }catch(e){} refresh(); }
+function giaRipreseHtml(t,prR,N,Nr,pl,expo){
+  const st=STATE[t.id], h=(st&&st.hours)||{};
+  if(!Object.values(h).some(v=>v>0)) return '';
+  const on=togliGiaRiprese();
+  /* il centro e la rotazione dei light (`allineaAiLight`), detti */
+  const dl=on?INQ_DAI_LIGHT[t.id]:null;
+  const inquadratura=!dl?null:!dl.usata
+    ?`Il centro dei light è a ${fmt(dl.lontano,1)}° dall’oggetto: non lo uso, i light sembrano di un altro campo.`
+    :`Centro e rotazione sono quelli dei light: ${esc(coordinateDette(dl.q.ra,dl.q.dec))}${dl.q.rot!=null?', rotazione '+fmt(dl.q.rot,1)+'°':', la rotazione i light non la dicono'}${
+      dl.prima?' — l’inquadratura in uso era diversa, e le pose nuove non si sarebbero integrate con quelle già fatte':''}.`;
+  const casella=`<label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px">
+    <input type="checkbox" id="rxTogliRiprese"${on?' checked':''} onchange="setTogliGiaRiprese(this.checked)"> Togli dal piano le ore già riprese</label>`;
+  const scatola=x=>`<div class="warnbox" id="rxGiaRiprese" style="margin:0 0 8px">${x}${casella}</div>`;
+  const dette=`<b>Ore già riprese di ${esc(t.names[0])}</b>: ${oreDette(h)}`;
+  if(!on) return scatola(dette+'. Il piano qui sotto è il progetto intero, come se non ci fossero.');
+  if(!prR) return scatola(dette+'. Nessuna è di un canale di questa tecnica: il piano qui sotto è il progetto intero.');
+  const g=prR.giaRiprese, P=g.panels, minuto=1/120;
+  /* nel piano: le pose che la sequenza riprendera', canale per canale (`poseDelCanale`, come le righe delle notti) */
+  const nelPiano={};
+  for(const [k,v] of Object.entries(pl&&pl.ok?MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET):{})){
+    const id=k.split('|')[0], x=nelPiano[id]||(nelPiano[id]={n:0,h:0}); x.n+=v.n; x.h+=v.h; }
+  const pose=(n,ore)=>n+(n===1?' posa, ':' pose, ')+hm(ore);
+  const righe=g.canali.map(c=>{ const buio=(c.fatte+c.oltre)*P, np=nelPiano[c.id];
+    const progetto=c.progettoPose!=null?pose(c.progettoPose,c.progettoPosa)+(Math.abs(c.progettoPosa-c.progetto*P)>minuto?' → '+hm(c.progetto*P):''):hm(c.progetto*P);
+    return `<tr><td>${esc(c.id)}</td><td>${progetto}</td>
+      <td>${hm(c.posa)}${Math.abs(c.posa-buio)>minuto?' → '+hm(buio):''}</td>
+      <td>${c.daFare<=1e-9?'<span class="pill p-ok">fatto</span>'+(c.oltre>minuto?' oltre di '+hm(c.oltre*P):''):hm(c.daFare*P)}</td>
+      <td>${np&&np.n?pose(np.n,np.h):'—'}</td></tr>`; }).join('');
+  const perNotte={}; for(const c of g.canali) for(const n of c.notti) perNotte[n.notte]=n;
+  const notti=Object.values(perNotte).sort((a,b)=>a.notte<b.notte?-1:1);
+  const bande=new Set(g.canali.flatMap(c=>String(c.id).split('+')));
+  const fuori=Object.entries(h).filter(([k,v])=>v>0&&!bande.has(k));
+  const note=[
+    notti.length?'Le notti dei light: '+notti.map(n=>giornoDetto(n.notte)+(n.valutata?', '+lunaDetta({luna:Math.round(n.luna*100)}):', non valutata: conta piena')).join(' · ')+'.':null,
+    g.canali.some(c=>c.senzaNotte>minuto)?'Le ore senza la data della loro notte contano piene.':null,
+    fuori.length?fuori.map(([k,v])=>esc(k)+' '+hm(v)).join(' · ')+(fuori.length===1?' non entra':' non entrano')+' in questa tecnica.':null,
+    g.completo?null:Nr<N?`Quello che manca sta in ${Nr} nott${Nr===1?'e':'i'} delle ${N} chieste: il piano qui sotto usa quelle, le altre restano libere.`:null,
+    'Le pose si arrotondano notte per notte, come in ogni piano.',
+  ].filter(Boolean);
+  return scatola(`<b>Ore già riprese di ${esc(t.names[0])}</b>: il piano e la sequenza per N.I.N.A. qui sotto riprendono solo
+    quello che manca. La posa resta quella del progetto: le pose nuove si integrano con quelle già fatte.
+    ${inquadratura?'<div style="margin-top:4px">'+inquadratura+'</div>':''}
+    <table class="progconfr"><tr><th>canale</th><th>il progetto: di posa → al buio</th><th>già riprese: di posa → al buio</th><th>mancano, al buio</th><th>nel piano</th></tr>${righe}</table>
+    <div class="small">«Al buio» vuol dire come le conta la prescrizione: senza Luna e con la posa del progetto. Un’ora di posa presa
+    con la Luna vale meno, e AIS la conta per quello che vale.
+    ${note.join(' ')}</div>`);
+}
 function rxPlanHtml(pr,e,dv,t){
   const N=rxNights();
   /* La notte e' quella risolta in renderRx: rileggere il campo qui era proprio
@@ -17431,11 +17622,24 @@ function rxPlanHtml(pr,e,dv,t){
   const expo=MOTORE.posa.exposurePlan(pr,dv,SITE,Object.assign({},OPSET,
     {panels,archetype:t.archetype,tg:t,strategy:RXSTRAT}));
   const opts=Object.assign({},OPSET,{site:SITE,date,panels,expo,mode:PLANMODE,strategy:RXSTRAT});
-  const pl=MOTORE.piano.planNights(pr,e,dv,N,opts);
-  RXPLAN={pl,expo,pr,e,dv,t,panels,rot:rotFor(t),off:offFor(t),date};
+  /* LE ORE GIA' RIPRESE (26 ottobre 2026). Il progetto e la posa restano questi; il piano delle notti e la sequenza
+     ricevono quello che manca, al buio (`daRiprendere`), nelle prime notti che bastano: le altre restano libere. Il
+     piano del progetto intero resta in `plProgetto`, perche' «Salva progetto» e il confronto allora/adesso parlano del
+     progetto, non del suo resto. */
+  const plProgetto=MOTORE.piano.planNights(pr,e,dv,N,opts);
+  const stFatte=togliGiaRiprese()?STATE[t.id]:null;
+  const prR=stFatte?MOTORE.piano.daRiprendere(pr,MOTORE.piano.giaRipreseAlBuio(stFatte,t,dv,SITE,pr.alloc,expo),
+    MOTORE.piano.progettoDellePose(plProgetto,expo,OPSET)):null;
+  let pl=plProgetto, Nr=N;
+  if(prR){
+    pl=MOTORE.piano.planNights(prR,e,dv,N,opts);
+    const m=pl.ok&&pl.bounds?pl.bounds.min:null;
+    if(m&&m<N){ Nr=m; pl=MOTORE.piano.planNights(prR,e,dv,m,opts); }
+  }
+  RXPLAN={pl,plProgetto,prR,expo,pr,e,dv,t,panels,rot:rotFor(t),off:offFor(t),date};
 
-  const head=`<h4 style="margin:18px 0 4px;font-size:13px">Piano di acquisizione — ${N} nott${N===1?'e':'i'}${
-      panels>1?` × ${mos.cols}×${mos.rows} pannelli`:''}</h4>`;
+  const head=`<h4 style="margin:18px 0 4px;font-size:13px">Piano di acquisizione — ${prR?'quello che manca, in ':''}${Nr} nott${Nr===1?'e':'i'}${
+      panels>1?` × ${mos.cols}×${mos.rows} pannelli`:''}</h4>`+giaRipreseHtml(t,prR,N,Nr,pl,expo);
   const mosNote = panels>1
     ? `<div class="warnbox" style="margin:0 0 8px"><b>Mosaico ${mos.cols}×${mos.rows}.</b>
         Il soggetto è più esteso del campo, quindi va coperto in <b>${panels}</b> riquadri, ognuno
@@ -17455,6 +17659,8 @@ function rxPlanHtml(pr,e,dv,t){
           soggetto intero.</div>`
       : '');
 
+  if(!pl.ok&&pl.reason&&pl.reason.code==='completo')
+    return {strategia:'',dettaglio:'',nina:'',cuore:head+`<div class="warnbox"><span class="pill p-ok">completo</span> ${esc(pl.reason.msg)}</div>`};
   if(!pl.ok){
     const b=pl.bounds||{};
     const fixTo=pl.reason.want;
@@ -17499,7 +17705,9 @@ function rxPlanHtml(pr,e,dv,t){
     if(!critId||b.id!==critId||iNotte!==0) return '';
     /*  La scelta della voce e il conto stanno nel motore (`profonditaDelPiano`), come le pose del canale: qui si
         disegna quello che torna. */
-    const p=MOTORE.posa.profonditaDelPiano(totCanale,critId,dv,SITE,t,TG.archetypes[t.archetype],OPSET,pr&&pr.panels);
+    /* la profondita' e' del progetto: con le ore gia' riprese le pose di questo piano ne sono solo il resto */
+    const totPr=prR&&plProgetto.ok?MOTORE.posa.poseDelCanale(plProgetto.nights,expo,OPSET):totCanale;
+    const p=MOTORE.posa.profonditaDelPiano(totPr,critId,dv,SITE,t,TG.archetypes[t.archetype],OPSET,pr&&pr.panels);
     if(!p||p.arrivi==null) return '';
     const num=(x,n)=>fmt(x,n);
     /*  Riga 2: dove si arriva, e il riferimento dell'oggetto col suo nome. Dove il riferimento non c'e', si dice
@@ -18102,8 +18310,9 @@ function fraseDelVerdetto(v){
   if(!v||v.coperturaPercento==null) return '';
   const chieste=(v.notti===1?'La notte chiesta copre':`Le ${v.notti} notti chieste coprono`)+
     ` il <b>${v.coperturaPercento} %</b> del progetto`;
-  if(v.perIlMinimo==null) return `${chieste}, e il minimo non si raggiunge entro ${v.massimo} notti utili da qui.`;
-  if(v.perIlMinimo>v.notti) return `${chieste}: per il minimo ne servono <b>${v.perIlMinimo}</b>.`;
+  const gia=v.giaRiprese?', contate le ore già riprese':'';
+  if(v.perIlMinimo==null) return `${chieste}, e il minimo non si raggiunge entro ${v.massimo} notti utili da qui${gia}.`;
+  if(v.perIlMinimo>v.notti) return `${chieste}: per il minimo ne servono <b>${v.perIlMinimo}</b>${gia}.`;
   return `${chieste}.`;
 }
 const CHI_METTE_IL_TETTO={classe:'la pratica per questa classe',montatura:'la montatura',richiesta:'la posa massima impostata',
@@ -20061,8 +20270,10 @@ function bancoDetto(dv){
 }
 /* il contesto e i numeri della prescrizione di adesso: quello che un progetto fotografa, e con cui poi si confronta */
 function contestoDellaPrescrizione(){
-  if(!RXPLAN||!RXPLAN.pl||!RXPLAN.pl.ok) return null;
-  const {pl,expo,e,dv,t,rot,off}=RXPLAN;
+  /* il progetto intero, anche quando il piano delle notti e' solo quello che manca (`plProgetto`, 26 ottobre 2026) */
+  const pl=RXPLAN&&(RXPLAN.plProgetto||RXPLAN.pl);
+  if(!pl||!pl.ok) return null;
+  const {expo,e,dv,t,rot,off}=RXPLAN;
   const sel=$('site'), opz=sel&&sel.selectedOptions&&sel.selectedOptions[0];
   const per={};
   for(const nt of pl.nights){
@@ -20302,6 +20513,9 @@ async function intestazioneXisf(file){
   if(!carte.EXPTIME&&!carte.EXPOSURE&&prop('Instrument:ExposureTime')) carte.EXPTIME=prop('Instrument:ExposureTime');
   if(!carte.FILTER&&prop('Instrument:Filter:Name')) carte.FILTER=prop('Instrument:Filter:Name');
   if(!carte.OBJECT&&prop('Observation:Object:Name')) carte.OBJECT=prop('Observation:Object:Name');
+  /* il centro pianificato anche in gradi, dove N.I.N.A. lo scrive come proprieta' (XISFHeader) */
+  if(prop('Observation:Object:RA')!=null&&prop('Observation:Object:Dec')!=null){
+    carte.__RA_OGGETTO=prop('Observation:Object:RA'); carte.__DEC_OGGETTO=prop('Observation:Object:Dec'); }
   return carte;
 }
 /* da un nome di filtro alle chiavi delle ore gia' riprese; colore: la posa viene da un sensore a colori */
@@ -20346,6 +20560,39 @@ function assettoDellaPosa(h,posa){
     lettura:String(h.READOUTM||'').trim()||null, temp:t==null?null:Math.round(t), posa,
     filtro:String(h.FILTER||'').trim()||null, notte:notteDellaPosa(h), rot:n(h.ROTATANG) };
 }
+/* IL CENTRO E LA ROTAZIONE DI UNA POSA, come li scrive N.I.N.A. (FITSHeader e XISFHeader della 3.3.0.1068): OBJCTRA
+   «HH MM SS» e OBJCTDEC «±DD MM SS» sono il centro pianificato dell'oggetto, nell'XISF anche in gradi
+   (Observation:Object:RA/Dec); OBJCTROT e' la rotazione pianificata, la stessa che AIS manda come PositionAngle. RA e
+   DEC sono dove puntava il telescopio, col dither: valgono solo se il centro pianificato manca. */
+function sessagesimale(s){
+  const m=String(s||'').trim().match(/^([+-]?)(\d+)[\s:]+(\d+)[\s:]+(\d+(?:[.,]\d+)?)$/);
+  if(!m) return null;
+  const v=+m[2]+(+m[3])/60+parseFloat(m[4].replace(',','.'))/3600;
+  return m[1]==='-'?-v:v;
+}
+function inquadraturaDellaPosa(h){
+  const n=v=>{ const x=parseFloat(v); return isFinite(x)?x:null; };
+  let ra=n(h.__RA_OGGETTO), dec=n(h.__DEC_OGGETTO), fonte='oggetto';
+  if(ra==null||dec==null){ const r=sessagesimale(h.OBJCTRA), d=sessagesimale(h.OBJCTDEC); if(r!=null&&d!=null){ ra=r*15; dec=d; } }
+  if(ra==null||dec==null){ ra=n(h.RA); dec=n(h.DEC); fonte='telescopio'; }
+  if(ra==null||dec==null) return null;
+  return {ra:((ra%360)+360)%360,dec,rot:n(h.OBJCTROT),fonte};
+}
+/* l'inquadratura dei light di un oggetto: quella delle pose piu' numerose, entro 1′ e 1°; il centro pianificato prima di
+   quello del telescopio, che col dither si media. Le altre si contano (`diverse`): un mosaico, o un'inquadratura cambiata */
+function inquadraturaDeiLight(lista){
+  const tutte=(lista||[]).filter(Boolean); if(!tutte.length) return null;
+  const pian=tutte.filter(x=>x.fonte==='oggetto'), v=pian.length?pian:tutte;
+  const dRa=(a,b)=>{ let d=a-b; if(d>180) d-=360; if(d<-180) d+=360; return d; };
+  const vicine=(a,b)=>Math.hypot(dRa(a.ra,b.ra)*Math.cos(a.dec*Math.PI/180),a.dec-b.dec)<1/60&&
+    (a.rot==null&&b.rot==null||a.rot!=null&&b.rot!=null&&Math.abs(dRa(a.rot,b.rot))<=1);
+  const gruppi=[];
+  for(const x of v){ const g=gruppi.find(g=>vicine(g[0],x)); if(g) g.push(x); else gruppi.push([x]); }
+  gruppi.sort((a,b)=>b.length-a.length);
+  const g=gruppi[0], ra0=g[0].ra;
+  const ra=((ra0+g.reduce((a,x)=>a+dRa(x.ra,ra0),0)/g.length)%360+360)%360, dec=g.reduce((a,x)=>a+x.dec,0)/g.length;
+  return {ra,dec,rot:g[0].rot,fonte:g[0].fonte,pose:g.length,diverse:gruppi.length-1};
+}
 /* tutte le pose di una cartella: lette, classificate; i light sommati per oggetto e per chiave, con l'assetto di
    ciascuno (luci), e la calibrazione con il suo (cal) */
 async function leggiLight(files){
@@ -20369,16 +20616,19 @@ async function leggiLight(files){
     const nomeOggetto=String(h.OBJECT||'').trim()||'(senza oggetto)';
     if(!chiavi){ const k=String(h.FILTER||'').trim()||'(nessun filtro)'; (r.senzaFiltro[k]=r.senzaFiltro[k]||{pose:0,secondi:0}).pose++; r.senzaFiltro[k].secondi+=posa; continue; }
     const a=assettoDellaPosa(h,posa); r.luci.push(a);
-    const o=r.oggetti[nomeOggetto]||(r.oggetti[nomeOggetto]={nome:nomeOggetto,ore:{},pose:{},date:[]});
+    const o=r.oggetti[nomeOggetto]||(r.oggetti[nomeOggetto]={nome:nomeOggetto,ore:{},pose:{},date:[],perNotte:{},inq:[]});
+    o.inq.push(inquadraturaDellaPosa(h));
     for(const k of chiavi){ o.ore[k]=(o.ore[k]||0)+posa/3600; }
     const kf=(String(h.FILTER||'').trim()||'—')+'|'+posa; o.pose[kf]=(o.pose[kf]||0)+1;
-    if(a.notte) o.date.push(a.notte);
+    /* le ore anche notte per notte: la prescrizione le porta al buio con la Luna di quella notte (`giaRipreseAlBuio`) */
+    if(a.notte){ o.date.push(a.notte); const pn=o.perNotte[a.notte]||(o.perNotte[a.notte]={}); for(const k of chiavi) pn[k]=(pn[k]||0)+posa/3600; }
   } };
   await Promise.all(Array.from({length:Math.min(8,voci.length)},lavora));
   r.calibrazione=r.cal.length;
   for(const o of Object.values(r.oggetti)){
     const t=bersaglioDellaDomanda(o.nome,UTGT); o.id=t&&t.scheda?t.scheda.id:null;
     o.date=[...new Set(o.date)].sort();
+    o.inquadratura=inquadraturaDeiLight(o.inq); delete o.inq;
   }
   return r;
 }
@@ -20529,6 +20779,10 @@ function mostraLight(r){
     return `<div class="progetto" style="margin-top:10px"><b>${esc(o.nome)}</b>${o.date.length?` <span class="small muted">· ${esc(o.date[0])}${o.date.length>1?' → '+esc(o.date[o.date.length-1]):''}</span>`:''}
       <div class="small">${oreDette(o.ore)}</div>
       <div class="small muted">${Object.entries(o.pose).map(([k,n])=>{ const [f,s]=k.split('|'); return esc(f)+' '+n+'×'+s+' s'; }).join(' · ')}</div>
+      ${o.inquadratura?`<div class="small muted">inquadratura dei light: centro ${esc(coordinateDette(o.inquadratura.ra,o.inquadratura.dec))}${
+        o.inquadratura.rot!=null?' · rotazione '+fmt(o.inquadratura.rot,1)+'°':' · rotazione non detta'}${
+        o.inquadratura.fonte==='telescopio'?' (dal puntamento del telescopio)':''}${
+        o.inquadratura.diverse?' · fra i light '+(o.inquadratura.diverse===1?'c’è un’altra inquadratura':'ci sono altre '+o.inquadratura.diverse+' inquadrature')+': vale la più ripresa':''}</div>`:''}
       ${prima?`<div class="small muted">adesso le ore già riprese sono: ${oreDette(prima)}</div>`:''}
       <div class="row"><select id="lightA${i}">${scelta(o.id)}</select>
         <button class="primary" onclick="usaLight(${i})">Usa come ore già riprese</button></div></div>`; }).join('')+
@@ -20540,8 +20794,10 @@ function usaLight(i){
   const r=LIGHT_LETTI; if(!r) return;
   const o=Object.values(r.oggetti)[i], id=($('lightA'+i)||{}).value; if(!o||!id) return;
   const t=TG.targets.concat(UTGT).find(x=>x.id===id);
-  STATE[id]={hours:Object.assign({},o.ore), updated:new Date().toISOString(), fonte:'light'};
-  saveState(); renderState(); refresh();
+  STATE[id]={hours:Object.assign({},o.ore), updated:new Date().toISOString(), fonte:'light',
+    notti:Object.keys(o.perNotte||{}).sort().map(n=>({notte:n,ore:Object.assign({},o.perNotte[n])})),
+    inquadratura:o.inquadratura||null};
+  saveState(); if(t) allineaAiLight(t); renderState(); refresh();
   toast(`Le ore già riprese di ${t?t.names[0]:id} sono adesso quelle dei light: ${Object.entries(o.ore).map(([k,v])=>k+' '+hm(v)).join(' · ')}.`);
 }
 
