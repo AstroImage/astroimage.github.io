@@ -626,6 +626,16 @@ tr.tgt:hover td{background:var(--bg3)}
 .rxhead h3{flex:1 1 260px}
 .rxact{display:flex;gap:var(--s2);flex:0 0 auto}
 .rxact button{white-space:nowrap}
+/* «Salva progetto», pieno, nel verde dell'Archivio (26 ottobre 2026: ben in evidenza nei Risultati) */
+.bt-progetto{font:inherit;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;background:var(--fn-exp);
+  border:1px solid var(--fn-exp);color:#06120a;box-shadow:0 0 0 2px rgba(var(--fn-exp-rgb),.25)}
+.bt-progetto:hover{filter:brightness(1.08)}
+.bt-progetto:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.progetto{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 10px;background:var(--sunken)}
+.progetto .row{gap:8px;margin-top:8px;flex-wrap:wrap}
+.progconfr{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+.progconfr th,.progconfr td{text-align:left;padding:3px 8px 3px 0;border-bottom:1px solid var(--line2)}
+.progconfr td.diversa{color:var(--warn,#e3b341);font-weight:600}
 .rx .why{font-size:12.5px;color:var(--dim);margin-bottom:var(--s3)}
 .rxrow{display:flex;align-items:center;gap:var(--s3);padding:7px 0;border-bottom:1px solid var(--line)}
 .rxrow:last-of-type{border-bottom:none}
@@ -1651,6 +1661,7 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
         </div>
       </div>
       <div class="card-body">
+        <div id="progettoAperto"></div>
         <div id="rxOut"></div>
       </div>
     </div>
@@ -1677,6 +1688,9 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
         </div>
       </div>
       <div class="card-body">
+        <div class="subhead">Progetti salvati</div>
+        <div id="progettiList"></div>
+
         <div class="subhead">Lettura automatica dai master</div>
         <div class="drop" id="drop">Trascina qui la cartella dei master (o clicca)<br>
           <span class="small">Filtro ed esposizione vengono letti dal nome file — nessun inserimento manuale</span>
@@ -1847,6 +1861,12 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
 <datalist id="dlTel"></datalist>
 <datalist id="dlCam"></datalist>
 <datalist id="dlMnt"></datalist>
+
+<!-- ============ APRIRE UN PROGETTO ============ -->
+<div class="sheet" id="progSheet"><div class="sheetbox" style="max-width:660px">
+  <button class="close" onclick="document.getElementById('progSheet').classList.remove('on')">Chiudi</button>
+  <div id="progBody"></div>
+</div></div>
 
 <!-- ============ STRUMENTO PERSONALIZZATO ============ -->
 <div class="sheet" id="gearSheet"><div class="sheetbox" style="max-width:600px">
@@ -13809,6 +13829,8 @@ function start(){
   initNav();
   initVistaOggetti();
   refresh();
+  renderProgetti();
+  progettoAllApertura();
   /* nel pannello del Ponte, le dichiarazioni della postazione sono quelle del profilo di N.I.N.A. */
   postazioneDalPonte('apertura');
   postazioniAllApertura();
@@ -15441,6 +15463,7 @@ function refresh(){
   renderSummary();
   postazioneCambiata();
   postazioneLocaleCambiata();
+  renderProgettoAperto();
 }
 const cell=(k,v,n)=>`<div class="dcell"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n||''}</div></div>`;
 
@@ -16962,6 +16985,8 @@ function renderRx(np){
   /* Le azioni stanno in cima, accanto al titolo. In fondo, grigie, erano invisibili:
      la scheda completa è metà del valore dell'app e nessuno ci arrivava. */
   const actions=`<div class="rxact">
+      <button type="button" class="bt-progetto" id="rxSalvaProgetto" onclick="salvaProgetto()"
+        data-tip="Salva oggetto, prescrizione e strumentazione: lo ritrovi in Archivio progetti, e lo porti su un altro PC con progetti.json.">Salva progetto</button>
       <button class="primary" onclick="rxOpenSheet(${jsAttr(t.id)})">${
         fromCat?'Apri la scheda di classe':'Apri la scheda completa'}</button>
       ${fromCat?`<button onclick="openTargetForm(null,${jsAttr(fromCat.name)})"
@@ -19939,9 +19964,9 @@ function reducerMap(){
 function exportState(){
   const gear={};
   for(const k of Object.keys(GEAR_KEY)) gear[k]=gearList(k).filter(x=>x.user);
-  const payload={schema_version:'1.2',updated:new Date().toISOString(),
+  const payload={schema_version:'1.3',updated:new Date().toISOString(),
     projects:STATE, sites:SITES, gear, targets:UTGT.concat(UTGT_SCARTATE), reducers:reducerMap(),
-    postazioni:leggiPostazioni()};
+    postazioni:leggiPostazioni(), progetti:leggiProgetti()};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='progetti.json'; a.click();
@@ -19974,12 +19999,22 @@ $('impIn').addEventListener('change',ev=>{
         scriviPostazioni(v); rigaDellaPostazione();
         if(n) toast(n===1?'Importata una postazione: la scegli in Strumentazione.':'Importate '+n+' postazioni: le scegli in Strumentazione.');
       }
+      /* i progetti del file si aggiungono, o sostituiscono quello con lo stesso id; le loro ore valgono per il loro contesto */
+      if(Array.isArray(j.progetti)&&j.progetti.length){
+        const v=leggiProgetti(); let n=0;
+        for(const p of j.progetti){ if(!p||!p.id||!p.oggetto||!p.contesto) continue;
+          const i=v.findIndex(x=>x.id===p.id); if(i>=0) v[i]=p; else v.push(p); n++; }
+        scriviProgetti(v);
+        if(n) alert((n===1?'Importato un progetto':'Importati '+n+' progetti')+'. Le ore e le pose di ogni progetto valgono '+
+          'per il contesto in cui è stato salvato — banco, sito, date, Luna —: aprendolo, AIS te lo dice e confronta allora e adesso.');
+      }
       renderState(); refresh();
     }catch(e){ alert('File non valido: '+e.message) }
   };
   r.readAsText(f);
 });
 function renderState(){
+  renderProgetti();
   const ids=Object.keys(STATE);
   if(!ids.length){ $('stateList').innerHTML='<p class="small muted">Nessun progetto aperto. '+
     'Trascina una cartella di master qui sopra per riempire l\'elenco.</p>'; return; }
@@ -19991,6 +20026,225 @@ function renderState(){
       <div class="small muted">${Object.entries(h).map(([k,v])=>`${k} ${fmt(v,1)}h`).join(' · ')}</div>
     </div></div>`;
   }).join('');
+}
+
+/*  I PROGETTI (26 ottobre 2026, Alessandro: un progetto salvato deve portare l'oggetto da riprendere, la prescrizione e la
+    strumentazione con cui lo si riprende, o «salva progetto» non salva quasi niente; e le ore per canale e le pose di
+    quel momento valgono per un contesto preciso — banco, sito, data, Luna —, e chi apre il progetto deve saperlo).
+    Prima un «progetto» era solo l'elenco delle ore gia' riprese per canale (`STATE`), e progetti.json non portava ne' la
+    prescrizione ne' il banco.
+    Un progetto porta: l'oggetto; il CONTESTO in cui le sue ore sono state calcolate (date e notti, la Luna di ogni notte,
+    il banco, il sito, strategia, politica di sessione, tecnica, copertura, inquadratura, esito) e le ore e le pose per
+    canale di allora; le DICHIARAZIONI da rimettere (le stesse chiavi della postazione, piu' guida della montatura, Luna di
+    riferimento, strategia e politica); le SCELTE dell'oggetto (tecnica, inquadratura, notti, copertura); e i record PROPRI
+    (strumentazione, riduttori, filtri, oggetti e siti aggiunti a mano), perche' un progetto importato su un altro PC
+    funzioni anche li': quelli si uniscono, non si sostituiscono.
+    Aprirlo: prima una finestra dice per quale contesto valgono le sue ore e che cosa cambia adesso; poi le dichiarazioni
+    di adesso si mettono da parte («Torna a com'era»), quelle del progetto si scrivono, e la pagina ripartendo rifa' la
+    prescrizione — per stanotte, o con le date del progetto —, e i Risultati confrontano allora e adesso, dicendo da dove
+    viene ogni differenza. Sorvegliato da tools/gate-progetti.js. */
+const PROGETTI_KEY='ap_progetti', VERSIONE_DEL_PROGETTO=1;
+const CHIAVI_DEL_PROGETTO=CHIAVI_DELLA_POSTAZIONE.filter(k=>k!=='ap_sites').concat(['ap_rms_car','ap_luna_rif','ap_strat','ap_planmode']);
+const PROPRI_DEL_PROGETTO=['ap_gear','ap_reducers','ap_userfilters','ap_targets','ap_sites'];
+const SCELTE_DEL_PROGETTO=['ap_rx','ap_road','ap_rot','ap_off'];
+const leggiProgetti=()=>{ try{ const v=JSON.parse(localStorage.getItem(PROGETTI_KEY)||'[]'); return Array.isArray(v)?v:[]; }catch(e){ return []; } };
+const scriviProgetti=v=>{ try{ localStorage.setItem(PROGETTI_KEY,JSON.stringify(v)); }catch(e){} };
+const chiaveLetta=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const giornoCivile=d=>{ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+const giornoDetto=d=>new Date(/^\d{4}-\d\d-\d\d$/.test(String(d))?d+'T12:00:00':d).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+const STRATEGIA_DETTA={resa:'Resa',equilibrio:'Equilibrio',dinamica:'Dinamica'};
+function bancoDetto(dv){
+  const r=dv.r&&dv.r.factor&&dv.r.factor!==1?' '+(dv.r.label||('×'+fmt(dv.r.factor,2))):'';
+  return [dv.t&&dv.t.name?dv.t.name+r:null,dv.c&&dv.c.name,dv.m&&dv.m.name,'bin '+(dv.bin||1)].filter(Boolean).join(' · ');
+}
+/* il contesto e i numeri della prescrizione di adesso: quello che un progetto fotografa, e con cui poi si confronta */
+function contestoDellaPrescrizione(){
+  if(!RXPLAN||!RXPLAN.pl||!RXPLAN.pl.ok) return null;
+  const {pl,expo,e,dv,t,rot,off}=RXPLAN;
+  const sel=$('site'), opz=sel&&sel.selectedOptions&&sel.selectedOptions[0];
+  const per={};
+  for(const nt of pl.nights){
+    const sp=MOTORE.posa.subPlan(nt.blocks,expo,Object.assign({},OPSET,{night:nt.n,notti:pl.nights}));
+    for(const u of sp.subs){ const c=per[u.filter]||(per[u.filter]={filtro:u.filter,banda:u.band||null,pose:0,secondi:0,pose_s:{}});
+      c.pose+=u.n; c.secondi+=u.n*u.sec; c.pose_s[u.sec]=(c.pose_s[u.sec]||0)+u.n; }
+  }
+  const pill=document.querySelector('#rxOut .rxhead .pill');
+  return {data:$('date').value,
+    /* la fase a meta' della notte utile, sempre: e' il contesto delle ore; e se in quelle ore la Luna e' sopra l'orizzonte */
+    notti:pl.nights.map(nt=>{ const mid=nt.from&&nt.to?new Date((+nt.from + +nt.to)/2):new Date(+nt.date+12*3600e3);
+      return {data:giornoCivile(nt.date),luna:Math.round(moonIllum(toJD(mid)).k*100),su:!!nt.lunaSu}; }),
+    banco:bancoDetto(dv), focale:Math.round(dv.F),
+    sito:{nome:sel&&sel.value&&sel.value!=='__custom'&&opz?opz.textContent.trim():null,lat:SITE.lat,lon:SITE.lon,sqm:SITE.sqm},
+    strategia:RXSTRAT, politica:PLANMODE, tecnica:(e&&e.defRoad&&e.defRoad.name)||null, copertura:covIntent(),
+    inquadratura:{rot:rot||0,off:off||{du:0,dv:0}}, esito:pill?pill.textContent.trim():null,
+    canali:Object.values(per).map(c=>({filtro:c.filtro,banda:c.banda,pose:c.pose,secondi:c.secondi,
+      pose_s:Object.entries(c.pose_s).map(([s,n])=>({sec:+s,pose:n})).sort((a,b)=>b.sec-a.sec)})),
+    oreTotali:Object.values(per).reduce((a,c)=>a+c.secondi,0)/3600};
+}
+/* «dall'8», «all'11», «all'85%»: davanti a una vocale l'articolo si elide */
+const siElide=x=>/^(8|11|8\d)$/.test(String(x));
+const lunaDetta=n=>(n.luna==null?'Luna non detta':n.luna===0?'Luna nuova':'Luna '+(siElide(n.luna)?'all\'':'al ')+n.luna+'%')+
+  (n.su===false?', sotto l\'orizzonte':'');
+const conGiorno=(art,d)=>{ const s=giornoDetto(d); return art+(siElide(s.split(' ')[0])?'ll\'':'l ')+s; };
+function contestoDetto(c){
+  const n=c.notti||[], a=n[0], z=n[n.length-1];
+  return [n.length?(n.length===1?'la notte '+conGiorno('de',a.data):n.length+' notti '+conGiorno('da',a.data)+' '+conGiorno('a',z.data))+
+      ' ('+n.map(lunaDetta).join(', ')+')':null,
+    c.banco, c.sito?(c.sito.nome||fmt(c.sito.lat,2)+'° '+fmt(c.sito.lon,2)+'°')+(c.sito.sqm!=null?' · SQM '+fmt(c.sito.sqm,1):''):null,
+    (STRATEGIA_DETTA[c.strategia]||c.strategia||'')+((POLITICHE_DI_SESSIONE.find(x=>x.id===c.politica)||{}).label?', '+POLITICHE_DI_SESSIONE.find(x=>x.id===c.politica).label:''),
+    c.tecnica, c.esito].filter(Boolean).join(' · ');
+}
+const canaleDetto=c=>`${esc(c.filtro)} ${c.pose_s.map(x=>x.pose+'×'+x.sec+' s').join(' + ')} (${hmDaSecondi(c.secondi)})`;
+function salvaProgetto(){
+  const c=contestoDellaPrescrizione();
+  if(!c){ toast('Non c\'è una prescrizione da salvare: prima prescrivi un oggetto.'); return; }
+  const t=RXPLAN.t, v=leggiProgetti();
+  const chiavi={}; for(const k of CHIAVI_DEL_PROGETTO){ const x=chiaveLetta(k); if(x!=null) chiavi[k]=x; }
+  const propri={}; for(const k of PROPRI_DEL_PROGETTO){ const x=chiaveLetta(k); if(x!=null) propri[k]=x; }
+  const pz=leggiPostazioni(), uso=pz&&pz.uso&&pz.voci[pz.uso]?pz.voci[pz.uso].nome:null;
+  const i=v.findIndex(p=>p.oggetto&&p.oggetto.id===t.id&&p.contesto&&p.contesto.banco===c.banco);
+  const p={versione:VERSIONE_DEL_PROGETTO, id:i>=0?v[i].id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    salvato:new Date().toISOString(), oggetto:{id:t.id,nome:t.names[0]}, postazione:uso, contesto:c, chiavi, propri,
+    scelte:{rx:{t:$('rxTarget').value,n:$('rxNights').value,c:covIntent()}, road:roadFor(t.id), rot:rotFor(t), off:offFor(t)}};
+  if(i>=0) v[i]=p; else v.unshift(p);
+  scriviProgetti(v); renderProgetti();
+  toast(`Progetto «${t.names[0]}» ${i>=0?'aggiornato':'salvato'}: lo trovi in Archivio progetti.`);
+}
+function renderProgetti(){
+  const box=$('progettiList'); if(!box) return;
+  const v=leggiProgetti();
+  if(!v.length){ box.innerHTML='<p class="small muted">Nessun progetto salvato. Nei Risultati, «Salva progetto» salva '+
+    'l\'oggetto, la prescrizione e la strumentazione con cui lo riprendi.</p>'; return; }
+  box.innerHTML=v.map(p=>{ const c=p.contesto||{}, fatte=(STATE[p.oggetto.id]||{}).hours||{};
+    return `<div class="progetto" data-progetto="${esc(p.id)}"><b>${esc(p.oggetto.nome)}</b>
+      <span class="small muted">· salvato il ${esc(giornoDetto(p.salvato))}${p.postazione?' · postazione «'+esc(p.postazione)+'»':''}</span>
+      <div class="small" style="margin-top:4px">${esc(contestoDetto(c))}</div>
+      <div class="small muted">${(c.canali||[]).map(canaleDetto).join(' · ')} — ${hm(c.oreTotali||0)} in tutto</div>
+      ${Object.keys(fatte).length?`<div class="small">riprese finora: ${Object.entries(fatte).map(([k,x])=>esc(k)+' '+fmt(x,1)+' h').join(' · ')}</div>`:''}
+      <div class="row"><button class="fn fn-exp" onclick="chiediDiAprireProgetto(${jsAttr(p.id)})">Apri</button>
+        <button class="fn fn-bad" onclick="eliminaProgetto(${jsAttr(p.id)})">Elimina</button></div></div>`; }).join('');
+}
+function eliminaProgetto(id){
+  const v=leggiProgetti(), p=v.find(x=>x.id===id); if(!p) return;
+  if(!confirm('Eliminare il progetto «'+p.oggetto.nome+'»? Le ore già riprese restano.')) return;
+  scriviProgetti(v.filter(x=>x.id!==id)); renderProgetti();
+}
+/* prima di aprire: per quale contesto valgono le ore del progetto, e che cosa prende il posto di adesso */
+function chiediDiAprireProgetto(id){
+  const p=leggiProgetti().find(x=>x.id===id); if(!p) return;
+  const c=p.contesto||{}, n=c.notti||[], passate=n.length&&n[n.length-1].data<giornoCivile(new Date());
+  const adesso=RXDV?bancoDetto(RXDV):'—';
+  $('progBody').innerHTML=`<h3 style="margin-top:0">Aprire il progetto «${esc(p.oggetto.nome)}»?</h3>
+    <div class="warnbox"><b>Le ore e le pose di questo progetto valgono per il contesto in cui sono state calcolate</b>, il
+      ${esc(giornoDetto(p.salvato))}:
+      <ul style="margin:6px 0 6px 18px;padding:0">
+        <li>${n.length?(n.length===1?'la notte '+esc(conGiorno('de',n[0].data)):n.length+' notti '+esc(conGiorno('da',n[0].data)))+
+          ': '+n.map(x=>esc(giornoDetto(x.data).replace(/ \d{4}$/,''))+' '+esc(lunaDetta(x))).join(' · '):'notti non dette'}</li>
+        <li>banco: ${esc(c.banco||'—')}</li>
+        <li>sito: ${esc(c.sito?(c.sito.nome||fmt(c.sito.lat,2)+'° '+fmt(c.sito.lon,2)+'°'):'—')}${c.sito&&c.sito.sqm!=null?', SQM '+fmt(c.sito.sqm,1):''}</li>
+        <li>${esc([STRATEGIA_DETTA[c.strategia]||c.strategia,c.tecnica,c.esito].filter(Boolean).join(' · '))}</li>
+      </ul>
+      Allora: ${(c.canali||[]).map(canaleDetto).join(' · ')}, ${hm(c.oreTotali||0)} in tutto.<br>
+      Con un'altra data, un'altra Luna, un altro banco o un altro cielo le ore e le pose cambiano: aprendolo, i Risultati
+      confrontano allora e adesso e dicono da dove viene ogni differenza.</div>
+    <p class="small">Aprendolo, AIS rimette banco, filtri, sito, scelte e inquadratura del progetto al posto di quelli di
+      adesso (${esc(adesso)}), e rifà la prescrizione. Quelli di adesso si mettono da parte: «Torna a com'era» li rimette.</p>
+    ${passate?'<p class="small muted">Le date del progetto sono passate: aprirlo con quelle serve a rivedere la prescrizione com\'era.</p>':''}
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="bt-progetto" onclick="apriProgetto(${jsAttr(p.id)},'stanotte')">Apri per stanotte</button>
+      <button class="fn fn-exp" onclick="apriProgetto(${jsAttr(p.id)},'progetto')">Apri con le date del progetto</button>
+      <button class="fn" onclick="document.getElementById('progSheet').classList.remove('on')">Annulla</button></div>`;
+  $('progSheet').classList.add('on');
+}
+/* le liste proprie si uniscono: si aggiunge quello che manca, niente si toglie */
+function unisciPropri(k,ora,dalProgetto){
+  let a, b; try{ a=JSON.parse(ora||'null'); b=JSON.parse(dalProgetto||'null'); }catch(e){ return ora; }
+  if(b==null) return ora; if(a==null) return dalProgetto;
+  if(k==='ap_gear'){ for(const g of Object.keys(b)){ a[g]=a[g]||[]; for(const x of b[g]||[]) if(!a[g].some(y=>y.id===x.id)) a[g].push(x); } }
+  else if(k==='ap_reducers'){ for(const t of Object.keys(b)) a[t]=[...new Set([...(a[t]||[]),...(b[t]||[])])]; }
+  else if(k==='ap_sites'){ for(const x of b) if(!a.some(y=>y.name===x.name)) a.push(x); }
+  else { for(const x of b) if(!a.some(y=>y.id===x.id)) a.push(x); }
+  return JSON.stringify(a);
+}
+function apriProgetto(id,modo){
+  const p=leggiProgetti().find(x=>x.id===id); if(!p) return;
+  const tocca=CHIAVI_DEL_PROGETTO.concat(PROPRI_DEL_PROGETTO,SCELTE_DEL_PROGETTO);
+  const prima={}; for(const k of tocca) prima[k]=chiaveLetta(k);
+  try{
+    /* la copia da parte e' quella di PRIMA del primo progetto aperto: riaprirne uno, o un altro, non la sovrascrive;
+       la lascia andare solo «Tienilo così» */
+    if(!localStorage.getItem('ap_prima_del_progetto'))
+      localStorage.setItem('ap_prima_del_progetto',JSON.stringify({chiavi:prima,nome:p.oggetto.nome}));
+    for(const k of CHIAVI_DEL_PROGETTO){ if(p.chiavi&&p.chiavi[k]!=null) localStorage.setItem(k,p.chiavi[k]); else localStorage.removeItem(k); }
+    for(const k of PROPRI_DEL_PROGETTO){ const u=unisciPropri(k,prima[k],p.propri&&p.propri[k]); if(u!=null) localStorage.setItem(k,u); }
+    const s=p.scelte||{}, oid=p.oggetto.id, mappa=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'{}')||{}; }catch(e){ return {}; } };
+    localStorage.setItem('ap_rx',JSON.stringify(s.rx||{t:p.oggetto.nome}));
+    const road=mappa('ap_road'); if(s.road) road[oid]=s.road; else delete road[oid]; localStorage.setItem('ap_road',JSON.stringify(road));
+    const rot=mappa('ap_rot'); rot[oid]=s.rot||0; localStorage.setItem('ap_rot',JSON.stringify(rot));
+    const off=mappa('ap_off'); if(s.off&&(s.off.du||s.off.dv)) off[oid]=s.off; else delete off[oid]; localStorage.setItem('ap_off',JSON.stringify(off));
+    sessionStorage.setItem('ap_progetto_aperto',JSON.stringify({id,modo,data:modo==='progetto'?p.contesto.data:null}));
+  }catch(e){ toast('Il progetto non si apre: '+e.message); return; }
+  location.reload();
+}
+function tornaComEra(){
+  let b=null; try{ b=JSON.parse(localStorage.getItem('ap_prima_del_progetto')||'null'); }catch(e){}
+  if(!b||!b.chiavi) return;
+  for(const [k,x] of Object.entries(b.chiavi)){ try{ if(x==null) localStorage.removeItem(k); else localStorage.setItem(k,x); }catch(e){} }
+  try{ localStorage.removeItem('ap_prima_del_progetto'); sessionStorage.removeItem('ap_progetto_aperto'); }catch(e){}
+  location.reload();
+}
+/* «Tienilo così»: il banco del progetto resta, la copia di prima si lascia andare, l'avviso si chiude */
+function chiudiProgettoAperto(){ try{ sessionStorage.removeItem('ap_progetto_aperto'); localStorage.removeItem('ap_prima_del_progetto'); }catch(e){}
+  PROGETTO_APERTO=null; renderProgettoAperto(); }
+let PROGETTO_APERTO=null;
+/* alla partenza: se si e' appena aperto un progetto, le sue date (se scelte) e il confronto nei Risultati */
+function progettoAllApertura(){
+  let a=null; try{ a=JSON.parse(sessionStorage.getItem('ap_progetto_aperto')||'null'); }catch(e){}
+  if(!a||!a.id) return;
+  const p=leggiProgetti().find(x=>x.id===a.id); if(!p){ chiudiProgettoAperto(); return; }
+  PROGETTO_APERTO=p;
+  if(a.data&&!a.applicata){ a.applicata=true; try{ sessionStorage.setItem('ap_progetto_aperto',JSON.stringify(a)); }catch(e){} setRxDate(a.data); }
+  else renderProgettoAperto();
+  go('risultati');
+}
+/* allora e adesso: il contesto voce per voce, e le pose per canale */
+function renderProgettoAperto(){
+  const box=$('progettoAperto'); if(!box) return;
+  const p=PROGETTO_APERTO; if(!p){ box.innerHTML=''; return; }
+  const c=p.contesto||{}, ora=RXPLAN&&RXPLAN.t&&RXPLAN.t.id===p.oggetto.id?contestoDellaPrescrizione():null;
+  const indietro=(()=>{ try{ return !!localStorage.getItem('ap_prima_del_progetto'); }catch(e){ return false; } })();
+  const tasti=`<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${indietro?'<button class="fn" onclick="tornaComEra()">Torna a com\'era</button>':''}
+    <button class="fn fn-exp" onclick="chiudiProgettoAperto()">Tienilo così</button></div>`;
+  const testa=`<b>Progetto «${esc(p.oggetto.nome)}»</b>, salvato il ${esc(giornoDetto(p.salvato))}. Le sue ore e le sue pose valgono per
+    il contesto di allora: ${esc(contestoDetto(c))}.`;
+  if(!ora){ box.innerHTML=`<div class="warnbox" style="margin-bottom:12px">${testa}<br>La prescrizione qui sotto non è di questo
+    oggetto, o non c'è: il confronto non si fa.${tasti}</div>`; return; }
+  const diverse=[];
+  const n0=(c.notti||[]).map(x=>x.data).join(), n1=ora.notti.map(x=>x.data).join();
+  if(n0!==n1) diverse.push('le date ('+(ora.notti.length?ora.notti.length+' notti '+conGiorno('da',ora.notti[0].data):'—')+')');
+  if((c.notti||[]).map(x=>x.luna).join()!==ora.notti.map(x=>x.luna).join()) diverse.push('la Luna ('+ora.notti.map(lunaDetta).join(', ')+')');
+  if(c.banco!==ora.banco) diverse.push('il banco ('+ora.banco+')');
+  const sitoK=s=>s?[s.nome,fmt(s.lat,3),fmt(s.lon,3),s.sqm!=null?fmt(s.sqm,1):''].join('|'):'';
+  if(sitoK(c.sito)!==sitoK(ora.sito)) diverse.push('il sito ('+(ora.sito.nome||fmt(ora.sito.lat,2)+'° '+fmt(ora.sito.lon,2)+'°')+', SQM '+fmt(ora.sito.sqm,1)+')');
+  if(c.strategia!==ora.strategia||c.politica!==ora.politica) diverse.push('la strategia');
+  if(c.tecnica!==ora.tecnica) diverse.push('la tecnica ('+(ora.tecnica||'—')+')');
+  if(c.copertura!==ora.copertura) diverse.push('la copertura');
+  if(JSON.stringify(c.inquadratura)!==JSON.stringify(ora.inquadratura)) diverse.push('l\'inquadratura');
+  const filtri=[...new Set((c.canali||[]).map(x=>x.filtro).concat(ora.canali.map(x=>x.filtro)))];
+  const di=(lista,f)=>lista.find(x=>x.filtro===f);
+  let numeriDiversi=false;
+  const righe=filtri.map(f=>{ const a=di(c.canali||[],f), b=di(ora.canali,f);
+    const da=a?a.pose_s.map(x=>x.pose+'×'+x.sec+' s').join(' + ')+' ('+hmDaSecondi(a.secondi)+')':'—';
+    const db=b?b.pose_s.map(x=>x.pose+'×'+x.sec+' s').join(' + ')+' ('+hmDaSecondi(b.secondi)+')':'—';
+    const cambia=da!==db; if(cambia) numeriDiversi=true;
+    return `<tr><td>${esc(f)}</td><td>${esc(da)}</td><td class="${cambia?'diversa':''}">${esc(db)}</td></tr>`; }).join('');
+  const giudizio=!numeriDiversi&&!diverse.length?'<span class="pill p-ok">uguale</span> Contesto e numeri sono quelli del progetto.'
+    :!numeriDiversi?'<span class="pill p-ok">stessi numeri</span> Ore e pose sono quelle del progetto, anche se cambiano '+esc(diverse.join(', '))+'.'
+    :diverse.length?'<span class="pill p-warn">cambiato</span> Le differenze vengono da: '+esc(diverse.join(', '))+'. Valgono i numeri di adesso.'
+    :'<span class="pill p-warn">cambiato</span> Il contesto è lo stesso ma i numeri no: AIS è cambiato da quando il progetto è stato salvato. Valgono i numeri di adesso.';
+  box.innerHTML=`<div class="warnbox" style="margin-bottom:12px">${testa}
+    <table class="progconfr"><tr><th>canale</th><th>allora</th><th>adesso</th></tr>${righe}</table>
+    <div class="small">${giudizio}</div>${tasti}</div>`;
 }
 
 /* Legge filtro ed esposizione dai nomi file dei master/light.
