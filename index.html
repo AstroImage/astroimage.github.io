@@ -1271,7 +1271,7 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
 
   <div class="navfoot">
     <div class="nf-name">AstroImage-Strategy</div>
-    <div class="nf-v">v2.0.0</div>
+    <div class="nf-v">v2.1.0</div>
     <div style="margin-top:6px">&copy; 2026 Alessandro Curci<br>Tutti i diritti riservati.</div>
   </div>
 </nav>
@@ -1691,14 +1691,16 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
         <div class="subhead">Progetti salvati</div>
         <div id="progettiList"></div>
 
-        <div class="subhead">Lettura automatica dai master</div>
-        <div class="drop" id="drop">Trascina qui la cartella dei master (o clicca)<br>
-          <span class="small">Filtro ed esposizione vengono letti dal nome file — nessun inserimento manuale</span>
+        <div class="subhead">Le ore già riprese e la calibrazione, dai file</div>
+        <div class="drop" id="drop">Trascina qui la cartella delle notti, coi light, i dark e i flat (o clicca)<br>
+          <span class="small">Di ogni posa si legge l'intestazione FITS o XISF — tipo, filtro, esposizione, oggetto, gain,
+            temperatura —, non il nome del file, e solo i primi kilobyte. I light fanno le ore già riprese; dark, flat e bias
+            dicono se la calibrazione c'è e che cosa manca. Un master light non si conta.</span>
           <input type="file" id="fileIn" webkitdirectory multiple hidden>
         </div>
         <div id="scanOut" class="small" style="margin-top:12px"></div>
 
-        <div class="subhead">Stato</div>
+        <div class="subhead">Ore già riprese, per oggetto</div>
         <div id="stateList"></div>
       </div>
     </div>
@@ -20016,8 +20018,8 @@ $('impIn').addEventListener('change',ev=>{
 function renderState(){
   renderProgetti();
   const ids=Object.keys(STATE);
-  if(!ids.length){ $('stateList').innerHTML='<p class="small muted">Nessun progetto aperto. '+
-    'Trascina una cartella di master qui sopra per riempire l\'elenco.</p>'; return; }
+  if(!ids.length){ $('stateList').innerHTML='<p class="small muted">Nessuna ora già ripresa. '+
+    'Trascina qui sopra una cartella di light: le ore si leggono dalle loro intestazioni.</p>'; return; }
   $('stateList').innerHTML=ids.map(id=>{
     const t=TG.targets.find(x=>x.id===id);
     const h=STATE[id].hours||{};
@@ -20247,8 +20249,200 @@ function renderProgettoAperto(){
     <div class="small">${giudizio}</div>${tasti}</div>`;
 }
 
-/* Legge filtro ed esposizione dai nomi file dei master/light.
-   Riconosce il naming di WBPP/NINA: ..._EXPOSURE-300.00s_..._FILTER-O_... */
+/*  LE ORE GIA' RIPRESE, DAI LIGHT (26 ottobre 2026, Alessandro: «quasi nessuno denomina i propri file con tutti i dati
+    della ripresa»; o si leggono le intestazioni, o la funzione e' fuorviante). Misurato prima: si leggevano solo i nomi
+    con FILTER-x ed EXPOSURE-nnn, lo stile di WBPP; il nome di serie di N.I.N.A. —
+    «$$DATEMINUS12$$\$$IMAGETYPE$$\$$DATETIME$$_$$FILTER$$_$$SENSORTEMP$$_$$EXPOSURETIME$$s_$$FRAMENR$$», letto in
+    ImageFileSettings della 3.3.0.1068 — non ne ha nessuno; un master contava come una posa sola; e R, G, B finivano in tre
+    chiavi che il motore non legge (le ore gia' riprese si contano su Ha, OIII, SII, RGB e L: `budget` di evaluate).
+    Adesso si legge l'intestazione, e del file solo i primi kilobyte. N.I.N.A. scrive in ogni FITS IMAGETYP, EXPOSURE ed
+    EXPTIME, FILTER, OBJECT, DATE-OBS e, sui sensori a colori, BAYERPAT (FITSHeader); nell'XISF gli stessi come FITSKeyword,
+    piu' le proprieta' Instrument:ExposureTime, Instrument:Filter:Name, Observation:Object:Name e il tipo nell'attributo
+    imageType (XISFHeader). Contano le pose di tipo light; dark, flat e bias si contano a parte e non entrano; un master
+    non si conta — quante pose contenga non e' detto in modo certo — e lo si dice. Il filtro della posa diventa il canale:
+    prima col nome della ruota per la sequenza, poi coi nomi di serie (H, O, S, HO…), poi col riconoscimento dei nomi del
+    banco letto (`filtroDalNome`); un dual-band conta per le sue due righe, R, G e B per RGB, e la banda larga su un sensore
+    a colori per RGB. L'oggetto viene da OBJECT. Le ore di un oggetto, usate, prendono il posto di quelle di prima, che si
+    dicono. Sorvegliato da tools/gate-light.js. */
+const ESTENSIONI_DEI_LIGHT=/\.(fits?|fts|xisf)$/i;
+/* i valori delle carte FITS: una stringa fra apici (gli apici doppi sono un apice), o un numero, o una parola */
+function valoreFits(v){
+  const s=String(v||'').trim();
+  if(s.startsWith("'")){ let o='', i=1; for(;i<s.length;i++){ if(s[i]==="'"){ if(s[i+1]==="'"){ o+="'"; i++; continue; } break; } o+=s[i]; } return o.trim(); }
+  return s.split('/')[0].trim();
+}
+/* l'intestazione di un FITS: blocchi da 2880 byte fino alla carta END, al piu' 40 blocchi */
+async function intestazioneFits(file){
+  const carte={};
+  for(let k=0;k<40;k++){
+    const blocco=await file.slice(k*2880,(k+1)*2880).text();
+    if(!blocco) break;
+    for(let i=0;i+80<=blocco.length;i+=80){
+      const c=blocco.slice(i,i+80), chiave=c.slice(0,8).trim();
+      if(chiave==='END') return carte;
+      if(c[8]==='='&&!(chiave in carte)) carte[chiave]=valoreFits(c.slice(10));
+    }
+  }
+  return Object.keys(carte).length?carte:null;
+}
+/* l'intestazione di un XISF: «XISF0100», la lunghezza dell'XML in 4 byte, 4 di riserva, poi l'XML */
+async function intestazioneXisf(file){
+  const testa=new DataView(await file.slice(0,16).arrayBuffer());
+  if(testa.byteLength<16) return null;
+  const firma=String.fromCharCode(...Array.from({length:8},(x,i)=>testa.getUint8(i)));
+  if(firma!=='XISF0100') return null;
+  const lungo=testa.getUint32(8,true);
+  if(!(lungo>0&&lungo<4e6)) return null;
+  const xml=new DOMParser().parseFromString(await file.slice(16,16+lungo).text(),'application/xml');
+  const carte={};
+  for(const k of xml.getElementsByTagName('FITSKeyword')){ const n=k.getAttribute('name'); if(n&&!(n in carte)) carte[n]=valoreFits(k.getAttribute('value')); }
+  const prop=id=>{ const p=[...xml.getElementsByTagName('Property')].find(x=>x.getAttribute('id')===id); return p?(p.getAttribute('value')||p.textContent||'').trim():null; };
+  const img=xml.getElementsByTagName('Image')[0];
+  if(!carte.IMAGETYP&&img&&img.getAttribute('imageType')) carte.IMAGETYP=img.getAttribute('imageType');
+  if(!carte.EXPTIME&&!carte.EXPOSURE&&prop('Instrument:ExposureTime')) carte.EXPTIME=prop('Instrument:ExposureTime');
+  if(!carte.FILTER&&prop('Instrument:Filter:Name')) carte.FILTER=prop('Instrument:Filter:Name');
+  if(!carte.OBJECT&&prop('Observation:Object:Name')) carte.OBJECT=prop('Observation:Object:Name');
+  return carte;
+}
+/* da un nome di filtro alle chiavi delle ore gia' riprese; colore: la posa viene da un sensore a colori */
+const CHIAVE_DELLA_BANDA={Ha:['Ha'],OIII:['OIII'],SII:['SII'],L:['L'],R:['RGB'],G:['RGB'],B:['RGB'],RGB:['RGB'],'Ha+OIII':['Ha','OIII']};
+function chiaviDelFiltro(nome,colore){
+  const n=String(nome||'').trim(), uguale=x=>String(x||'').trim().toLowerCase()===n.toLowerCase();
+  if(!n) return null;
+  const daCanale=c=>c==='L'&&colore?['RGB']:CHIAVE_DELLA_BANDA[c]||null;
+  const seq=typeof nomiPerLaSequenza==='function'?nomiPerLaSequenza():{};
+  for(const [c,v] of Object.entries(seq)) if(uguale(v)&&daCanale(c)) return daCanale(c);
+  for(const [c,v] of Object.entries(NINA_FILTER)) if(uguale(v)&&!(c==='RGB'&&!colore)&&daCanale(c)) return daCanale(c);
+  const r=filtroDalNome(n,DB.filters,OWNED), f=r&&r.voce?DB.filters.find(x=>x.id===r.voce):null;
+  if(f){ if(f.dual&&Array.isArray(f.bands)) return f.bands.filter(b=>CHIAVE_DELLA_BANDA[b]).map(b=>CHIAVE_DELLA_BANDA[b][0]);
+    if(f.band&&daCanale(f.band)) return daCanale(f.band); }
+  return null;
+}
+/* il genere di una posa: dall'intestazione, o — se non lo dice — dalla cartella, che N.I.N.A. chiama col tipo
+   ($$IMAGETYPE$$ nel nome di serie). IMAGETYP di N.I.N.A.: LIGHT, DARK, FLAT, BIAS, DARKFLAT; di PixInsight anche
+   «Master Dark», «Master Flat», «Master light» */
+function genereDellaPosa(tipo,via){
+  const t=String(tipo||'')||((String(via).match(/(^|[\/\\])(light|dark\s*-?\s*flat|flat\s*-?\s*dark|dark|flat|bias)[\/\\]/i)||[])[2]||'');
+  if(/dark\s*-?\s*flat|flat\s*-?\s*dark/i.test(t)) return 'darkflat';
+  if(/dark/i.test(t)) return 'dark';
+  if(/flat/i.test(t)) return 'flat';
+  if(/bias|offset/i.test(t)) return 'bias';
+  if(/light/i.test(t)) return 'light';
+  return null;
+}
+/* la notte di una posa come la conta N.I.N.A. ($$DATEMINUS12$$): l'ora locale meno 12 ore; senza DATE-LOC, l'ora UTC */
+function notteDellaPosa(h){
+  const s=String(h['DATE-LOC']||h['DATE-OBS']||'').slice(0,19);
+  if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s)) return null;
+  const d=new Date(s+'Z'); return isNaN(d)?null:new Date(d.getTime()-12*3600e3).toISOString().slice(0,10);
+}
+/* l'assetto della camera che decide se un dark o un flat vale per un light. La temperatura e' quella misurata del
+   sensore (CCD-TEMP), al grado: la corrente di buio segue il sensore, non quella impostata, che d'estate puo' non
+   raggiungere; SET-TEMP solo se CCD-TEMP manca */
+function assettoDellaPosa(h,posa){
+  const n=v=>{ const x=parseFloat(v); return isFinite(x)?x:null; };
+  const t=n(h['CCD-TEMP'])!=null?n(h['CCD-TEMP']):n(h['SET-TEMP']);
+  return { camera:String(h.INSTRUME||'').trim()||null, bin:n(h.XBINNING), gain:n(h.GAIN), offset:n(h.OFFSET),
+    lettura:String(h.READOUTM||'').trim()||null, temp:t==null?null:Math.round(t), posa,
+    filtro:String(h.FILTER||'').trim()||null, notte:notteDellaPosa(h), rot:n(h.ROTATANG) };
+}
+/* tutte le pose di una cartella: lette, classificate; i light sommati per oggetto e per chiave, con l'assetto di
+   ciascuno (luci), e la calibrazione con il suo (cal) */
+async function leggiLight(files){
+  const voci=[...files].filter(f=>ESTENSIONI_DEI_LIGHT.test(f.name));
+  const r={letti:0,nonLetti:[],calibrazione:0,cal:[],luci:[],master:[],tipoNonDetto:0,senzaFiltro:{},senzaPosa:0,oggetti:{},altri:files.length-voci.length};
+  let i=0;
+  const lavora=async()=>{ while(i<voci.length){ const f=voci[i++], via=f.webkitRelativePath||f.name;
+    let h=null; try{ h=/\.xisf$/i.test(f.name)?await intestazioneXisf(f):await intestazioneFits(f); }catch(e){ h=null; }
+    if(!h){ r.nonLetti.push(via); continue; }
+    r.letti++;
+    const tipo=String(h.IMAGETYP||''), master=/master/i.test(tipo)||/master/i.test(f.name), genere=genereDellaPosa(tipo,via);
+    const posa=parseFloat(h.EXPTIME||h.EXPOSURE);
+    /* la calibrazione, master compresi: un master dark vale come la sua serie */
+    if(genere&&genere!=='light'){ r.cal.push(Object.assign(assettoDellaPosa(h,isFinite(posa)?posa:null),{genere,master})); continue; }
+    if(master){ r.master.push(via); continue; }
+    if(genere!=='light'){ r.tipoNonDetto++; continue; }
+    if(!(posa>0)){ r.senzaPosa++; continue; }
+    const colore=!!h.BAYERPAT&&!/^(none|mono|monochrome)$/i.test(h.BAYERPAT);
+    /* una camera a colori senza ruota non scrive FILTER: e' la banda larga, RGB */
+    const chiavi=String(h.FILTER||'').trim()?chiaviDelFiltro(h.FILTER,colore):colore?['RGB']:null;
+    const nomeOggetto=String(h.OBJECT||'').trim()||'(senza oggetto)';
+    if(!chiavi){ const k=String(h.FILTER||'').trim()||'(nessun filtro)'; (r.senzaFiltro[k]=r.senzaFiltro[k]||{pose:0,secondi:0}).pose++; r.senzaFiltro[k].secondi+=posa; continue; }
+    const a=assettoDellaPosa(h,posa); r.luci.push(a);
+    const o=r.oggetti[nomeOggetto]||(r.oggetti[nomeOggetto]={nome:nomeOggetto,ore:{},pose:{},date:[]});
+    for(const k of chiavi){ o.ore[k]=(o.ore[k]||0)+posa/3600; }
+    const kf=(String(h.FILTER||'').trim()||'—')+'|'+posa; o.pose[kf]=(o.pose[kf]||0)+1;
+    if(a.notte) o.date.push(a.notte);
+  } };
+  await Promise.all(Array.from({length:Math.min(8,voci.length)},lavora));
+  r.calibrazione=r.cal.length;
+  for(const o of Object.values(r.oggetti)){
+    const t=bersaglioDellaDomanda(o.nome,UTGT); o.id=t&&t.scheda?t.scheda.id:null;
+    o.date=[...new Set(o.date)].sort();
+  }
+  return r;
+}
+/* LA CALIBRAZIONE DEI LIGHT LETTI (26 ottobre 2026, Alessandro: «facciamo leggere anche flat e dark»). Per ogni assetto
+   dei light, i dark; per ogni filtro, i flat; per ogni serie di flat, i bias o i dark-flat. Un dark vale per un light
+   con la stessa camera, binning, gain, offset e modo di lettura, la stessa posa entro TOLLERANZA_POSA e il sensore
+   entro TOLLERANZA_TEMPERATURA; un dark di un'altra posa si potrebbe scalare, ma sui CMOS col bagliore
+   dell'amplificatore non e' affidabile: si dice, non si conta. Un flat vale col suo filtro, la stessa camera e lo
+   stesso binning; quelli di un'altra notte o di un'altra rotazione si dicono, non si scartano: chi non ha toccato il
+   treno ottico li usa. Un flat si calibra con bias dello stesso assetto, o dark-flat (o dark) della sua posa; un
+   master flat e' gia' calibrato. Un campo che una delle due intestazioni non porta non separa. Un master vale come la
+   sua serie. Misurato sui flat del FlatWizard di N.I.N.A. 3.2: INSTRUME, XBINNING, GAIN, OFFSET, SET-TEMP, CCD-TEMP,
+   ROTATANG, DATE-LOC ci sono tutte. Sorvegliato da tools/gate-light.js. */
+const TOLLERANZA_POSA=0.01, TOLLERANZA_TEMPERATURA=1;
+function calibrazioneDeiLight(luci,cal){
+  const uguale=(a,b)=>a==null||b==null||a===b;
+  const stessoAssetto=(a,b)=>uguale(a.camera,b.camera)&&uguale(a.bin,b.bin)&&uguale(a.gain,b.gain)&&uguale(a.offset,b.offset)&&uguale(a.lettura,b.lettura);
+  const stessaPosa=(a,b)=>a!=null&&b!=null&&Math.abs(a-b)<=Math.max(0.01,TOLLERANZA_POSA*Math.max(a,b));
+  const stessaTemp=(a,b)=>a==null||b==null||Math.abs(a-b)<=TOLLERANZA_TEMPERATURA;
+  const per=(xs,chiave)=>{ const m=new Map(); for(const x of xs){ const k=chiave(x); if(!m.has(k)) m.set(k,[]); m.get(k).push(x); } return [...m.values()]; };
+  const conta=xs=>({ n:xs.filter(x=>!x.master).length, master:xs.filter(x=>x.master).length });
+  const di=g=>cal.filter(c=>c.genere===g);
+  const giro=(p,q)=>{ const d=Math.abs(p-q)%360; return Math.min(d,360-d); };
+  const dark=per(luci,x=>[x.camera,x.bin,x.gain,x.offset,x.lettura,x.temp,Math.round(x.posa*100)].join('|')).map(g=>{ const a=g[0];
+    const ok=di('dark').filter(c=>stessoAssetto(c,a)&&stessaPosa(c.posa,a.posa)&&stessaTemp(c.temp,a.temp));
+    /* i dark della stessa posa ma col sensore a un'altra temperatura: si dicono, perche' chi li ha creda di averli */
+    const altre=[...new Set(di('dark').filter(c=>stessoAssetto(c,a)&&stessaPosa(c.posa,a.posa)&&!ok.includes(c)).map(c=>c.temp))].sort((x,y)=>x-y);
+    return Object.assign({assetto:a, pose:g.length, altre},conta(ok)); });
+  const flat=per(luci,x=>[x.camera,x.bin,String(x.filtro||'').toLowerCase()].join('|')).map(g=>{ const a=g[0];
+    const ok=di('flat').filter(c=>uguale(c.camera,a.camera)&&uguale(c.bin,a.bin)&&String(c.filtro||'').toLowerCase()===String(a.filtro||'').toLowerCase());
+    const notti=[...new Set(g.map(x=>x.notte).filter(Boolean))].sort(), nottiDeiFlat=[...new Set(ok.map(c=>c.notte).filter(Boolean))].sort();
+    const rotL=[...new Set(g.map(x=>x.rot).filter(x=>x!=null))], rotF=ok.map(c=>c.rot).filter(x=>x!=null);
+    return Object.assign({assetto:a, pose:g.length, notti, nottiDeiFlat,
+      senzaLaLoro:nottiDeiFlat.length?notti.filter(x=>!nottiDeiFlat.includes(x)):[],
+      ruotati:!!(rotF.length&&rotL.some(p=>!rotF.some(q=>giro(p,q)<=1)))},conta(ok)); });
+  const perFlat=per(di('flat').filter(c=>!c.master),x=>[x.camera,x.bin,x.gain,x.offset,x.lettura,Math.round((x.posa||0)*100)].join('|')).map(g=>{ const a=g[0];
+    return { assetto:a, flat:g.length,
+      bias:conta(cal.filter(c=>c.genere==='bias'&&stessoAssetto(c,a))),
+      darkflat:conta(cal.filter(c=>(c.genere==='darkflat'||c.genere==='dark')&&stessoAssetto(c,a)&&stessaPosa(c.posa,a.posa))) }; });
+  return { dark, flat, perFlat };
+}
+/* i file di un trascinamento, cartelle comprese, a cascata. Le voci si prendono subito, prima di ogni attesa: dopo il
+   rilascio il DataTransfer si svuota. Da una pagina aperta dal disco (origine «null») il browser non apre le voci di un
+   rilascio — EncodingError, misurato in Edge sia sui file sia sulle cartelle —: i file lasciati da soli si prendono
+   come file, e una cartella che non si apre si nomina, perche' la pagina dica di sceglierla col clic, che li' funziona */
+async function fileDelTrascinamento(dt){
+  const voci=[...(dt.items||[])].filter(x=>x.kind==='file').map(x=>({v:x.webkitGetAsEntry?x.webkitGetAsEntry():null, f:x.getAsFile()}));
+  if(!voci.length) return {file:[...(dt.files||[])], chiuse:[]};
+  const out=[], chiuse=[];
+  const comeFile=v=>new Promise(ok=>v.file(ok,()=>ok(null)));
+  const leggiCartella=r=>new Promise(ok=>r.readEntries(ok,()=>ok(null)));
+  /* vero se la cartella si e' aperta */
+  const visita=async(v,via)=>{
+    if(v.isFile){ const f=await comeFile(v); if(f){ try{ Object.defineProperty(f,'webkitRelativePath',{value:via+f.name}); }catch(e){} out.push(f); } return true; }
+    const r=v.createReader(); let parte, aperta=false;
+    while((parte=await leggiCartella(r))&&parte.length){ aperta=true; for(const x of parte) await visita(x,via+v.name+'/'); }
+    return aperta||parte!==null;
+  };
+  for(const {v,f} of voci){
+    if(v&&v.isDirectory){ if(!(await visita(v,''))) chiuse.push(v.name); continue; }
+    const g=(v&&await comeFile(v))||f; if(g) out.push(g);
+  }
+  return {file:out, chiuse};
+}
 function wireDrop(){
   const drop=$('drop'), inp=$('fileIn');
   drop.onclick=()=>inp.click();
@@ -20256,41 +20450,99 @@ function wireDrop(){
     ev.preventDefault();drop.classList.add('over')}));
   ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{
     ev.preventDefault();drop.classList.remove('over')}));
-  drop.addEventListener('drop',ev=>{
-    const files=[...(ev.dataTransfer.files||[])]; scan(files.map(f=>f.name));
-  });
-  inp.addEventListener('change',ev=>scan([...ev.target.files].map(f=>f.webkitRelativePath||f.name)));
+  drop.addEventListener('drop',async ev=>{ const t=await fileDelTrascinamento(ev.dataTransfer);
+    const r=await leggiLightConAttesa(t.file); r.cartelleChiuse=t.chiuse; mostraLight(r); });
+  inp.addEventListener('change',async ev=>{ mostraLight(await leggiLightConAttesa([...ev.target.files])); ev.target.value=''; });
 }
-const FILTER_MAP={O:'OIII',OIII:'OIII',O3:'OIII',H:'Ha',HA:'Ha','H-ALPHA':'Ha',
-  S:'SII',SII:'SII',S2:'SII',L:'L',LUM:'L',R:'R',G:'G',B:'B'};
-function scan(names){
-  const acc={}; let matched=0;
-  names.forEach(n=>{
-    const up=n.toUpperCase();
-    const fm=up.match(/FILTER[-_]([A-Z0-9]+)/);
-    const em=up.match(/EXPOSURE[-_]([\d.]+)S?/);
-    if(!fm) return;
-    const band=FILTER_MAP[fm[1]]; if(!band) return;
-    const exp=em?parseFloat(em[1]):0; if(!exp) return;
-    acc[band]=(acc[band]||0)+exp/3600; matched++;
-  });
-  if(!matched){ $('scanOut').innerHTML=
-    '<span class="p-bad pill">nessun file riconosciuto</span> '+
-    'Attesi nomi con <code>FILTER-x</code> e <code>EXPOSURE-nnn.nns</code>.'; return; }
-  const opts=TG.targets.map(t=>`<option value="${t.id}">${t.names[0]}</option>`).join('');
-  $('scanOut').innerHTML=`<b>${matched} file riconosciuti</b><br>
-    ${Object.entries(acc).map(([k,v])=>`${k}: ${fmt(v,1)} h`).join(' · ')}
-    <div class="row" style="margin-top:10px">
-      <select id="assignTo">${opts}</select>
-      <button class="primary" onclick='assign(${JSON.stringify(acc)})'>Assegna al progetto</button>
-    </div>`;
+let LIGHT_LETTI=null;
+async function leggiLightConAttesa(files){
+  const o=$('scanOut'); if(o) o.innerHTML='<span class="muted">leggo le intestazioni…</span>';
+  return leggiLight(files);
 }
-function assign(acc){
-  const id=$('assignTo').value;
-  STATE[id]={hours:acc, updated:new Date().toISOString()};
+const oreDette=ore=>Object.entries(ore).map(([k,v])=>`${esc(k)} ${hm(v)}`).join(' · ')||'—';
+const secondiDetti=s=>s==null?'posa non detta':fmt(s,Number.isInteger(s)?0:s<0.1?3:1)+' s';
+const gradiDetti=t=>(t<0?'−':'')+Math.abs(t)+' °C';
+function assettoDetto(a,o){
+  o=o||{};
+  return [o.camera?a.camera||'camera non detta':null, o.posa!==false?secondiDetti(a.posa):null, a.gain!=null?'gain '+a.gain:null,
+    a.offset!=null?'offset '+a.offset:null, a.lettura?'lettura '+a.lettura:null, o.temp!==false&&a.temp!=null?gradiDetti(a.temp):null,
+    a.bin!=null?'bin '+a.bin:null].filter(Boolean).join(' · ');
+}
+/* il riquadro della calibrazione: il giudizio per i light letti o, senza light, la calibrazione che c'e'; in fondo, per
+   ogni serie di flat, i bias o i dark-flat */
+function calibrazioneDetta(r){
+  if(!r.cal.length) return r.luci.length?'<div class="progetto" style="margin-top:10px"><b>La calibrazione</b><div class="small">'+
+    '<span class="pill p-bad">nessun dark, flat o bias</span> fra i file letti: aggiungi la loro cartella, o riprendili.</div></div>':'';
+  const c=calibrazioneDeiLight(r.luci,r.cal);
+  /* la camera si dice quando non e' una sola: due camere, o una camera e pose che non la dicono */
+  const camere=new Set(r.luci.concat(r.cal).map(x=>x.camera||'')).size>1;
+  const pill=(cl,t)=>`<span class="pill ${cl}">${t}</span>`;
+  const quanti=(x,nome)=>[x.n?x.n+' '+nome:null,x.master?(x.master===1?'un master':x.master+' master'):null].filter(Boolean).join(' e ');
+  const filtroDetto=f=>f?'«'+esc(f)+'»':'senza filtro';
+  const notteDetta=n=>n?'notte '+conGiorno('de',n):'notte non detta';
+  const per=(xs,chiave)=>{ const m=new Map(); for(const x of xs){ const k=chiave(x); if(!m.has(k)) m.set(k,[]); m.get(k).push(x); } return [...m.values()]; };
+  const titolo=t=>`<div style="margin-top:6px"><b>${t}</b></div>`;
+  let h='';
+  if(r.luci.length){
+    h+=titolo('Dark, per ogni assetto dei light')+c.dark.map(d=>`<div>${esc(assettoDetto(d.assetto,{camera:camere}))} — ${d.pose} light: `+
+      (d.n||d.master?pill('p-ok',quanti(d,'dark')):pill('p-bad','mancano')+' riprendili con questo assetto, al buio')+
+      (d.altre.length?` <span class="muted">· ci sono dark della stessa posa col sensore a ${esc(d.altre.map(gradiDetti).join(', '))}: per questi light non valgono</span>`:'')+'</div>').join('');
+    h+=titolo('Flat, per ogni filtro dei light')+c.flat.map(f=>{
+      const sl=f.senzaLaLoro, note=[sl.length?(sl.length===1?'la notte '+esc(conGiorno('de',sl[0]))+' non ha i suoi flat':'le notti '+esc(sl.map(n=>conGiorno('de',n)).join(', '))+' non hanno i loro flat')+
+          ': valgono quelli '+esc(f.nottiDeiFlat.map(n=>conGiorno('de',n)).join(', '))+' se fra una notte e l\'altra non hai toccato il treno ottico':null,
+        f.ruotati?'i flat sono a un\'altra rotazione della camera: valgono solo alla rotazione dei light':null].filter(Boolean);
+      return `<div>${filtroDetto(f.assetto.filtro)}${camere?' · '+esc(f.assetto.camera||'camera non detta'):''} — ${f.pose} light: `+
+        (f.n||f.master?pill(note.length?'p-warn':'p-ok',quanti(f,'flat')):pill('p-bad','mancano')+
+          (f.assetto.filtro?' riprendili con questo filtro':' riprendili come i light')+', senza smontare né ruotare la camera')+
+        (note.length?' <span class="muted">· '+note.join('; ')+'</span>':'')+'</div>'; }).join('');
+  } else {
+    const gruppi=(g,chiave,detto)=>{ const xs=r.cal.filter(x=>x.genere===g); return xs.length?per(xs,chiave).map(v=>`<div>${detto(v[0])}: ${quanti({n:v.filter(x=>!x.master).length,master:v.filter(x=>x.master).length},g==='darkflat'?'dark-flat':g)}</div>`).join(''):''; };
+    const k=x=>[x.camera,x.bin,x.gain,x.offset,x.lettura].join('|');
+    h+='<div>Nessun light fra i file letti: ecco la calibrazione che c\'è.</div>'+
+      gruppi('dark',x=>k(x)+'|'+x.temp+'|'+x.posa,a=>'Dark · '+esc(assettoDetto(a,{camera:camere})))+
+      gruppi('flat',x=>k(x)+'|'+x.filtro+'|'+x.posa+'|'+x.notte,a=>'Flat '+filtroDetto(a.filtro)+' · '+esc(assettoDetto(a,{camera:camere,temp:false}))+' · '+esc(notteDetta(a.notte)))+
+      gruppi('darkflat',x=>k(x)+'|'+x.posa,a=>'Dark-flat · '+esc(assettoDetto(a,{camera:camere,temp:false})))+
+      gruppi('bias',k,a=>'Bias · '+esc(assettoDetto(a,{camera:camere,posa:false,temp:false})));
+  }
+  if(c.perFlat.length) h+=titolo('Per calibrare i flat, bias o dark-flat')+c.perFlat.map(p=>{ const ci=[quanti(p.bias,'bias'),quanti(p.darkflat,'dark-flat')].filter(Boolean);
+    return `<div>Flat ${esc(assettoDetto(p.assetto,{camera:camere,temp:false}))} — ${p.flat} flat: `+(ci.length?pill('p-ok',ci.join(' e ')):
+      pill('p-bad','mancano')+` bias con lo stesso gain e offset, o dark-flat da ${esc(secondiDetti(p.assetto.posa))}`)+'</div>'; }).join('');
+  const libreria=/mancano/.test(h)?'<div class="muted" style="margin-top:6px">Quello che manca, manca fra i file letti: se tieni dark o bias in una libreria a parte, trascinala insieme alle notti.</div>':'';
+  return `<div class="progetto" style="margin-top:10px"><b>La calibrazione</b><div class="small">${h}${libreria}</div></div>`;
+}
+function mostraLight(r){
+  LIGHT_LETTI=r;
+  const box=$('scanOut'); if(!box) return;
+  const ogg=Object.values(r.oggetti);
+  const fuori=[r.master.length?r.master.length+' master light — un master light non si conta: quante pose contenga non è detto in modo certo; trascina i light':null,
+    r.tipoNonDetto?r.tipoNonDetto+' senza il tipo di immagine':null, r.senzaPosa?r.senzaPosa+' senza esposizione':null,
+    r.nonLetti.length?r.nonLetti.length+' file senza un\'intestazione FITS o XISF leggibile':null].filter(Boolean);
+  const senza=Object.entries(r.senzaFiltro).map(([k,v])=>`«${esc(k)}» ${v.pose} pose (${hmDaSecondi(v.secondi)})`);
+  const cc=r.cartelleChiuse||[];
+  const chiuse=cc.length?`<p class="small p-warn">${cc.length===1?'La cartella «'+esc(cc[0])+'» non si è aperta':'Le cartelle '+cc.map(x=>'«'+esc(x)+'»').join(', ')+' non si sono aperte'}: quando AIS è aperto da un file sul disco, il browser non apre una cartella trascinata. Clicca qui sopra e scegli la cartella.</p>`:'';
+  if(!ogg.length){ box.innerHTML=chiuse+(chiuse&&!r.letti&&!r.nonLetti.length&&!r.altri?'':(r.cal.length?`<b>${r.letti} intestazioni lette</b>`+calibrazioneDetta(r):
+    `<span class="pill p-bad">nessuna posa light contata</span> ${r.letti} intestazioni lette.`)+
+    (fuori.length?'<br>Non contati: '+esc(fuori.join(' · '))+'.':'')+(senza.length?'<br>Filtri che non so a quale canale vanno: '+senza.join(' · ')+'.':'')); return; }
+  const scelta=id=>{ const tutti=TG.targets.concat(UTGT); const opz=tutti.map(t=>`<option value="${esc(t.id)}"${t.id===id?' selected':''}>${esc(t.names[0])}</option>`);
+    if(!id) opz.unshift('<option value="" selected>scegli l\'oggetto…</option>'); return opz.join(''); };
+  box.innerHTML=chiuse+`<b>${r.letti} intestazioni lette</b>`+ogg.map((o,i)=>{ const prima=o.id&&STATE[o.id]?STATE[o.id].hours:null;
+    return `<div class="progetto" style="margin-top:10px"><b>${esc(o.nome)}</b>${o.date.length?` <span class="small muted">· ${esc(o.date[0])}${o.date.length>1?' → '+esc(o.date[o.date.length-1]):''}</span>`:''}
+      <div class="small">${oreDette(o.ore)}</div>
+      <div class="small muted">${Object.entries(o.pose).map(([k,n])=>{ const [f,s]=k.split('|'); return esc(f)+' '+n+'×'+s+' s'; }).join(' · ')}</div>
+      ${prima?`<div class="small muted">adesso le ore già riprese sono: ${oreDette(prima)}</div>`:''}
+      <div class="row"><select id="lightA${i}">${scelta(o.id)}</select>
+        <button class="primary" onclick="usaLight(${i})">Usa come ore già riprese</button></div></div>`; }).join('')+
+    calibrazioneDetta(r)+
+    (fuori.length?`<p class="small muted" style="margin-top:8px">Non contati: ${esc(fuori.join(' · '))}.</p>`:'')+
+    (senza.length?`<p class="small p-warn">Filtri che non so a quale canale vanno: ${senza.join(' · ')}. Scrivi il loro nome nei nomi della ruota per N.I.N.A., o leggi il banco, e rileggi.</p>`:'');
+}
+function usaLight(i){
+  const r=LIGHT_LETTI; if(!r) return;
+  const o=Object.values(r.oggetti)[i], id=($('lightA'+i)||{}).value; if(!o||!id) return;
+  const t=TG.targets.concat(UTGT).find(x=>x.id===id);
+  STATE[id]={hours:Object.assign({},o.ore), updated:new Date().toISOString(), fonte:'light'};
   saveState(); renderState(); refresh();
-  $('scanOut').innerHTML='<span class="pill p-ok">assegnato</span> '+
-    'Ricorda di esportare <code>progetti.json</code> se vuoi ritrovarlo sull\'altro PC.';
+  toast(`Le ore già riprese di ${t?t.names[0]:id} sono adesso quelle dei light: ${Object.entries(o.ore).map(([k,v])=>k+' '+hm(v)).join(' · ')}.`);
 }
 
 
