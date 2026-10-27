@@ -552,8 +552,6 @@ table{width:100%;border-collapse:collapse}
 th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;
   color:var(--dim2);font-weight:600;padding:0 10px 9px;border-bottom:1px solid var(--line)}
 td{padding:11px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
-tr.tgt{cursor:pointer}
-tr.tgt:hover td{background:var(--bg3)}
 .tname{font-weight:600}
 .tsub{font-size:12px;color:var(--dim)}
 .num{font-variant-numeric:tabular-nums;text-align:right}
@@ -956,7 +954,7 @@ td.archcell{max-width:120px}
    parte la serata, e occupa lo spazio grande. */
 .bestgrid{display:grid;gap:var(--s3);grid-template-columns:repeat(auto-fill,minmax(236px,1fr))}
 .bestcard{
-  display:flex;flex-direction:column;gap:7px;text-align:left;
+  display:flex;flex-direction:column;gap:6px;text-align:left;
   background:var(--bg3);border:1px solid var(--line);border-radius:var(--radius);
   padding:13px 15px;cursor:pointer;color:var(--fg);
   transition:border-color .13s, background .13s, transform .13s;
@@ -966,36 +964,29 @@ td.archcell{max-width:120px}
   box-shadow:inset 3px 0 0 var(--acc)}
 .bestcard.on .bc-h{color:var(--acc)}
 .bestcard:hover .bc-h{color:var(--acc)}
-/* La lista unica (26 settembre 2026): il riquadro e' un div che si comporta da tasto, e porta il tasto della scheda;
-   la riga della tabella porta «prescrivi»; l'interruttore sceglie la vista. */
+/* La lista unica (26 settembre 2026): il riquadro e' un div che si comporta da tasto, e porta il tasto della scheda.
+   Dal 27 ottobre 2026 e' l'unica vista: la tabella e' uscita. */
 .bestcard{font:inherit}
 .bestcard:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 /*  OGNI «PRESCRIVI» E' ROSSO, E LA SCHEDA HA IL SUO TASTO (Alessandro, 17 ottobre 2026). Il tasto della riga era grigio
     e spento accanto al rosso della home, che fa la stessa cosa: adesso sono lo stesso tasto, il rosso acceso di `--go`,
     e anche il riquadro lo porta, invece di prescrivere senza dirlo. La scheda e' un'informazione, non un'azione: azzurro,
-    il colore dell'accento, e un tasto suo anche nella tabella, dove prima la apriva il nome senza che niente lo dicesse.
-    Sorvegliato da tools/gate-lista-unica.js §4. */
-.tr-prescrivi,.bc-prescrivi{font:inherit;font-size:12.5px;font-weight:700;letter-spacing:.02em;padding:4px 12px;
+    il colore dell'accento. Sorvegliato da tools/gate-lista-unica.js §5. */
+.bc-prescrivi{font:inherit;font-size:12.5px;font-weight:700;letter-spacing:.02em;padding:4px 12px;
   border-radius:6px;cursor:pointer;background:var(--go);border:1px solid var(--go);color:var(--go-fg);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 2px rgba(var(--go-rgb),.25),0 3px 10px rgba(var(--go-rgb),.28)}
-.tr-prescrivi:hover,.bc-prescrivi:hover{filter:brightness(1.08)}
-.tr-prescrivi:focus-visible,.bc-prescrivi:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.bc-scheda,.tr-scheda{font:inherit;font-size:12.5px;font-weight:600;padding:4px 12px;border-radius:6px;cursor:pointer;
+.bc-prescrivi:hover{filter:brightness(1.08)}
+.bc-prescrivi:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.bc-scheda{font:inherit;font-size:12.5px;font-weight:600;padding:4px 12px;border-radius:6px;cursor:pointer;
   border:1px solid var(--acc);background:transparent;color:var(--acc)}
-.bc-scheda:hover,.tr-scheda:hover{background:rgba(var(--acc-rgb),.14)}
-.bc-scheda:focus-visible,.tr-scheda:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.tr-azioni,.bc-azioni{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.bc-scheda:hover{background:rgba(var(--acc-rgb),.14)}
+.bc-scheda:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.bc-azioni{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:3px}
+.bc-tasti{display:flex;gap:8px;margin-left:auto}
 /* «Manda a N.I.N.A.» e «Esporta le sequenze» in fondo ai Risultati, staccati da quello che c'e' sopra (20 ottobre 2026) */
 .nina-in-fondo{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
-.bc-azioni{justify-content:flex-end}
-@media(prefers-reduced-motion:reduce){.tr-prescrivi,.bc-prescrivi{transition:none}}
-tr.tgt .tname{cursor:pointer}
-tr.tgt .tname:hover{color:var(--acc);text-decoration:underline;text-underline-offset:3px}
-.vista-oggetti{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-right:var(--s2)}
-.vista-oggetti button{font:inherit;font-size:13px;padding:6px 12px;border:0;background:transparent;color:var(--dim);cursor:pointer}
-.vista-oggetti button.on{background:rgba(var(--acc-rgb),.16);color:var(--acc)}
-.vista-oggetti button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
-/* I filtri della lista e le intestazioni che ordinano (17 ottobre 2026) */
+@media(prefers-reduced-motion:reduce){.bc-prescrivi{transition:none}}
+/* I filtri della lista e i suoi ordini (17 ottobre 2026; gli ordini erano le intestazioni della tabella fino al 27) */
 .filtri-lista{margin:0 0 var(--s3)}
 .fl-testa{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .fl-apri,.fl-togli{font:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;
@@ -1008,12 +999,9 @@ tr.tgt .tname:hover{color:var(--acc);text-decoration:underline;text-underline-of
 .fl-chip{font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:20px;
   background:transparent;color:var(--dim);cursor:pointer}
 .fl-chip.on{background:rgba(var(--acc-rgb),.16);border-color:var(--acc);color:var(--acc)}
-.fl-chip:focus-visible,.fl-apri:focus-visible,.fl-togli:focus-visible,button.ordina:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.fl-chip:focus-visible,.fl-apri:focus-visible,.fl-togli:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 .fl-sel{font:inherit;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg3);color:var(--fg)}
-th button.ordina{font:inherit;text-transform:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;
-  padding:0;cursor:pointer;text-align:inherit}
-th[aria-sort="ascending"] button.ordina,th[aria-sort="descending"] button.ordina{color:var(--acc)}
-button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
+.fl-chip .verso{display:inline-block;margin-left:4px;font-size:9px}
 @media (max-width:720px){ .fl-nome{min-width:0;width:100%} }
 .bc-top{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3)}
 .bc-n{font-size:15.5px;font-weight:650}
@@ -1023,6 +1011,31 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
 .bc-bot{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);flex-wrap:wrap}
 .bc-a{font-size:11px;color:var(--fn-frame);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
 .bc-b{font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+/*  IL RIQUADRO CHE DICE QUELLO CHE DICEVA LA RIGA (27 ottobre 2026): sotto il nome e le ore, il secondo nome e la
+    costellazione, il cielo che morde, la barra della notte, le pastiglie, il progetto e la resa. Il campo dell'ordine
+    scelto si accende col contorno dell'accento; le pastiglie tengono la loro curva. */
+.bc-sub{font-size:11.5px;color:var(--dim);line-height:1.4}
+.bc-sub .pill{margin-right:2px}
+.bc-riga-notte{display:flex;align-items:center;gap:8px}
+.bc-notte{display:block;flex:1 1 auto;min-width:0}
+.bc-notte[data-tip],.bc-resa[data-tip]{border-bottom:none}
+.bc-notte .tl{height:9px;min-width:0;border-radius:3px}
+.bc-cielo{flex:none}
+.bc-pill{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.bc-dual{font-size:11px;color:var(--dim)}
+.bc-piede{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);flex-wrap:wrap;
+  font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.bc-piede b{color:var(--fg);font-weight:600}
+.bc-resa{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.bestcard .acceso{background:rgba(var(--acc-rgb),.2);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.2)}
+.bestcard .acceso:not(.pill){border-radius:4px}
+.bc-h[data-tip],.bc-a[data-tip]{border-bottom:none}
+.bestcard.basso{opacity:.62}
+.bestcard.basso:hover,.bestcard.basso:focus-visible{opacity:1}
+.bc-altri{display:flex;gap:var(--s2);flex-wrap:wrap;justify-content:center;margin-top:var(--s3)}
+.bc-sotto-titolo{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2);font-weight:600;
+  margin:var(--s4) 0 var(--s2)}
+.bc-legenda{margin-top:var(--s3)}
 @media(prefers-reduced-motion:reduce){.bestcard{transition:none}.bestcard:hover{transform:none}}
 @media(max-width:720px){
   .hero-input input{font-size:18px;padding:14px 0}
@@ -1424,81 +1437,35 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
           <path d="m12 3 2.6 5.6 6 .8-4.4 4.2 1.1 6.1L12 16.8 6.7 19.7l1.1-6.1L3.4 9.4l6-.8Z"/></svg></span>
         <!--  UNA LISTA SOLA (Alessandro, 26 settembre 2026). «I migliori di stanotte» e la tabella di Target erano la
               stessa classifica — la stessa valutazione, `EVAL`, nello stesso ordine — su due pagine. Adesso vive qui, dove
-              la notte e la configurazione si vedono, in due viste: i riquadri, i primi dodici con almeno mezz'ora utile, e
-              la tabella, tutti con le loro colonne. In tutte e due si prescrive e si apre la scheda. Sorvegliato da
-              tools/gate-lista-unica.js. -->
+              la notte e la configurazione si vedono. E UNA VISTA SOLA (Alessandro, 27 ottobre 2026): la tabella e' uscita,
+              e quello che diceva lo dicono i riquadri. Sorvegliato da tools/gate-lista-unica.js. -->
         <div class="ch-txt">
           <h2>Gli oggetti di stanotte, da qui</h2>
           <div class="ch-sub">Ordinati dal motore su <b>questa</b> configurazione e su <b>questa</b>
             notte, non in assoluto. Un clic e li prescrivo; la scheda di ciascuno dice righe, tecniche e ore.</div>
         </div>
         <div class="ch-act">
-          <span class="vista-oggetti" role="group" aria-label="Vista della lista">
-            <button type="button" data-vista-oggetti="riquadri" aria-pressed="true">Riquadri</button>
-            <button type="button" data-vista-oggetti="tabella" aria-pressed="false">Tabella</button>
-          </span>
           <button id="btnAddTgt" class="primary">+ Aggiungi un oggetto</button>
         </div>
       </div>
       <div class="card-body">
-        <!--  FILTRARE LA LISTA (Alessandro, 17 ottobre 2026): i pulsanti li disegna `renderFiltri`, perche' le loro parole
-              dipendono dalla notte — le ore dichiarate, le costellazioni che ci sono. Valgono per le due viste. -->
+        <!--  FILTRARE E ORDINARE LA LISTA (Alessandro, 17 ottobre 2026): i pulsanti li disegnano `renderFiltri` e
+              `renderOrdine`, perche' le loro parole dipendono dalla notte — le ore dichiarate, le costellazioni che ci
+              sono — e dall'ordine scelto. Gli otto ordini erano le intestazioni della tabella: dal 27 ottobre 2026 sono le
+              voci di «Ordina», con gli stessi tooltip, e valgono per i riquadri. -->
         <div class="filtri-lista">
           <div class="fl-testa">
             <button type="button" id="flApri" class="fl-apri" aria-expanded="true" aria-controls="flCorpo"
-              data-tip="Mostra o nasconde i filtri della lista. I filtri tolgono righe e riquadri: l'ordine resta quello che scegli nella tabella.">Filtra</button>
+              data-tip="Mostra o nasconde i filtri della lista. I filtri tolgono riquadri: l'ordine resta quello che scegli in «Ordina».">Filtra</button>
+            <button type="button" id="ordApri" class="fl-apri" aria-expanded="true" aria-controls="ordCorpo"
+              data-tip="Mostra o nasconde gli ordini della lista. Ogni voce dice come ordina, e un secondo clic la rovescia; in ogni riquadro si accende il campo dell'ordine.">Ordina</button>
             <span id="flConta" class="small muted"></span>
             <button type="button" id="flTogli" class="fl-togli" hidden>togli i filtri</button>
           </div>
+          <div id="ordCorpo" class="fl-corpo"></div>
           <div id="flCorpo" class="fl-corpo"></div>
         </div>
         <div id="bestNight"></div>
-        <div id="tabellaOggetti" hidden>
-        <div class="row" style="margin-bottom:16px">
-          <span class="legend" data-tip="Nell'app ogni funzione ha il suo colore, sempre lo stesso: azzurro per l'azione principale, viola per la configurazione e la strumentazione, verde-acqua per il piano delle notti, arancio per inquadratura e rotatore, verde per quello che esporti.">
-            <i style="--c:var(--acc)"></i>azione
-            <i style="--c:var(--fn-cfg)"></i>configurazione
-            <i style="--c:var(--fn-plan)"></i>piano notti
-            <i style="--c:var(--fn-frame)"></i>inquadratura
-            <i style="--c:var(--fn-exp)"></i>export
-          </span>
-          <span class="small muted" style="align-self:center;flex:1 1 320px">
-            <b>La classifica è calcolata adesso</b>, con lo stesso motore della prescrizione:
-            questa configurazione, questa data, questo cielo, questa Luna. Cambia tubo, camera,
-            binning, sito o notte e si rifà da sola — non è un ordine di catalogo.</span>
-        </div>
-        <div class="tablewrap">
-        <table>
-          <!--  OGNI INTESTAZIONE ORDINA, E PRIMA DI CLICCARE DICE COME (Alessandro, 17 ottobre 2026): il tooltip spiega
-                l'ordine che propone; un secondo clic lo rovescia. Le chiavi le legge `ordinaLista`. -->
-          <thead><tr>
-            <th style="width:34%" data-ordine="nome"><button type="button" class="ordina"
-              data-tip="Ordina per nome, dalla A alla Z. Un secondo clic rovescia l'ordine.">Oggetto</button></th>
-            <th class="hide-s" data-ordine="classe"><button type="button" class="ordina"
-              data-tip="Ordina per classe dell'oggetto — emissione, planetarie, galassie, ammassi, riflessioni e oscure — e dentro la classe per resa. Un secondo clic rovescia l'ordine.">Archetipo</button></th>
-            <th class="num" data-ordine="ore"><button type="button" class="ordina"
-              data-tip="Ordina per ore utili stanotte, nel canale che decide l'immagine e sopra il tuo orizzonte: prima chi ne ha di più. Un secondo clic rovescia l'ordine.">Finestra</button></th>
-            <th class="num hide-s" data-ordine="inquadratura"><button type="button" class="ordina"
-              data-tip="Ordina per quanto l'oggetto occupa il tuo campo: prima i più grandi rispetto al sensore, con i mosaici in testa. Un secondo clic rovescia l'ordine.">Inquadratura</button></th>
-            <th class="num" data-ordine="fattibilita"><button type="button" class="ordina"
-              data-tip="Ordina per settimane di notti serene che servono a chiudere il progetto: prima i più rapidi. Un secondo clic rovescia l'ordine.">Fattibilità</button></th>
-            <th class="num hide-s" data-ordine="progetto"><button type="button" class="ordina"
-              data-tip="Ordina per ore del progetto pieno su questa configurazione: prima i più economici. Un secondo clic rovescia l'ordine.">Progetto</button></th>
-            <th style="width:20%" data-ordine="notte"><button type="button" class="ordina"
-              data-tip="Ordina per l'ora in cui l'oggetto sta più alto stanotte: nell'ordine in cui la notte li offre, da chi è più alto al tramonto a chi lo è all'alba. In fondo chi stanotte non ha ore utili. Un secondo clic rovescia l'ordine.">Notte</button></th>
-            <th class="num" data-ordine="resa"><button type="button" class="ordina"
-              data-tip="L'ordine del motore, quello di partenza: pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte. Un secondo clic rovescia l'ordine.">Resa</button></th>
-          </tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
-        </div>
-        <div class="tlkey">
-          <span><i style="background:var(--oiii)"></i>OIII / banda larga utile</span>
-          <span><i style="background:var(--ha)"></i>Ha / SII utile</span>
-          <span><i style="background:var(--line)"></i>sotto soglia o giorno</span>
-          <span class="muted">La barra copre il crepuscolo astronomico serale → mattutino.</span>
-        </div>
-        </div>
       </div>
     </div>
   </section>
@@ -13094,7 +13061,7 @@ function evaluate(tg,dv,site,np,state,cov){
           feas,missing,critFilter,dual,dualUsed,clearFrac:site.clearFrac};
 }
 
-/*  LA CLASSIFICA DI STANOTTE, IN UN POSTO SOLO (26 settembre 2026). La lista di Strategia — riquadri e tabella — e la
+/*  LA CLASSIFICA DI STANOTTE, IN UN POSTO SOLO (26 settembre 2026). La lista di Strategia — i riquadri — e la
     porta `/v1/oggetti` del servizio, cioe' il Ponte, la chiedono qui: lo stesso insieme — le schede, gli oggetti di chi
     riprende, lo strato curato del catalogo, senza doppioni per nessuno dei loro nomi —, la stessa `evaluate`, lo stesso
     ordine per resa. Stavano nella parte grafica della pagina (`evalPool`, `refresh`), e una seconda copia nel servizio
@@ -13117,8 +13084,11 @@ function classificaDiStanotte(insieme,dv,site,np,state,cov){
   return (insieme||[]).map(t=>evaluate(t,dv,site,np,state||{},cov)).sort((a,b)=>b.score-a.score);
 }
 const RIQUADRI_DI_STANOTTE={quanti:12, oreMinime:0.5};
-function riquadriDiStanotte(classifica){
-  return (classifica||[]).map((e,i)=>({e,i})).filter(o=>o.e.critH>RIQUADRI_DI_STANOTTE.oreMinime).slice(0,RIQUADRI_DI_STANOTTE.quanti);
+/*  `quanti`, se c'e', al posto dei dodici della prima pagina: la pagina chiede anche tutti quelli con mezz'ora utile
+    (Infinity), per «mostra tutti», e la soglia resta qui (27 ottobre 2026). Senza, la regola di sempre. */
+function riquadriDiStanotte(classifica,quanti){
+  return (classifica||[]).map((e,i)=>({e,i})).filter(o=>o.e.critH>RIQUADRI_DI_STANOTTE.oreMinime)
+    .slice(0,quanti==null?RIQUADRI_DI_STANOTTE.quanti:quanti);
 }
 function ilCieloMorde(e){ return !!e&&e.critH>0.3&&e.skyF<0.85; }
 
@@ -13997,7 +13967,7 @@ function start(){
 
   $('boot').innerHTML=''; $('app').style.display='';
   initNav();
-  initVistaOggetti();
+  initFiltri();
   refresh();
   renderProgetti();
   progettoAllApertura();
@@ -15629,7 +15599,6 @@ function refresh(){
   EVAL=MOTORE.scelta.classificaDiStanotte(evalPool(),dv,SITE,np,STATE,covIntent());
   NP_LISTA=np;
   renderFiltri();
-  renderRows(np);
   renderBest();
   renderRx(np);
   renderSummary();
@@ -15781,86 +15750,128 @@ function cfgContext(){
     cambiando tubo, camera, binning o sito la prescrizione si rifà da sola, e cambia davvero.</p>`;
 }
 
-/* ---------- i migliori della notte ----------
+/* ---------- la lista di stanotte: i riquadri ----------
    ERA il ramo a campo vuoto di renderRx(), e finiva nel riquadro della
    prescrizione: cioe' compariva solo finche' non avevi scritto niente, come un
    ripiego. E' invece il punto di partenza operativo — «cosa conviene riprendere
-   stanotte da qui» — e adesso sta nella home, nello spazio grande.
-
-   Selezione, ordine e valori sono gli stessi di prima, riga per riga: EVAL e'
-   gia' ordinato per score da refresh(), si filtra sulle ore utili del canale
-   critico e si taglia a dodici. Nessun secondo classificatore, nessuna soglia
-   nuova, nessun algoritmo nuovo. Un clic scrive il nome nel campo e prescrive:
-   e' rxPick(), quella di sempre. */
-/*  I RIQUADRI: i primi dodici della classifica con almeno mezz'ora utile. Il clic prescrive; «scheda» apre la scheda
-    dell'oggetto, come la riga della tabella (26 settembre 2026). Il riquadro non e' piu' un <button>: dentro ci sta il
-    tasto della scheda, e un tasto dentro un tasto non si puo'. Si prescrive anche da tastiera, con Invio o Spazio. */
+   stanotte da qui» — e adesso sta nella home, nello spazio grande. Nessun secondo
+   classificatore e nessuna soglia nella parte grafica: e' EVAL, e la regola dei
+   riquadri e' del motore. Un clic scrive il nome nel campo e prescrive: e' rxPick(). */
+/*  I RIQUADRI, L'UNICA VISTA DELLA LISTA (Alessandro, 27 ottobre 2026: «se si potrebbe unificare la visualizzazione dei
+    Riquadri e della Tabella sarebbe meglio … vorrei portare le funzioni della visualizzazione della tabella nei
+    riquadri», e «togli la Tabella»). Misurato prima, su f0c4e75, nello standalone largo 1280 px: un riquadro alto 124 px,
+    dodici in 803 px; una riga della tabella alta 200 px di media — il nome andava a capo in cinque righe —, dodici in
+    2445 px, e la tabella larga 895 px in 617 visibili: la resa si leggeva solo scorrendo di lato.
+    IL RIQUADRO DICE QUELLO CHE DICEVA LA RIGA: ore utili, classe, canale e culmine come prima; il secondo nome e la
+    costellazione; quanto tolgono Luna e luce artificiale, solo se mordono (`ilCieloMorde`); la barra della notte;
+    inquadratura, fattibilita' e la pastiglia delle ore dichiarate; le ore del progetto, le settimane e la resa; quanto e'
+    gia' ripreso, solo se c'e'.
+    LA BARRA DELLA NOTTE e' `segs`, dal buio all'alba: verde dove l'oggetto sta sopra la quota buona del suo canale
+    (`quotaPreferita`), rosso dove e' utilizzabile ma piu' basso, vuota sotto l'orizzonte. Nella tabella la legenda diceva
+    «OIII / banda larga utile» e «Ha / SII utile», che non e' quello che il colore vuol dire da quando i due livelli sono
+    quote del canale che decide: la legenda qui sotto lo dice giusto. La barra non dice ne' la fattibilita' ne' la resa:
+    quelle hanno la loro pastiglia e la loro barra.
+    LA PRIMA PAGINA E' QUELLA DEL MOTORE: senza filtri e con l'ordine per resa, i primi dodici con mezz'ora utile, come
+    prima e come il servizio li manda (`riquadriDiStanotte`). «Mostra tutti» porta tutti quelli con mezz'ora utile, e
+    quelli che stanotte ne hanno meno stanno sotto, attenuati, a richiesta: insieme sono la lista intera, come era la
+    tabella. L'ordine scelto in «Ordina» vale per tutti, e in ogni riquadro si accende il campo dell'ordine.
+    Il riquadro e' un div che si comporta da tasto: il clic prescrive, «Scheda» apre la scheda — un tasto dentro un
+    tasto non si puo' —, e si prescrive anche da tastiera, con Invio o Spazio. Sorvegliato da tools/gate-lista-unica.js
+    e tools/gate-ordina-e-filtra.js. */
+let RIQ_TUTTI=false, RIQ_SOTTO=false;
+function riquadriTutti(v){ RIQ_TUTTI=!!v; renderBest(); }
+function riquadriSotto(v){ RIQ_SOTTO=!!v; renderBest(); }
+const oraDellaNotte=t=>t?t.toTimeString().slice(0,5):'—';
+function riquadroHtml(x,c,basso){
+  const e=x.e, i=x.i, nome=e.tg.names[0], arch=TG.archetypes[e.tg.archetype];
+  /* `data-campo` dice quale campo e'; `acceso` lo porta quello dell'ordine scelto */
+  const acc=k=>(k===ORDINE_DELLA_LISTA.chiave?' acceso':'')+'" data-campo="'+k;
+  const conOre=e.critH>0.3, morde=MOTORE.scelta.ilCieloMorde(e);
+  const np=c.np, t0=np&&(np.astro.start||np.nautical.start), t1=np&&(np.astro.end||np.nautical.end);
+  const ore=conOre
+    ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili stanotte in '+e.critBand+', il canale che decide l’immagine, sopra il tuo orizzonte.')}">${fmt(e.critH,1)}<i> h</i></span>`
+    : `<span class="pill p-bad${acc('ore')}">0 h</span>`;
+  const sub=[e.tg.names[1],e.tg.constellation].filter(Boolean).map(esc).join(' · ');
+  const tuo=e.tg.user?`<span class="pill p-dim" data-tip="${esc(G.noscheda)}">tuo · senza scheda</span>`:'';
+  const luna=e.moonF<0.9&&frasettaLunare(e.penalizzazioneLunare);
+  /* il cielo che morde sta accanto alla barra della notte: la freccia dice le ore che restano, il tooltip chi le toglie */
+  const il=e.lpF<0.9?Math.round((1-e.lpF)*100):0;
+  const cielo=morde?`<span class="bc-cielo"><span class="pill p-warn" data-tip="${esc('Stanotte restano '+fmt(e.critHeff,1)+' h utili, tolto quello che Luna e luce artificiale tolgono.'+
+      (luna?' Luna: '+luna+'. '+fraseDellaSogliaLuna(e.penalizzazioneLunare):'')+(il?' Luce artificiale: −'+il+'% su questo canale.':''))}">→ ${fmt(e.critHeff,1)} h</span></span>`:'';
+  const tipNotte=t0&&t1
+    ? `La notte, dal buio (${oraDellaNotte(t0)}) all’alba (${oraDellaNotte(t1)}). In verde le ore in cui ${nome} sta sopra ${fmt(e.quotaPreferita,0)}°, la quota buona per ${e.critBand}; in rosso quelle in cui è utilizzabile ma più basso; vuota quando è sotto il tuo orizzonte.`
+    : 'La notte: in questa data non c’è buio astronomico né nautico.';
+  const rx=c.RXH>0?MOTORE.scelta.prescribe(e,c.RXH,c.DVX):null;
+  const rxPill=rx&&rx.disponibile===false
+    ? `<span class="pill p-bad" data-tip="${esc('Con la ruota di adesso nessuna tecnica di questo oggetto si può riprendere'+
+        ((rx.missing||[]).length?': manca '+rx.missing.join(' e '):'')+'.')}">in ${fmt(c.RXH,0)} h: nessuna tecnica con i tuoi filtri</span>`
+    : rx?`<span class="pill ${rx.level==='pieno'?'p-ok':'p-warn'}" data-tip="${esc(rx.level==='insufficiente'
+        ? 'Con queste ore il canale che decide l’immagine resta sotto la soglia'+
+          (((rx.alloc||[]).find(g=>g.id===rx.critGroup)||{}).confidence==='bassa'?', e il suo numero è stimato':'')+
+          ': la prescrizione c’è comunque, l’immagine sarà meno profonda.'
+        : 'La tecnica che sta dentro le ore disponibili, e fino a che livello arriva.')}">in ${fmt(c.RXH,0)} h: ${
+        esc(rx.road.name.split(/[ ,(]/)[0])+' '+(rx.level==='pieno'?'pieno':RXLVL[rx.level].k)}</span>`:'';
+  /* le settimane si contano dalle ore di stanotte: senza quasi ore utili non si dicono, ma il progetto le sue ore le ha
+     (la tabella nascondeva anche quelle) */
+  const prog=!Number.isFinite(e.roadHTot)?'progetto —'
+    : `progetto ${oreScala(e.roadHTot,e.panels,'progetto',0)} · `+(Number.isFinite(e.weeks)
+      ? `<span data-tip="${esc(G.weeks)}">≈ ${wkTxt(e.weeks)}</span>`
+      : `<span data-tip="Stanotte l’oggetto non ha quasi ore utili: le settimane, che si contano dalle ore di questa notte, qui non si dicono.">settimane —</span>`);
+  const gia=e.progress!=null?` · già ripreso <b>${Math.round(e.progress*100)}%</b>`:'';
+  return `<div class="bestcard${nome.toLowerCase()===c.scelto?' on':''}${basso?' basso':''}" role="button" tabindex="0"
+     data-nome="${esc(nome)}" onclick="rxPick(${jsAttr(nome)})"
+     onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();rxPick(${jsAttr(nome)})}">
+     <span class="bc-top"><span class="bc-n${acc('nome')}">${esc(nome)}</span>${ore}</span>
+     <span class="bc-bot"><span class="bc-a${acc('classe')}"${arch?` data-tip="${esc(arch.logic||arch.label)}"`:''}>${esc(shortArch(e.tg.archetype))}</span>
+       <span class="bc-b">${conOre?`<span data-tip="${esc(G.crit)}">${esc(e.critBand)}</span> · culmina a ${fmt(e.maxAlt,0)}°`
+         :`culmina a ${fmt(e.maxAlt,0)}°, soglia ${e.critFloor}°`}</span></span>
+     ${sub||tuo?`<span class="bc-sub">${tuo}${tuo&&sub?' ':''}${sub}</span>`:''}
+     <span class="bc-riga-notte"><span class="bc-notte${acc('notte')}" data-tip="${esc(tipNotte)}">${np?timeline(e,np):''}</span>${cielo}</span>
+     <span class="bc-pill"><span class="pill ${e.fit.cls}${acc('inquadratura')}" data-tip="${esc(G.fit)}">${esc(e.fit.k)}</span>
+       <span class="pill ${e.feas.cls}${acc('fattibilita')}" data-tip="${esc(e.feas.why)}">${esc(e.feas.k)}</span>${
+       e.dualUsed?`<span class="bc-dual" data-tip="Il tuo dual-band raccoglie Ha e OIII nella stessa posa: il tempo è quello del canale più difficile, non la somma.">dual-band</span>`:''}
+       ${rxPill}</span>
+     <span class="bc-piede"><span class="bc-prog${acc('progetto')}">${prog}${gia}</span></span>
+     <span class="bc-azioni">
+       <span class="bc-resa${acc('resa')}" data-tip="La resa: l’ordine del motore, quello di partenza. Pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte.">resa <b>${e.score}</b><span class="sbar"><i style="width:${e.score}%"></i></span></span>
+       <span class="bc-tasti"><button type="button" class="bc-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(nome)})"
+         data-tip="Lo prescrivo qui sopra, sulla notte e sulla configurazione di adesso.">Prescrivi</button>
+       <button type="button" class="bc-scheda" onclick="event.stopPropagation();openSheet(${i})"
+         data-tip="La scheda dell'oggetto: le righe di emissione, le tecniche con pro e contro, le ore per canale.">Scheda</button></span>
+     </span>
+   </div>`;
+}
 function bestNightHtml(){
-  /*  i riquadri seguono i filtri: i primi dodici con mezz'ora utile della lista filtrata, nell'ordine del motore; `i`
-      resta l'indice in EVAL (17 ottobre 2026) */
-  const lista=listaFiltrata();
-  const top=MOTORE.scelta.riquadriDiStanotte(lista.map(x=>x.e)).map(o=>({x:o.e,i:lista[o.i].i}));
-  const arch=x=>(TG.archetypes[x.tg.archetype]||{}).label||'';
-  const scelto=($('rxTarget').value||'').trim().toLowerCase();
-  if(!top.length&&filtriAttivi()) return `<p class="small muted">Con questi filtri nessun oggetto ha almeno mezz'ora utile
-    stanotte. <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`;
-  if(!top.length) return `<p class="small muted">Da qui, in questa notte, nessuno degli
-    oggetti in catalogo sale abbastanza da valere un progetto. Cambia data o sito, o guarda la tabella:
-    ci sono tutti, anche quelli che stanotte non salgono.</p>`;
-  return `<div class="bestgrid">${top.map(({x,i})=>
-    `<div class="bestcard${x.tg.names[0].toLowerCase()===scelto?' on':''}" role="button" tabindex="0"
-       data-nome="${esc(x.tg.names[0])}" onclick="rxPick(${jsAttr(x.tg.names[0])})"
-       onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();rxPick(${jsAttr(x.tg.names[0])})}"
-       data-tip="${esc(arch(x)+' · '+fmt(x.critH,1)+' h utili in '+x.critBand+
-         ', culmina a '+fmt(x.maxAlt,0)+'° · '+x.feas.k+' · inquadratura '+x.fit.k)}">
-       <span class="bc-top"><span class="bc-n">${esc(x.tg.names[0])}</span>
-         <span class="bc-h">${fmt(x.critH,1)}<i> h</i></span></span>
-       <span class="bc-bot"><span class="bc-a">${esc(shortArch(x.tg.archetype))}</span>
-         <span class="bc-b">${esc(x.critBand)} · culmina a ${fmt(x.maxAlt,0)}°</span></span>
-       <span class="bc-azioni">
-         <button type="button" class="bc-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(x.tg.names[0])})"
-           data-tip="Lo prescrivo qui sopra, sulla notte e sulla configurazione di adesso.">Prescrivi</button>
-         <button type="button" class="bc-scheda" onclick="event.stopPropagation();openSheet(${i})"
-           data-tip="La scheda dell'oggetto: le righe di emissione, le tecniche con pro e contro, le ore per canale.">Scheda</button>
-       </span>
-     </div>`).join('')}</div>`;
+  /*  i riquadri seguono i filtri e l'ordine scelto; `i` resta l'indice in EVAL, che la scheda legge */
+  const lista=ordinaLista(listaFiltrata()), ee=lista.map(x=>x.e);
+  if(!lista.length) return EVAL.length?`<p class="small muted">Nessun oggetto passa i filtri.
+    <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`:'';
+  const primi=MOTORE.scelta.riquadriDiStanotte(ee), utili=MOTORE.scelta.riquadriDiStanotte(ee,Infinity);
+  const conOre=new Set(utili.map(o=>o.i)), sotto=lista.filter((x,k)=>!conOre.has(k));
+  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase()};
+  const griglia=(xs,basso)=>`<div class="bestgrid">${xs.map(x=>riquadroHtml(x,c,basso)).join('')}</div>`;
+  const mostrati=(RIQ_TUTTI?utili:primi).map(o=>lista[o.i]);
+  let h=mostrati.length?griglia(mostrati,false)
+    : filtriAttivi()?`<p class="small muted">Con questi filtri nessun oggetto ha almeno mezz'ora utile stanotte.
+      <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`
+    : `<p class="small muted">Da qui, in questa notte, nessuno degli oggetti in catalogo sale abbastanza da valere un
+      progetto. Cambia data o sito: quelli che stanotte salgono poco sono qui sotto.</p>`;
+  const tasti=[];
+  if(utili.length>primi.length) tasti.push(RIQ_TUTTI
+    ? `<button type="button" class="fn fn-cfg" onclick="riquadriTutti(false)">mostra solo i primi ${primi.length}</button>`
+    : `<button type="button" class="fn fn-cfg" onclick="riquadriTutti(true)">mostra tutti i ${utili.length} con mezz’ora utile</button>`);
+  if(sotto.length) tasti.push(`<button type="button" class="fn fn-cfg" onclick="riquadriSotto(${!RIQ_SOTTO})">${RIQ_SOTTO?'nascondi':'mostra'} ${
+    sotto.length===1?'quello che stanotte ha':'i '+sotto.length+' che stanotte hanno'} meno di mezz’ora utile</button>`);
+  if(tasti.length) h+=`<div class="bc-altri">${tasti.join('')}</div>`;
+  if(RIQ_SOTTO&&sotto.length) h+=`<div class="bc-sotto-titolo">Stanotte meno di mezz’ora utile</div>`+griglia(sotto,true);
+  return h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
+    <span><i style="background:var(--ha)"></i>utilizzabile, ma più basso</span>
+    <span><i style="background:var(--line)"></i>sotto il tuo orizzonte</span>
+    <span class="muted">La barra di ogni riquadro è la notte, dal buio all’alba.</span></div>`;
 }
 function renderBest(){ const b=$('bestNight'); if(b) b.innerHTML=bestNightHtml(); }
-
-/*  LE DUE VISTE DELLA LISTA, riquadri e tabella, con la scelta ricordata per chi guarda (26 settembre 2026).
-    LA VISTA DI PARTENZA DIPENDE DALLO SCHERMO (Alessandro, 17 ottobre 2026). Su uno schermo largo la tabella dice tutto
-    quello che dice un riquadro — nome, classe, ore utili, banda critica, culmine — e in piu' cielo, fattibilita',
-    inquadratura, progetto, notte e resa: si parte da lei. Fino a 720 px, il confine del telefono in tutta la pagina, la
-    tabella e' larga 720 px in 326 visibili (misurato a 375 px: si leggono il nome e meta' della finestra), mentre un
-    riquadro si legge intero in 131 px: li' si parte dai riquadri.
-    E LA SCELTA SI SALVA SOLO QUANDO SI SCEGLIE. Prima l'apertura scriveva la vista di partenza come se fosse stata scelta,
-    e chiunque avesse aperto la pagina portava un «riquadri» che non aveva mai cliccato: la chiave vecchia non si legge
-    piu', e la nuova la scrive solo il clic. Sorvegliato da tools/gate-lista-unica.js §2. */
-const VISTA_SCELTA='ap_vista_oggetti_scelta';
+/*  Il confine del telefono in tutta la pagina: fin li' i filtri e gli ordini partono chiusi. */
 const SCHERMO_STRETTO='(max-width:720px)';
-let VISTA_OGGETTI='riquadri';
-function mostraVistaOggetti(v,scelta){
-  VISTA_OGGETTI=v==='tabella'?'tabella':'riquadri';
-  const r=$('bestNight'), t=$('tabellaOggetti');
-  if(r) r.hidden=VISTA_OGGETTI!=='riquadri';
-  if(t) t.hidden=VISTA_OGGETTI!=='tabella';
-  document.querySelectorAll('[data-vista-oggetti]').forEach(b=>{
-    const on=b.getAttribute('data-vista-oggetti')===VISTA_OGGETTI;
-    b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false');
-  });
-  if(scelta) try{ localStorage.setItem(VISTA_SCELTA,VISTA_OGGETTI); }catch(e){}
-}
-function vistaDiPartenza(){
-  let stretto=false; try{ stretto=window.matchMedia(SCHERMO_STRETTO).matches; }catch(e){}
-  return stretto?'riquadri':'tabella';
-}
-function initVistaOggetti(){
-  document.querySelectorAll('[data-vista-oggetti]').forEach(b=>
-    b.addEventListener('click',()=>mostraVistaOggetti(b.getAttribute('data-vista-oggetti'),true)));
-  let v=null; try{ v=localStorage.getItem(VISTA_SCELTA); }catch(e){}
-  mostraVistaOggetti(v||vistaDiPartenza(),false);
-  initFiltri();
-}
 
 /*  FILTRARE E ORDINARE LA LISTA (Alessandro, 17 ottobre 2026: «mettere filtri di selezione degli oggetti in modo che si
     possa ordinarli per visibilita' migliore, dimensione, tipo del soggetto»; e «noi siamo diversi dagli altri planner
@@ -15871,10 +15882,10 @@ function initVistaOggetti(){
     progetto si riempie nelle ore che hai dichiarato, quanto il cielo di stanotte toglie. Il tipo, la dimensione e la
     costellazione restano come complemento. Fuori, apposta, magnitudine e brillanza superficiale: su molte nebulose la
     magnitudine del catalogo e' quella della stella che le illumina, e la brillanza vera sta gia' dentro le ore.
-    SOLO LA VISTA CAMBIA. La classifica resta quella del motore (`EVAL`, per resa): i filtri tolgono righe e riquadri, e
-    l'ordine scelto dall'intestazione vale per la tabella. I riquadri restano i primi dodici con mezz'ora utile della
-    lista filtrata, nell'ordine del motore. Senza filtri e con l'ordine per resa la lista e' quella di prima.
-    E SI SALVA SOLO QUANDO SI SCEGLIE, come la vista. Sorvegliato da tools/gate-ordina-e-filtra.js. */
+    SOLO LA VISTA CAMBIA. La classifica resta quella del motore (`EVAL`, per resa): i filtri tolgono riquadri, e l'ordine
+    scelto in «Ordina» vale per tutti i riquadri — erano le intestazioni della tabella, con gli stessi tooltip, fino al 27
+    ottobre 2026. Senza filtri e con l'ordine per resa la prima pagina e' quella di prima.
+    E SI SALVA SOLO QUANDO SI SCEGLIE. Sorvegliato da tools/gate-ordina-e-filtra.js. */
 const GRUPPI_DI_CLASSE=[
   {id:'emissione',nome:'Emissione',classi:['hii_classic','hii_faint_he','wr_bubble','snr'],
    tip:'Regioni HII, bolle di Wolf-Rayet e resti di supernova: le nebulose che emettono su righe.'},
@@ -15946,17 +15957,26 @@ function oraDelCulmine(e){
   const t=-ha/15*0.99727, inizio=(t0.getTime()-meta)/3.6e6, fine=(t1.getTime()-meta)/3.6e6;
   return Math.min(fine,Math.max(inizio,t))+t*1e-3;
 }
-/*  Le chiavi dell'ordine: il valore, e il verso naturale — quello del primo clic. Un valore che non c'e' va sempre in fondo. */
+/*  Le chiavi dell'ordine: il valore, e il verso naturale — quello del primo clic. Un valore che non c'e' va sempre in fondo.
+    Il nome e il tooltip di ogni voce di «Ordina», nell'ordine in cui le mostra: erano le intestazioni della tabella. */
 const ORDINI={
-  nome:{val:e=>String(e.tg.names[0]||''),testo:true,cresce:true},
-  classe:{val:e=>gruppoDiClasse(e),cresce:true},
-  ore:{val:e=>isFinite(e.critH)?e.critH:null,cresce:false},
-  inquadratura:{val:e=>e.fit&&isFinite(e.fit.r)?e.fit.r:null,cresce:false},
-  fattibilita:{val:e=>isFinite(e.weeks)?e.weeks:null,cresce:true},
-  progetto:{val:e=>isFinite(e.roadHTot)?e.roadHTot:null,cresce:true},
-  notte:{val:e=>oraDelCulmine(e),cresce:true},
-  resa:{val:null,cresce:false}};
-/*  La lista che le due viste mostrano: [{e,i}], con `i` l'indice in EVAL. `ordinata` la mette nell'ordine scelto. */
+  resa:{val:null,cresce:false,nome:'Resa',
+    tip:'L’ordine del motore, quello di partenza: pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte. Un secondo clic rovescia l’ordine.'},
+  ore:{val:e=>isFinite(e.critH)?e.critH:null,cresce:false,nome:'Ore utili',
+    tip:'Ordina per ore utili stanotte, nel canale che decide l’immagine e sopra il tuo orizzonte: prima chi ne ha di più. Un secondo clic rovescia l’ordine.'},
+  notte:{val:e=>oraDelCulmine(e),cresce:true,nome:'Notte',
+    tip:'Ordina per l’ora in cui l’oggetto sta più alto stanotte: nell’ordine in cui la notte li offre, da chi è più alto al tramonto a chi lo è all’alba. In fondo chi stanotte non ha ore utili. Un secondo clic rovescia l’ordine.'},
+  fattibilita:{val:e=>isFinite(e.weeks)?e.weeks:null,cresce:true,nome:'Fattibilità',
+    tip:'Ordina per settimane di notti serene che servono a chiudere il progetto: prima i più rapidi. Un secondo clic rovescia l’ordine.'},
+  progetto:{val:e=>isFinite(e.roadHTot)?e.roadHTot:null,cresce:true,nome:'Progetto',
+    tip:'Ordina per ore del progetto pieno su questa configurazione: prima i più economici. Un secondo clic rovescia l’ordine.'},
+  inquadratura:{val:e=>e.fit&&isFinite(e.fit.r)?e.fit.r:null,cresce:false,nome:'Inquadratura',
+    tip:'Ordina per quanto l’oggetto occupa il tuo campo: prima i più grandi rispetto al sensore, con i mosaici in testa. Un secondo clic rovescia l’ordine.'},
+  classe:{val:e=>gruppoDiClasse(e),cresce:true,nome:'Classe',
+    tip:'Ordina per classe dell’oggetto — emissione, planetarie, galassie, ammassi, riflessioni e oscure — e dentro la classe per resa. Un secondo clic rovescia l’ordine.'},
+  nome:{val:e=>String(e.tg.names[0]||''),testo:true,cresce:true,nome:'Nome',
+    tip:'Ordina per nome, dalla A alla Z. Un secondo clic rovescia l’ordine.'}};
+/*  La lista che i riquadri mostrano: [{e,i}], con `i` l'indice in EVAL. `ordinaLista` la mette nell'ordine scelto. */
 function listaFiltrata(){ return EVAL.map((e,i)=>({e,i})).filter(x=>passaIFiltri(x.e)); }
 function ordinaLista(lista){
   const o=ORDINI[ORDINE_DELLA_LISTA.chiave]||ORDINI.resa;
@@ -15988,7 +16008,7 @@ function caricaFiltri(){
   FILTRI_DELLA_LISTA=f;
   if(s.ordine&&ORDINI[s.ordine.chiave]) ORDINE_DELLA_LISTA={chiave:s.ordine.chiave,inverso:s.ordine.inverso===true};
 }
-function rifaiLista(){ renderFiltri(); if(NP_LISTA) renderRows(NP_LISTA); renderBest(); }
+function rifaiLista(){ renderFiltri(); renderBest(); }
 /*  Un clic su un filtro: i gruppi a scelta multipla si accendono e si spengono uno per uno, le soglie sono una sola e
     il secondo clic sulla stessa la toglie. */
 function filtra(campo,valore){
@@ -15997,23 +16017,24 @@ function filtra(campo,valore){
   else if(typeof f[campo]==='boolean') f[campo]=!f[campo];
   else if(campo==='costellazione') f[campo]=valore||'';
   else f[campo]=f[campo]===valore?null:valore;
-  ROWS_N=25; salvaLaLista(); rifaiLista();
+  RIQ_TUTTI=RIQ_SOTTO=false; salvaLaLista(); rifaiLista();
 }
-function togliFiltri(){ FILTRI_DELLA_LISTA=FILTRI_VUOTI(); ROWS_N=25; salvaLaLista(); rifaiLista(); }
+function togliFiltri(){ FILTRI_DELLA_LISTA=FILTRI_VUOTI(); RIQ_TUTTI=RIQ_SOTTO=false; salvaLaLista(); rifaiLista(); }
 function ordinaPer(chiave){
   if(!ORDINI[chiave]) return;
   ORDINE_DELLA_LISTA=ORDINE_DELLA_LISTA.chiave===chiave?{chiave,inverso:!ORDINE_DELLA_LISTA.inverso}:{chiave,inverso:false};
   salvaLaLista(); rifaiLista();
 }
-function segnaOrdine(){
-  document.querySelectorAll('th[data-ordine]').forEach(th=>{
-    const k=th.getAttribute('data-ordine'), b=th.querySelector('button.ordina'), o=ORDINI[k];
-    const attivo=ORDINE_DELLA_LISTA.chiave===k;
-    if(attivo){ const cresce=(o.cresce?1:-1)*(ORDINE_DELLA_LISTA.inverso?-1:1)>0; th.setAttribute('aria-sort',cresce?'ascending':'descending'); }
-    else th.removeAttribute('aria-sort');
-    if(b){ let v=b.querySelector('.verso'); if(!v){ v=document.createElement('span'); v.className='verso'; v.setAttribute('aria-hidden','true'); b.appendChild(v); }
-      v.textContent=attivo?(th.getAttribute('aria-sort')==='ascending'?'▲':'▼'):''; }
-  });
+/*  «Ordina» e le sue otto voci: la voce scelta e' premuta e porta il verso, e il tasto la nomina. */
+function renderOrdine(){
+  const o=ORDINE_DELLA_LISTA, scelto=ORDINI[o.chiave]?o.chiave:'resa';
+  const verso=k=>(ORDINI[k].cresce?1:-1)*(o.inverso?-1:1)>0?'▲':'▼';
+  const c=$('ordCorpo');
+  if(c) c.innerHTML=`<div class="fl-gruppo"><span class="fl-nome" data-tip="Come si mettono in fila i riquadri. In ogni riquadro si accende il campo dell’ordine scelto.">Ordina per</span>${
+    Object.keys(ORDINI).map(k=>{ const on=k===scelto;
+      return `<button type="button" class="fl-chip${on?' on':''}" aria-pressed="${on?'true':'false'}" data-ordine="${k}" data-tip="${esc(ORDINI[k].tip)}"
+        onclick="ordinaPer(${jsAttr(k)})">${esc(ORDINI[k].nome)}${on?`<span class="verso" aria-hidden="true">${verso(k)}</span>`:''}</button>`; }).join('')}</div>`;
+  const b=$('ordApri'); if(b) b.textContent='Ordina · '+ORDINI[scelto].nome+' '+verso(scelto);
 }
 function renderFiltri(){
   const c=$('flCorpo'); if(!c) return;
@@ -16049,22 +16070,21 @@ function renderFiltri(){
   const conta=$('flConta'); if(conta) conta.textContent=n?quanti+' di '+tot+' oggetti':tot+' oggetti';
   const togli=$('flTogli'); if(togli) togli.hidden=!n;
   const apri=$('flApri'); if(apri){ apri.textContent=n?'Filtra · '+n:'Filtra'; apri.classList.toggle('attivi',n>0); }
-  segnaOrdine();
+  renderOrdine();
 }
-/*  Su uno schermo largo i filtri si vedono; sul telefono stanno chiusi sotto «Filtra», e si aprono a richiesta. */
+/*  Su uno schermo largo i filtri e gli ordini si vedono; sul telefono stanno chiusi sotto «Filtra» e «Ordina», e si
+    aprono a richiesta. */
 function initFiltri(){
   caricaFiltri();
-  const apri=$('flApri'), corpo=$('flCorpo');
   let stretto=false; try{ stretto=window.matchMedia(SCHERMO_STRETTO).matches; }catch(e){}
-  if(apri&&corpo){
+  for(const [apri,corpo] of [[$('flApri'),$('flCorpo')],[$('ordApri'),$('ordCorpo')]]){
+    if(!apri||!corpo) continue;
     const mostra=v=>{ corpo.hidden=!v; apri.setAttribute('aria-expanded',v?'true':'false'); };
     mostra(!stretto);
     apri.addEventListener('click',()=>mostra(corpo.hidden));
   }
   const togli=$('flTogli'); if(togli) togli.addEventListener('click',togliFiltri);
-  document.querySelectorAll('th[data-ordine] button.ordina').forEach(b=>
-    b.addEventListener('click',()=>ordinaPer(b.closest('th').getAttribute('data-ordine'))));
-  segnaOrdine();
+  renderOrdine();
 }
 
 /* IL TEMPO DISPONIBILE, dichiarato invece che chiesto.
@@ -20007,79 +20027,8 @@ function evalPool(){
   /* l'insieme lo compone il motore (26 settembre 2026): le schede, i tuoi oggetti, lo strato curato del catalogo */
   _pool=MOTORE.scelta.insiemeDellaClassifica(TG.targets,UTGT,CAT); _poolKey=key; return _pool;
 }
-let ROWS_N=25;
-function showAllRows(){ ROWS_N=1e9; refresh(); }
-function renderRows(np){
-  const RXH=rxHours(), DVX=derive(cfgMotore());
-  /*  le righe sono la lista filtrata, nell'ordine scelto dall'intestazione; `i` resta l'indice in EVAL, che la scheda
-      legge (17 ottobre 2026) */
-  const LISTA=ordinaLista(listaFiltrata());
-  if(!LISTA.length&&EVAL.length){
-    $('rows').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:14px">
-      <span class="muted">Nessun oggetto passa i filtri.</span>
-      <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></td></tr>`;
-    return;
-  }
-  $('rows').innerHTML=LISTA.slice(0,ROWS_N).map(({e,i})=>{
-    const arch=TG.archetypes[e.tg.archetype];
-    const bite = MOTORE.scelta.ilCieloMorde(e);    // cielo (Luna + IL) che morde davvero: la regola e' del motore
-    const win = e.critH>0.3
-      ? `<b>${fmt(e.critH,1)} h</b>` +
-        (bite?` <span class="pill p-warn">→ ${fmt(e.critHeff,1)} h</span>`:'') +
-        `<div class="tsub"><span data-tip="${esc(G.crit)}">in ${e.critBand}</span> · max ${fmt(e.maxAlt,0)}°` +
-        (bite?` · ${e.moonF<0.9?'<span data-tip="'+esc(fraseDellaSogliaLuna(e.penalizzazioneLunare))+'">Luna '+frasettaLunare(e.penalizzazioneLunare)+'</span> ':''}`+
-              `${e.lpF<0.9?'IL −'+Math.round((1-e.lpF)*100)+'%':''}`:'')+`</div>`
-      : `<span class="pill p-bad">0 h</span><div class="tsub">culmina a ${fmt(e.maxAlt,0)}°, soglia ${e.critFloor}°</div>`;
-    const prog = e.progress==null ? '<span class="muted">—</span>'
-      : `<b>${Math.round(e.progress*100)}%</b>`;
-    /* Due numeri, non uno: il progetto pieno e la versione che si porta a casa in
-       circa metà tempo. Se la seconda non esiste davvero non viene mostrata. */
-    /* Con le ore dichiarate, la colonna smette di dire solo «quanto costa» e
-       dice «ci sta»: è la differenza fra un catalogo e uno strumento di scelta. */
-    const rx = RXH>0 ? MOTORE.scelta.prescribe(e,RXH,DVX) : null;
-    const rxPill = rx&&rx.disponibile===false
-      ? `<div class="tsub"><span class="pill p-bad" data-tip="${esc('Con la ruota di adesso nessuna tecnica di questo oggetto si può riprendere'+
-          ((rx.missing||[]).length?': manca '+rx.missing.join(' e '):'')+'.')}">in ${fmt(RXH,0)} h: nessuna tecnica con i tuoi filtri</span></div>`
-      : rx ? `<div class="tsub"><span class="pill ${
-        rx.level==='pieno'?'p-ok':'p-warn'}"
-        data-tip="${esc(rx.level==='insufficiente'
-          ? 'Con queste ore il canale che decide l’immagine resta sotto la soglia'+
-            (((rx.alloc||[]).find(g=>g.id===rx.critGroup)||{}).confidence==='bassa'?', e il suo numero è stimato':'')+
-            ': la prescrizione c’è comunque, l’immagine sarà meno profonda.'
-          : 'La tecnica che sta dentro le ore disponibili, e fino a che livello arriva.')}">in ${fmt(RXH,0)} h: ${
-        esc(rx.road.name.split(/[ ,(]/)[0])+' '+RXLVL[rx.level].k}</span></div>` : '';
-    const wk = !isFinite(e.weeks) ? '<span class="muted">—</span>'
-      : oreScala(e.roadHTot,e.panels,'progetto',0)+
-        `<div class="tsub"><span data-tip="${esc(G.weeks)}">≈ ${wkTxt(e.weeks)}</span>`+
-        `</div>`;
-    /*  la riga apre la scheda, come sempre; «prescrivi» fa quello che fa il clic sul riquadro (26 settembre 2026) */
-    return `<tr class="tgt" data-nome="${esc(e.tg.names[0])}" onclick="openSheet(${i})">
-      <td><div class="tname"><span data-tip="Apre la scheda dell'oggetto, come il tasto «Scheda» qui sotto.">${esc(e.tg.names[0])}</span>
-            ${e.tg.user?`<span class="pill p-dim" style="font-weight:400" data-tip="${esc(G.noscheda)}">tuo · senza scheda</span>`:''}</div>
-          <div class="tsub">${esc(e.tg.names[1]||'')} · ${esc(e.tg.constellation||'')}</div>
-          <div class="tr-azioni">
-            <button type="button" class="tr-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(e.tg.names[0])})"
-              data-tip="Lo prescrivo qui sopra, sulla notte e sulla configurazione di adesso.">Prescrivi</button>
-            <button type="button" class="tr-scheda" onclick="event.stopPropagation();openSheet(${i})"
-              data-tip="La scheda dell'oggetto: le righe di emissione, le tecniche con pro e contro, le ore per canale.">Scheda</button>
-          </div></td>
-      <td class="hide-s small muted archcell">${arch?`<span data-tip="${esc(arch.logic||arch.label)}">${esc(shortArch(e.tg.archetype))}</span>`:''}</td>
-      <td class="num">${win}</td>
-      <td class="num hide-s"><span class="pill ${e.fit.cls}" data-tip="${esc(G.fit)}">${e.fit.k}</span></td>
-      <td class="num"><span class="pill ${e.feas.cls}" data-tip="${esc(e.feas.why)}">${e.feas.k}</span>
-        ${e.dualUsed?`<div class="tsub"><span data-tip="Il tuo dual-band raccoglie Ha e OIII nella stessa posa: il tempo è quello del canale più difficile, non la somma.">dual-band</span></div>`:''}</td>
-      <td class="num hide-s small">${wk}${rxPill}</td>
-      <td>${timeline(e,np)}</td>
-      <td class="num"><div class="score" style="justify-content:flex-end">
-        <span>${e.score}</span><span class="sbar"><i style="width:${e.score}%"></i></span></div>
-        <div class="tsub">${prog}</div></td>
-    </tr>`;
-  }).join('')+(LISTA.length>ROWS_N?`<tr><td colspan="8" style="text-align:center;padding:12px">
-      <button class="fn fn-cfg" onclick="showAllRows()">mostra tutti i ${LISTA.length} oggetti ${filtriAttivi()?'che passano i filtri':'valutati'}</button>
-      <div class="tsub" style="margin-top:5px">Ordinati dal motore sulla configurazione e sulla data
-        di adesso: cambia tubo, camera, binning, sito o notte e la classifica si rifà.</div></td></tr>`:'');
-}
-
+/*  La barra della notte di ogni riquadro (27 ottobre 2026: prima era la colonna «Notte» della tabella). I colori sono
+    i due livelli di `segs`: sopra la quota buona del canale, e utilizzabile ma piu' basso. */
 function timeline(e,np){
   const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end;
   if(!t0||!t1||!e.segs.length) return '<span class="muted small">—</span>';
