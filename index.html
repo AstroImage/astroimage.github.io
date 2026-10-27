@@ -1676,18 +1676,20 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
           <path d="M3 8h18v12H3zM3 4h18v4H3zM10 12h4"/></svg></span>
         <div class="ch-txt">
           <h2>Archivio progetti</h2>
-          <div class="ch-sub">Lo stato vive in un file <code>progetti.json</code> che tieni tu:
-            portabile fra i tuoi PC, versionabile in git. Il browser ne tiene una copia di
-            comodo, ma la verità è il file.</div>
+          <div class="ch-sub">I progetti, le ore già riprese, i tuoi siti, la tua strumentazione e le postazioni si
+            salvano in questo browser, su questo PC. Per portarli sul PC dove gira N.I.N.A., in un altro browser, o per non
+            perderli se il browser si svuota, salvane una copia: il file <code>progetti.json</code> li contiene tutti.
+            Caricando una copia AIS la unisce a quello che c’è qui, senza togliere niente.</div>
         </div>
         <div class="ch-act">
-          <button class="fn fn-exp" onclick="exportState()">Esporta progetti.json</button>
-          <button class="fn fn-exp" onclick="document.getElementById('impIn').click()">Importa</button>
+          <button class="fn fn-exp" onclick="exportState()" title="Scarica progetti.json con tutto quello che AIS ha salvato in questo browser">Salva una copia</button>
+          <button class="fn fn-exp" onclick="document.getElementById('impIn').click()" title="Unisce a quello che c’è qui un progetti.json salvato prima">Carica una copia</button>
           <input type="file" id="impIn" accept=".json" hidden>
           <button class="fn fn-bad" onclick="clearState()">Azzera</button>
         </div>
       </div>
       <div class="card-body">
+        <div id="copiaEsito"></div>
         <div class="subhead">Progetti salvati</div>
         <div id="progettiList"></div>
 
@@ -11392,6 +11394,63 @@ function ninaCheck(root){
   return {ids:ids.size,refs:refs.length,dup,dangling,ok:!dup.length&&!dangling.length};
 }
 
+/*  IL TUO CONTORNO DELLA SEQUENZA (27 ottobre 2026, Alessandro: «Manda a N.I.N.A.» sovrascrive la Sequence Startup e
+    la Sequence End, che ognuno configura coi suoi criteri, e non vorrebbe vederle sovrascritte a ogni invio). L'Advanced
+    API non restituisce la sequenza aperta in una forma che si possa ricaricare — `/sequence/json` e' un albero suo — e
+    non inserisce contenitori — `/sequence/edit` cambia una proprieta' di un'istruzione che c'e' gia' —: letto nel codice
+    della 2.2.15.2. Quindi il contorno si prende da un file di sequenza di N.I.N.A. scelto da chi riprende. La radice ha
+    tre aree — Startup, bersagli, End — e gli inneschi globali; in un file vero lo Startup e l'End sono chiusi in se':
+    l'unico `$ref` che esce e' il `Parent` verso la radice (misurato su una sequenza di N.I.N.A. 3.3: 15 e 17 `$id`).
+    `contornoDaSequenza` li stacca, e rifiuta un file che non e' una sequenza intera o una parte che punta fuori da se';
+    `conIlTuoContorno` li rinumera dopo l'ultimo `$id` della sequenza di AIS e li aggancia alla sua radice: di AIS restano
+    i bersagli. Qualunque cosa contengano — istruzioni di N.I.N.A. o dei plugin — passano come sono, e il file che ne esce
+    passa da `ninaCheck`. Sorvegliato da tools/gate-contorno-nina.js. */
+function contornoDaSequenza(testo,nomeFile){
+  let j; try{ j=JSON.parse(String(testo||'').replace(/^﻿/,'')); }catch(e){ return {errore:'non è un file JSON leggibile'}; }
+  const tipo=x=>String((x&&x.$type)||'').split(',')[0];
+  if(!j||tipo(j)!==NN+'.Container.SequenceRootContainer')
+    return {errore:'non è una sequenza intera del Sequenziatore Avanzato'+(/Container|SequenceItem/.test(tipo(j))?': è il modello di un contenitore':'')};
+  const aree=(j.Items&&j.Items.$values)||[], area=k=>aree.find(a=>tipo(a)===NN+'.Container.'+k);
+  const start=area('StartAreaContainer'), fine=area('EndAreaContainer');
+  if(!start||!fine) return {errore:'non ha un’area Startup e un’area End'};
+  const giro=(o,f)=>{ (function g(x){ if(Array.isArray(x)) return x.forEach(g); if(!x||typeof x!=='object') return; f(x); for(const v of Object.values(x)) g(v); })(o); };
+  /*  Fuori da se' una parte puo' puntare solo alla radice e alle sue liste: un innesco globale di sicurezza ha dentro un
+      contenitore di contesto (`TriggerRunnerRootContextContainer`) che rimanda alla lista delle aree della radice —
+      misurato sulla stessa sequenza, `Items: {$ref: "3"}`. Si ricordano, per riagganciarle alla radice di AIS. */
+  const idDi=x=>x&&x.$id!=null?String(x.$id):null;
+  const radiceIds={radice:idDi(j),aree:idDi(j.Items),condizioni:idDi(j.Conditions),inneschi:idDi(j.Triggers)};
+  const ammessi=new Set(Object.values(radiceIds).filter(Boolean));
+  const fuori=o=>{ const mie=new Set(), out=new Set();
+    giro(o,x=>{ if(x.$id!=null) mie.add(String(x.$id)); });
+    giro(o,x=>{ if(x.$ref!=null&&!mie.has(String(x.$ref))&&!ammessi.has(String(x.$ref))) out.add(String(x.$ref)); });
+    return [...out]; };
+  const inneschi=j.Triggers&&Array.isArray(j.Triggers.$values)?j.Triggers:null;
+  for(const [nome,o] of [['lo Startup',start],['l’End',fine],['gli inneschi globali',inneschi]])
+    if(o&&fuori(o).length) return {errore:nome+' del file puntano a parti della sequenza fuori da sé: non si possono staccare'};
+  const voci=a=>((a.Items&&a.Items.$values)||[]).map(x=>({nome:x.Name||tipo(x).split('.').pop(),
+    istruzioni:((x.Items&&x.Items.$values)||[]).length}));
+  return {nomeFile:nomeFile||null, radice:radiceIds.radice, radiceIds, start, fine, inneschi,
+    sintesi:{start:voci(start), fine:voci(fine), inneschi:((inneschi&&inneschi.$values)||[]).map(x=>tipo(x).split('.').pop())}};
+}
+function conIlTuoContorno(root,c){
+  if(!root||!c||!c.start||!c.fine||!root.Items||!Array.isArray(root.Items.$values)||root.Items.$values.length!==3) return null;
+  const r=JSON.parse(JSON.stringify(root));
+  const giro=(o,f)=>{ (function g(x){ if(Array.isArray(x)) return x.forEach(g); if(!x||typeof x!=='object') return; f(x);
+    for(const [k,v] of Object.entries(x)) if(k!=='$id'&&k!=='$ref') g(v); })(o); };
+  let n=0; giro(r,x=>{ if(x.$id!=null&&+x.$id>n) n=+x.$id; });
+  /* una mappa sola per le tre parti: un riferimento dall'una all'altra resta giusto; la radice e le sue liste del file
+     diventano quelle di AIS (la lista degli inneschi e' quella del file, che entra) */
+  const parti=[c.start,c.fine].concat(c.inneschi?[c.inneschi]:[]).map(o=>JSON.parse(JSON.stringify(o)));
+  const mappa=new Map();
+  for(const p of parti) giro(p,x=>{ if(x.$id!=null) mappa.set(String(x.$id),String(++n)); });
+  const ri=c.radiceIds||{radice:c.radice}, suAis=new Map([[ri.radice,r.$id],[ri.aree,r.Items&&r.Items.$id],[ri.condizioni,r.Conditions&&r.Conditions.$id]]);
+  for(const p of parti) giro(p,x=>{ if(x.$id!=null) x.$id=mappa.get(String(x.$id));
+    if(x.$ref!=null){ const k=String(x.$ref); x.$ref=mappa.has(k)?mappa.get(k):suAis.get(k)!=null?String(suAis.get(k)):k; } });
+  r.Items.$values[0]=parti[0]; r.Items.$values[2]=parti[1];
+  if(c.inneschi) r.Triggers=parti[2];
+  return r;
+}
+
 /*  L'INDIRIZZO DI N.I.N.A. SI SCRIVE (11 ottobre 2026). «Manda a N.I.N.A.» parlava solo col N.I.N.A. della stessa
     macchina, su localhost:1888, e per il MiniX l'indirizzo si e' dovuto scrivere a mano nel magazzino del browser. Chi
     lo scrive puo' dare un nome, un nome con la porta, un indirizzo intero o con /v2/api: diventano tutti lo stesso
@@ -13677,7 +13736,9 @@ const MOTORE = {
   piano:   { planNights, bestStart,                                   // come si spalma sulle notti
              /* e quello che manca, togliendo al buio le ore gia' riprese: 26 ottobre 2026 */
              giaRipreseAlBuio, daRiprendere, progettoDellePose },
-  esporta: { ninaSequence, ninaCheck },                               // che cosa esce verso N.I.N.A.
+  esporta: { ninaSequence, ninaCheck,                                 // che cosa esce verso N.I.N.A.
+             /* e col contorno di chi riprende: il suo Startup, il suo End, i suoi inneschi globali, 27 ottobre 2026 */
+             contornoDaSequenza, conIlTuoContorno },
 };
 
 let DB=null, TG=null, CAT=[], CITIES=[], CFG=null, SITE=null, EVAL=[], STATE={}, SITES=[], UTGT=[], OWNED=[];
@@ -14319,7 +14380,7 @@ function saveGear(kind,editId){
   if(kind==='tel') fillReducers(obj.id);
   readCfg(); refresh();
   $('gearSheet').classList.remove('on');
-  gearMsg('ok',`«${esc(name)}» ${editId?'aggiornato':'aggiunto'}. Resta salvato in questo browser ed entra in progetti.json quando esporti.`);
+  gearMsg('ok',`«${esc(name)}» ${editId?'aggiornato':'aggiunto'}. Resta salvato in questo browser, ed entra nella copia quando la salvi dall’Archivio.`);
   if(daNina){ AGGIUNTA_DA_NINA=null; go('strumentazione'); leggiBancoNina(); }
 }
 
@@ -15357,7 +15418,7 @@ function saveSite(){
     sqm_manual:$('sqm').dataset.src==='manuale'});
   persistSites(); renderSiteSelect(); $('site').value=id;
   SITE_DEFAULT=false; persistPick(id);
-  geoMsg('ok',`Sito «${esc(name)}» salvato. Finisce anche in progetti.json quando esporti, così te lo porti sull'altro PC.`);
+  geoMsg('ok',`Sito «${esc(name)}» salvato. Entra anche nella copia che salvi dall’Archivio, così te lo porti sull’altro PC.`);
 }
 function delSite(){
   const i=SITES.findIndex(s=>s.id===$('site').value);
@@ -17882,6 +17943,8 @@ function rxPlanHtml(pr,e,dv,t){
       <label class="f" style="max-width:130px"><span>Minuti per riscaldare</span>
         <input type="number" step="any" value="${NINACAP.minutiCaldo}" onchange="setCap('minutiCaldo',this.value)"></label>
     </div>
+    <div class="small muted" id="ninaContornoBox" style="margin:12px 0 6px;max-width:74ch">${contornoHtml()}</div>
+    <input type="file" id="ninaContornoIn" accept=".json" hidden onchange="caricaContorno(this)">
     <div class="small muted" style="margin:12px 0 6px;max-width:74ch">
       <b>I nomi della tua ruota.</b> Il file deve chiamare i filtri come li chiami tu in N.I.N.A.
       Se un nome non corrisponde a nessun filtro della ruota, <b>N.I.N.A. non dà errore</b>:
@@ -19250,8 +19313,11 @@ async function mandaANina(notte){
   const st=await ninaChiedi(dalPonte?VIA_BERSAGLI_DEL_PONTE:'/sequence/state');
   const bersagli=!st.ok?[]:dalPonte?(Array.isArray(st.dato)?st.dato:[]).map(b=>({indice:+b.indice,nome:String(b.nome||''),
     stato:b.stato||null,coordinate:[]})):bersagliNina(st.dato);
+  /* la voce di partenza: l'ultima delle due «come sequenza nuova», se il contorno c'e' ancora; di serie la standard */
+  const contorno=!dalPonte?contornoInUso():null;
+  const doveIniziale=(()=>{ try{ return contorno&&localStorage.getItem(DOVE_KEY)==='contorno'?'contorno':'nuova'; }catch(e){ return 'nuova'; } })();
   NINAINVIO={root,modello,dalPonte,notte:nt.n,nome:(t.names&&t.names[0])||t.id,bersaglio:modello.bersaglio,versione:v.dato,
-    bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:'nuova'};
+    bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:doveIniziale};
 
   const riga=(k,a,b)=>`<div class="cfr"><div class="cfr-k">${k}</div>
     <div>${esc(a)}</div><div class="muted">${esc(b)}</div></div>`;
@@ -19298,7 +19364,9 @@ async function mandaANina(notte){
   const fermo=b=>b.stato==='RUNNING'?'in ripresa adesso: si cambia a sequenza ferma'
     :(b.indice>0&&!oltre)?'dopo il primo serve l’Advanced API '+NINA_API_OLTRE_IL_PRIMO:null;
   const dove=`<label class="f ninadove"><span>dove</span><select id="ninaDove" onchange="ninaDove(this.value)">
-      <option value="nuova">come sequenza nuova</option>${
+      <option value="nuova"${doveIniziale==='nuova'?' selected':''}>come sequenza nuova</option>${dalPonte?'':
+      `<option value="contorno"${contorno?'':' disabled'}${doveIniziale==='contorno'?' selected':''}>come sequenza nuova, con il tuo Startup e il tuo End${
+        contorno?'':' — scegli prima una tua sequenza in «Il tuo setup per N.I.N.A.»'}</option>`}${
       bersagli.map(b=>{ const no=fermo(b), s=STATO_DEL_BERSAGLIO[b.stato];
         return `<option value="${b.indice}"${no?' disabled':''}>al posto di «${esc(b.nome)}»${
           no?' — '+esc(no):s?' — '+s:''}</option>`; }).join('')}
@@ -19312,10 +19380,10 @@ async function mandaANina(notte){
     <div class="row" style="gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap">
       ${scelta}${dove}
       <button class="fn hero-go confbt" id="ninaManda"
-        onclick="ninaInviaDavvero()">${testoDelTasto('nuova',diff.length)}</button>
+        onclick="ninaInviaDavvero()">${testoDelTasto(doveIniziale,diff.length)}</button>
       <button class="fn confbt" onclick="ninaAnnulla()">Annulla</button>
     </div>
-    <div class="small muted" id="ninaDoveNota" style="margin-top:8px">${notaDove('nuova')}</div>
+    <div class="small muted" id="ninaDoveNota" style="margin-top:8px">${notaDove(doveIniziale)}</div>
   </div>`);
 }
 
@@ -19379,7 +19447,7 @@ function cambiDiFiltroDetti(m,nt,manuale){
 }
 /* Lo stato del bersaglio in N.I.N.A., quando non e' quello di uno da fare: N.I.N.A. esegue solo cio' che e' da fare. */
 const STATO_DEL_BERSAGLIO={FINISHED:'già eseguito',SKIPPED:'saltato',FAILED:'non riuscito',DISABLED:'disattivato'};
-const testoDelTasto=(dove,differenze)=>dove==='nuova'?(differenze?'Invia comunque':'Invia a N.I.N.A.')
+const testoDelTasto=(dove,differenze)=>dove==='nuova'||dove==='contorno'?(differenze?'Invia comunque':'Invia a N.I.N.A.')
   :(differenze?'Aggiorna comunque':'Aggiorna il bersaglio');
 /* Le coordinate come le scrive N.I.N.A.: ore, primi e secondi per l'AR, gradi per la declinazione. */
 const coordinateDette=(ra,dec)=>{
@@ -19402,9 +19470,13 @@ function notaDove(valore){
       `dove adesso c'è «${esc(b.nome)}»: il vecchio esce solo dopo che il nuovo è entrato. Niente viene avviato.`+
       (s?`<br>⚠ In N.I.N.A. «${esc(b.nome)}» risulta ${s}.`:'');
   }
-  if(valore==='nuova') return 'La sequenza viene <b>caricata</b> al posto di quella aperta nel Sequenziatore, non avviata. '+
-    'Ad avviarla sei tu, in N.I.N.A.'+(inv.letti?'<br>I bersagli già nel Sequenziatore non si leggono ('+esc(inv.letti)+
+  if(valore==='nuova') return 'La sequenza viene <b>caricata</b> al posto di quella aperta nel Sequenziatore, non avviata, '+
+    'con lo Startup e l’End standard di AIS. Ad avviarla sei tu, in N.I.N.A.'+(inv.letti?'<br>I bersagli già nel Sequenziatore non si leggono ('+esc(inv.letti)+
     '): nel menu non ci sono.':'');
+  if(valore==='contorno'){ const c=contornoInUso();
+    return 'La sequenza viene <b>caricata</b> al posto di quella aperta nel Sequenziatore, non avviata: i bersagli sono quelli di '+
+      'AIS, con pose, filtri e orari di questa prescrizione; <b>lo Startup, l’End e gli inneschi globali sono i tuoi</b>, presi da «'+
+      esc((c&&c.nomeFile)||'la tua sequenza')+'». Il tasto «Esporta le sequenze» resta quello standard.'; }
   const b=inv.bersagli[+valore], x=inv.bersaglio;
   if(!b||!x) return '';
   const righe=[`Del bersaglio «${esc(b.nome)}» cambiano solo nome, coordinate e angolo: diventa <b>«${esc(x.nome)}»</b>, `+
@@ -19421,7 +19493,9 @@ function notaDove(valore){
 }
 function ninaDove(valore){
   const inv=NINAINVIO; if(!inv) return;
-  inv.dove=valore==='nuova'?'nuova':String(+valore);
+  inv.dove=valore==='nuova'||valore==='contorno'?valore:String(+valore);
+  /* si ricorda solo la scelta fra le due «come sequenza nuova»: un bersaglio da sostituire e' di quella volta */
+  if(valore==='nuova'||valore==='contorno'){ try{ localStorage.setItem(DOVE_KEY,valore); }catch(e){} }
   const n=document.getElementById('ninaDoveNota'); if(n) n.innerHTML=notaDove(inv.dove);
   const t=document.getElementById('ninaManda'); if(t) t.textContent=testoDelTasto(inv.dove,inv.differenze);
 }
@@ -19532,12 +19606,19 @@ async function consegnaDalPonte(){
 async function ninaInviaDavvero(){
   if(!NINAINVIO) return;
   if(NINAINVIO.dalPonte) return consegnaDalPonte();
-  if(NINAINVIO.dove!=='nuova') return ninaAggiornaBersaglio(+NINAINVIO.dove);
+  if(NINAINVIO.dove!=='nuova'&&NINAINVIO.dove!=='contorno') return ninaAggiornaBersaglio(+NINAINVIO.dove);
   const box=document.getElementById('ninaInvio');
   const dillo=h=>{ if(box) box.innerHTML=h; };
+  const chiudi='<div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div>';
+  /* col tuo contorno: i bersagli di AIS dentro il tuo Startup, il tuo End e i tuoi inneschi globali (`conIlTuoContorno`) */
+  const c=NINAINVIO.dove==='contorno'?contornoInUso():null;
+  const root=c?MOTORE.esporta.conIlTuoContorno(NINAINVIO.root,c):NINAINVIO.root;
+  const k=root?MOTORE.esporta.ninaCheck(root):null;
+  if(!root||!k.ok){ dillo(`<div class="warnbox"><b>Non ho mandato niente.</b> ${!root?'Non trovo il tuo Startup e il tuo End: scegli di nuovo la tua sequenza in «Il tuo setup per N.I.N.A.».'
+    :'Il file con il tuo Startup e il tuo End non è coerente ('+(k.dup.length?'id duplicati':'riferimenti pendenti')+'). Segnalalo.'}${chiudi}</div>`); return; }
   dillo('<span class="muted small">sto mandando…</span>');
   const r=await ninaChiedi('/sequence/load',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify(NINAINVIO.root)});
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(root)});
   if(!r.ok){
     dillo(`<div class="warnbox"><b>N.I.N.A. ha rifiutato.</b> ${esc(r.motivo)}
       <div class="small muted" style="margin-top:6px">Se dice che una sequenza è già in
@@ -19545,13 +19626,67 @@ async function ninaInviaDavvero(){
       <div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div></div>`);
     return;
   }
-  dillo(`<div class="okbox"><b>Caricata in N.I.N.A.</b>
+  /* col contorno si rilegge: i nomi dei tuoi contenitori di Startup e di End devono essere nella sequenza aperta */
+  let riletto='';
+  if(c){ const st=await ninaChiedi('/sequence/state'), testo=st.ok?JSON.stringify(st.dato):'';
+    const nomi=c.sintesi.start.concat(c.sintesi.fine).map(x=>x.nome), visti=nomi.filter(x=>testo.includes(x));
+    riletto=!st.ok?' Non riesco a rileggere la sequenza per controllare Startup ed End: guardali in N.I.N.A.'
+      :visti.length===nomi.length?' Riletto: Startup ed End sono i tuoi, da «'+esc(c.nomeFile||'la tua sequenza')+'».'
+      :' ⚠ Rileggendo non ritrovo '+nomi.filter(x=>!visti.includes(x)).map(x=>'«'+esc(x)+'»').join(', ')+': controlla Startup ed End in N.I.N.A.'; }
+  dillo(`<div class="okbox"><b>Caricata in N.I.N.A.${c?', con il tuo Startup e il tuo End':''}</b>
     <span class="muted">— ${esc(String(r.dato||''))}</span>
     <div class="small muted" style="margin-top:6px">${esc(NINAINVIO.nome)}, notte ${NINAINVIO.notte}.
-      La trovi nel Sequenziatore Avanzato. <b>Non è stata avviata</b>: l'avvio resta tuo.</div>
+      La trovi nel Sequenziatore Avanzato. <b>Non è stata avviata</b>: l'avvio resta tuo.${riletto}</div>
     <div style="margin-top:8px"><button class="chip" onclick="ninaAnnulla()">Chiudi</button></div></div>`);
   NINAINVIO=null;
 }
+/*  IL TUO STARTUP E IL TUO END (27 ottobre 2026). Il contorno preso da una sequenza di chi riprende (`contornoDaSequenza`)
+    sta nella sua postazione, perche' Startup ed End dipendono da quello che il banco ha; senza postazioni, in una chiave a
+    se'. Non sta fra le CHIAVI_DELLA_POSTAZIONE: sono le stesse del Ponte, che una chiave sconosciuta la rifiuta. La copia
+    dell'Archivio lo porta con le postazioni. Il menu «dove» ricorda l'ultima delle due voci «come sequenza nuova»; quella
+    di serie resta la standard. */
+const CONTORNO_KEY='ap_contorno_nina', DOVE_KEY='ap_nina_dove';
+function contornoInUso(){
+  const pz=leggiPostazioni(), voce=pz&&pz.uso&&pz.voci?pz.voci[pz.uso]:null;
+  if(voce&&voce.contorno) return voce.contorno;
+  try{ return JSON.parse(localStorage.getItem(CONTORNO_KEY)||'null'); }catch(e){ return null; }
+}
+function salvaContorno(c){
+  const pz=leggiPostazioni(), voce=pz&&pz.uso&&pz.voci?pz.voci[pz.uso]:null;
+  if(voce){ if(c) voce.contorno=c; else delete voce.contorno; scriviPostazioni(pz); }
+  try{ if(c&&!voce) localStorage.setItem(CONTORNO_KEY,JSON.stringify(c)); else localStorage.removeItem(CONTORNO_KEY); }catch(e){}
+}
+function contornoHtml(){
+  const c=contornoInUso(), pz=leggiPostazioni(), voce=pz&&pz.uso&&pz.voci?pz.voci[pz.uso]:null;
+  const scegli=`<button class="chip" onclick="document.getElementById('ninaContornoIn').click()">${c?'Scegli un’altra sequenza':'Scegli una tua sequenza'}</button>`;
+  const testa='<b>Il tuo Startup e il tuo End.</b> ';
+  if(!c) return testa+'Nel menu «dove» di «Manda a N.I.N.A.» la voce «con il tuo Startup e il tuo End» mette i bersagli di AIS '+
+    'dentro lo Startup, l’End e gli inneschi globali che hai configurato tu in N.I.N.A., al posto di quelli standard. Per usarla '+
+    'scegli una tua sequenza salvata dal Sequenziatore Avanzato: AIS ne prende solo quelle tre parti, così come sono.'+
+    `<div style="margin-top:6px">${scegli}</div>`;
+  const v=xs=>xs.length?xs.map(x=>'«'+esc(x.nome)+'»'+(x.istruzioni?' con '+x.istruzioni+(x.istruzioni===1?' istruzione':' istruzioni'):'')).join(', '):'vuoto';
+  return testa+`Presi da <b>«${esc(c.nomeFile||'la tua sequenza')}»</b>${c.salvato?', il '+esc(giornoDetto(c.salvato)):''}${
+    voce?', per la postazione «'+esc(voce.nome)+'»':''}: Startup ${v(c.sintesi.start)}; End ${v(c.sintesi.fine)}; inneschi globali ${
+    c.sintesi.inneschi.length?esc(c.sintesi.inneschi.join(', ')):'nessuno'}. Li usa la voce «con il tuo Startup e il tuo End» del menu «dove».`+
+    `<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${scegli}<button class="chip" onclick="togliContorno()">Togli</button></div>`;
+}
+function ridisegnaContorno(){
+  const b=document.getElementById('ninaContornoBox'); if(b) b.innerHTML=contornoHtml();
+  if(NINAINVIO&&!NINAINVIO.dalPonte) mandaANina(NINAINVIO.notte);
+}
+function caricaContorno(input){
+  const f=input&&input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const c=MOTORE.esporta.contornoDaSequenza(r.result,f.name);
+    input.value='';
+    if(c.errore){ toast('«'+f.name+'» '+c.errore+'. Scegli una sequenza intera, salvata dal Sequenziatore Avanzato.'); return; }
+    salvaContorno(Object.assign(c,{salvato:new Date().toISOString()})); ridisegnaContorno();
+    toast('Startup, End e inneschi globali presi da «'+f.name+'».');
+  };
+  r.readAsText(f);
+}
+function togliContorno(){ salvaContorno(null); try{ localStorage.removeItem(DOVE_KEY); }catch(e){} ridisegnaContorno(); }
 function nomeDallaRuota(canale,nome,notte){ if(!nome) return; setFilterName(canale,nome); mandaANina(notte); }
 function ninaAnnulla(){ NINAINVIO=null;
   const box=document.getElementById('ninaInvio'); if(box) box.innerHTML=''; }
@@ -20183,14 +20318,43 @@ function exportState(){
   a.href=URL.createObjectURL(blob); a.download='progetti.json'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
+/* L'ESITO DELLA COPIA, nell'Archivio e non in una finestra che ferma la pagina (27 ottobre 2026): resta finche' non lo
+   si chiude. Una finestra bloccante teneva ferma la pagina, e con lei le guardie che caricano una copia senza aspettarla. */
+function esitoDellaCopia(classe,testa,righe){
+  const b=$('copiaEsito'); if(!b) return;
+  b.innerHTML=`<div class="${classe}" style="margin-bottom:12px">${testa}${righe.map(x=>'<div class="small" style="margin-top:4px">'+esc(x)+'</div>').join('')}
+    <div style="margin-top:8px"><button class="chip" onclick="document.getElementById('copiaEsito').innerHTML=''">Chiudi</button></div></div>`;
+  try{ b.scrollIntoView({block:'nearest'}); }catch(e){}
+}
 $('impIn').addEventListener('change',ev=>{
   const f=ev.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{
     try{
       const j=JSON.parse(r.result);
-      STATE=j.projects||j; saveState();
-      if(Array.isArray(j.sites)){ SITES=j.sites; persistSites(); renderSiteSelect(); }
+      /*  LA COPIA SI UNISCE, NON SOSTITUISCE (27 ottobre 2026, Alessandro). Prima le ore gia' riprese, i siti e gli
+          oggetti aggiunti a mano del file prendevano il posto di quelli di questo PC: col giro fra il PC di casa e quello
+          di N.I.N.A. si perdevano le ore lette il giorno prima. Adesso, oggetto per oggetto, delle ore gia' riprese vince
+          la piu' recente (`updated`): una con la data vince su una senza, e senza date tutte e due restano quelle di qui.
+          I siti e gli oggetti aggiunti a mano del file si aggiungono; a parita' di id restano quelli di qui. Alla fine si
+          dice che cosa e' entrato e che cosa e' rimasto. Un file di prima della versione 1 e' la mappa delle ore da sola.
+          Sorvegliato da tools/gate-copia.js. */
+      const detto=[], nomeDi=id=>{ const t=TG.targets.concat(UTGT).find(x=>x.id===id); return t?t.names[0]:id; };
+      const elenco=v=>v.slice(0,4).map(nomeDi).join(', ')+(v.length>4?' e altri '+(v.length-4):'');
+      const ore=j.projects||(j.schema_version?{}:j), presi=[], tenuti=[];
+      for(const [id,x] of Object.entries(ore&&typeof ore==='object'?ore:{})){
+        if(!x||typeof x!=='object'||!x.hours) continue;
+        const qui=STATE[id], tf=Date.parse(x.updated)||null, tq=qui?(Date.parse(qui.updated)||null):null;
+        if(!qui||(tf!=null&&(tq==null||tf>tq))){ STATE[id]=x; presi.push(id); } else tenuti.push(id);
+      }
+      saveState();
+      if(presi.length) detto.push('Ore già riprese prese dalla copia: '+elenco(presi)+'.');
+      if(tenuti.length) detto.push('Ore già riprese rimaste quelle di questo PC, più recenti: '+elenco(tenuti)+'.');
+      if(Array.isArray(j.sites)){
+        const nuovi=j.sites.filter(s=>s&&s.id&&!SITES.some(x=>x.id===s.id)).map(s=>({...s,sqm_manual:s.sqm_manual===true}));
+        if(nuovi.length){ SITES=SITES.concat(nuovi); persistSites(); renderSiteSelect();
+          detto.push('Siti aggiunti: '+nuovi.map(s=>s.name).join(', ')+'.'); }
+      }
       if(j.gear){
         for(const k of Object.keys(GEAR_KEY))
           (j.gear[k]||[]).forEach(item=>{
@@ -20199,7 +20363,11 @@ $('impIn').addEventListener('change',ev=>{
           });
         persistGear(); renderGearSelects();
       }
-      if(Array.isArray(j.targets)){ UTGT=accettaSchedeUtente(j.targets,'nel file importato'); persistTargets(); }
+      if(Array.isArray(j.targets)){
+        const nuovi=j.targets.filter(t=>t&&t.id&&!UTGT.concat(UTGT_SCARTATE).some(x=>x&&x.id===t.id));
+        if(nuovi.length){ UTGT=accettaSchedeUtente(UTGT.concat(UTGT_SCARTATE,nuovi),'nella copia'); persistTargets();
+          detto.push((nuovi.length===1?'Un oggetto tuo aggiunto: ':nuovi.length+' oggetti tuoi aggiunti: ')+nuovi.map(t=>(t.names&&t.names[0])||t.id).join(', ')+'.'); }
+      }
       if(j.reducers){ applyReducerMap(j.reducers); persistReducers(); fillReducers($('tel').value); }
       /* le postazioni del file si aggiungono; quella in uso qui resta com'e' */
       const jp=j.postazioni;
@@ -20216,11 +20384,12 @@ $('impIn').addEventListener('change',ev=>{
         for(const p of j.progetti){ if(!p||!p.id||!p.oggetto||!p.contesto) continue;
           const i=v.findIndex(x=>x.id===p.id); if(i>=0) v[i]=p; else v.push(p); n++; }
         scriviProgetti(v);
-        if(n) alert((n===1?'Importato un progetto':'Importati '+n+' progetti')+'. Le ore e le pose di ogni progetto valgono '+
+        if(n) detto.unshift((n===1?'Un progetto dalla copia':n+' progetti dalla copia')+'. Le ore e le pose di ogni progetto valgono '+
           'per il contesto in cui è stato salvato — banco, sito, date, Luna —: aprendolo, AIS te lo dice e confronta allora e adesso.');
       }
+      esitoDellaCopia('okbox','<b>Copia caricata, unita a quello che c’è qui: niente è stato tolto.</b>',detto.length?detto:['Non c’era niente di nuovo rispetto a quello che c’è qui.']);
       renderState(); refresh();
-    }catch(e){ alert('File non valido: '+e.message) }
+    }catch(e){ esitoDellaCopia('warnbox','<b>Questo file non è una copia di AIS.</b>',['Non si legge: '+e.message+'. Niente è cambiato.']); }
   };
   r.readAsText(f);
 });
