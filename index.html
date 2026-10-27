@@ -1036,6 +1036,8 @@ td.archcell{max-width:120px}
 .bc-sotto-titolo{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2);font-weight:600;
   margin:var(--s4) 0 var(--s2)}
 .bc-legenda{margin-top:var(--s3)}
+/* il nome dell'oggetto dei light, scritto come in Strategia (27 ottobre 2026) */
+.light-oggetto{min-width:220px;flex:1 1 220px;max-width:360px}
 @media(prefers-reduced-motion:reduce){.bestcard{transition:none}.bestcard:hover{transform:none}}
 @media(max-width:720px){
   .hero-input input{font-size:18px;padding:14px 0}
@@ -20412,7 +20414,8 @@ $('impIn').addEventListener('change',ev=>{
           I siti e gli oggetti aggiunti a mano del file si aggiungono; a parita' di id restano quelli di qui. Alla fine si
           dice che cosa e' entrato e che cosa e' rimasto. Un file di prima della versione 1 e' la mappa delle ore da sola.
           Sorvegliato da tools/gate-copia.js. */
-      const detto=[], nomeDi=id=>{ const t=TG.targets.concat(UTGT).find(x=>x.id===id); return t?t.names[0]:id; };
+      /* il nome anche per gli oggetti del catalogo: e' salvato con le ore (27 ottobre 2026) */
+      const detto=[], nomeDi=nomeDellOggetto;
       const elenco=v=>v.slice(0,4).map(nomeDi).join(', ')+(v.length>4?' e altri '+(v.length-4):'');
       const ore=j.projects||(j.schema_version?{}:j), presi=[], tenuti=[];
       for(const [id,x] of Object.entries(ore&&typeof ore==='object'?ore:{})){
@@ -20883,7 +20886,8 @@ async function leggiLight(files){
   await Promise.all(Array.from({length:Math.min(8,voci.length)},lavora));
   r.calibrazione=r.cal.length;
   for(const o of Object.values(r.oggetti)){
-    const t=bersaglioDellaDomanda(o.nome,UTGT); o.id=t&&t.scheda?t.scheda.id:null;
+    /* l'oggetto come lo trova la prescrizione: la scheda, un oggetto tuo o il catalogo (27 ottobre 2026) */
+    const b=bersaglioDelNome(o.nome); o.id=b&&b.id?b.id:null; o.trovato=b&&b.id?b.nome:null; o.senzaClasse=b&&b.senzaClasse?b.senzaClasse:null;
     o.date=[...new Set(o.date)].sort();
     o.inquadratura=inquadraturaDeiLight(o.inq); delete o.inq;
   }
@@ -21031,9 +21035,13 @@ function mostraLight(r){
   if(!ogg.length){ box.innerHTML=chiuse+(chiuse&&!r.letti&&!r.nonLetti.length&&!r.altri?'':(r.cal.length?`<b>${r.letti} intestazioni lette</b>`+calibrazioneDetta(r):
     `<span class="pill p-bad">nessuna posa light contata</span> ${r.letti} intestazioni lette.`)+
     (fuori.length?'<br>Non contati: '+esc(fuori.join(' · '))+'.':'')+(senza.length?'<br>Filtri che non so a quale canale vanno: '+senza.join(' · ')+'.':'')); return; }
-  const scelta=id=>{ const tutti=TG.targets.concat(UTGT); const opz=tutti.map(t=>`<option value="${esc(t.id)}"${t.id===id?' selected':''}>${esc(t.names[0])}</option>`);
-    if(!id) opz.unshift('<option value="" selected>scegli l\'oggetto…</option>'); return opz.join(''); };
-  box.innerHTML=chiuse+`<b>${r.letti} intestazioni lette</b>`+ogg.map((o,i)=>{ const prima=o.id&&STATE[o.id]?STATE[o.id].hours:null;
+  /* l'oggetto si sceglie scrivendone il nome, come in Strategia, con lo stesso elenco che si completa da tutto il catalogo:
+     il menu offriva solo le schede (27 ottobre 2026). Il campo parte dal nome trovato, o da quello scritto nei light. */
+  const campo=(o,i)=>`<input id="lightA${i}" class="light-oggetto" list="dlObjects" autocomplete="off" value="${esc(o.trovato||o.nome)}"
+      data-id="${esc(o.id||'')}" aria-label="L’oggetto di questi light" placeholder="il nome dell’oggetto, come in Strategia"
+      data-tip="L’oggetto a cui vanno queste ore: si scrive come in Strategia, e vale per le schede, i tuoi oggetti e tutto il catalogo."
+      oninput="fillObjectList(this.value);oggettoDeiLight(${i})">`;
+  box.innerHTML=chiuse+`<b>${r.letti} intestazioni lette</b>`+ogg.map((o,i)=>{
     return `<div class="progetto" style="margin-top:10px"><b>${esc(o.nome)}</b>${o.date.length?` <span class="small muted">· ${esc(o.date[0])}${o.date.length>1?' → '+esc(o.date[o.date.length-1]):''}</span>`:''}
       <div class="small">${oreDette(o.ore)}</div>
       <div class="small muted">${Object.entries(o.pose).map(([k,n])=>{ const [f,s]=k.split('|'); return esc(f)+' '+n+'×'+s+' s'; }).join(' · ')}</div>
@@ -21041,12 +21049,8 @@ function mostraLight(r){
         o.inquadratura.rot!=null?' · rotazione '+fmt(o.inquadratura.rot,1)+'°':' · rotazione non detta'}${
         o.inquadratura.fonte==='telescopio'?' (dal puntamento del telescopio)':''}${
         o.inquadratura.diverse?' · fra i light '+(o.inquadratura.diverse===1?'c’è un’altra inquadratura':'ci sono altre '+o.inquadratura.diverse+' inquadrature')+': vale la più ripresa':''}</div>`:''}
-      ${prima?`<div class="small muted">adesso le ore già riprese sono: ${oreDette(prima)}</div>`:''}
-      ${prima?'<div class="small muted">«Aggiungi» unisce notte per notte: una notte già letta prende il posto di se stessa e non conta due volte. «Sostituisci» vale per una cartella con tutte le notti.</div>':''}
-      <div class="row"><select id="lightA${i}">${scelta(o.id)}</select>${prima
-        ?`<button class="primary" onclick="usaLight(${i},'aggiungi')">Aggiungi le notti nuove</button>
-          <button class="chip" onclick="usaLight(${i},'sostituisci')">Sostituisci</button>`
-        :`<button class="primary" onclick="usaLight(${i},'sostituisci')">Usa come ore già riprese</button>`}</div></div>`; }).join('')+
+      <div class="row" style="margin-top:6px">${campo(o,i)}</div>
+      <div id="lightT${i}">${tastiDeiLight(i,o.id?{id:o.id,nome:o.trovato}:o.senzaClasse?{senzaClasse:o.senzaClasse}:null,o.nome)}</div></div>`; }).join('')+
     calibrazioneDetta(r)+
     (fuori.length?`<p class="small muted" style="margin-top:8px">Non contati: ${esc(fuori.join(' · '))}.</p>`:'')+
     (senza.length?`<p class="small p-warn">Filtri che non so a quale canale vanno: ${senza.join(' · ')}. Scrivi il loro nome nei nomi della ruota per N.I.N.A., o leggi il banco, e rileggi.</p>`:'');
@@ -21061,7 +21065,33 @@ function mostraLight(r){
     finche' la pagina e' aperta, e si rileggono dai light quando si vuole. Sorvegliato da tools/gate-ore-del-progetto.js. */
 const ORE_TOLTE={}, LIGHT_PER={};
 let LIGHT_DEST=null;
-const nomeDellOggetto=id=>{ const t=TG.targets.concat(UTGT).find(x=>x.id===id); return t?t.names[0]:id; };
+/*  L'OGGETTO DEI LIGHT E' QUELLO DELLA PRESCRIZIONE (27 ottobre 2026, Alessandro: letti i light di oggetti ripresi in
+    passato, «non si riesce a trovare il corrispettivo nome nel menù a tendina», e la mancata associazione blocca il
+    salvataggio). Misurato nella pagina, su 4ff75b0: il menu dei light offriva le 13 schede e gli oggetti tuoi, e il nome
+    letto in OBJECT si riconosceva solo se era una scheda; M 57 e NGC 7009 la prescrizione li trova nel catalogo
+    (`cat_m57`, `cat_ngc-7009`) e legge le loro ore sotto quell'id, ma nessuno poteva scriverle li'.
+    Adesso il nome si risolve come lo risolve la prescrizione — la scheda, un oggetto tuo, il catalogo, con
+    `bersaglioDellaDomanda` e `synthTarget` — e le ore si salvano sotto l'id del bersaglio che la prescrizione costruira',
+    col nome accanto, perche' un id del catalogo non e' un nome da mostrare. Un oggetto del catalogo senza classe non si
+    prescrive, e le sue ore non avrebbero dove andare: lo si dice. Sorvegliato da tools/gate-oggetto-dei-light.js. */
+function bersaglioDelNome(nome){
+  const r=String(nome||'').trim()?bersaglioDellaDomanda(String(nome).trim(),UTGT):null;
+  if(r&&r.scheda) return {id:r.scheda.id, nome:r.scheda.names[0], t:r.scheda};
+  const o=r&&r.oggetto;
+  if(o&&o.archetype){ const t=MOTORE.scelta.synthTarget(o); return {id:t.id, nome:t.names[0], t}; }
+  return o?{senzaClasse:o.name||String(nome)}:null;
+}
+/*  il nome di un id: la scheda o l'oggetto tuo; poi il nome salvato con le ore o col progetto; poi la lista di stanotte */
+const nomeDellOggetto=id=>{ const t=TG.targets.concat(UTGT).find(x=>x.id===id); if(t) return t.names[0];
+  const s=STATE[id]||ORE_TOLTE[id]; if(s&&s.nome) return s.nome;
+  const p=leggiProgetti().find(x=>x.oggetto&&x.oggetto.id===id); if(p&&p.oggetto.nome) return p.oggetto.nome;
+  const e=(EVAL||[]).find(x=>x.tg.id===id); return e?e.tg.names[0]:id; };
+/*  il bersaglio di un id, per allineare l'inquadratura ai light: dove c'e', o rifatto dal suo nome */
+function bersaglioDaId(id){
+  const t=TG.targets.concat(UTGT).find(x=>x.id===id)||((EVAL||[]).find(x=>x.tg.id===id)||{}).tg;
+  if(t) return t;
+  const b=bersaglioDelNome(nomeDellOggetto(id)); return b&&b.id===id?b.t:null;
+}
 const voceDaiLight=o=>({hours:Object.assign({},o.ore),
   notti:Object.keys(o.perNotte||{}).sort().map(n=>({notte:n,ore:Object.assign({},o.perNotte[n])})),
   inquadratura:o.inquadratura||null});
@@ -21076,18 +21106,39 @@ function unisciPerNotte(prima,nuova){
   const hours=somma(notti); for(const [k,x] of Object.entries(resto)) hours[k]=(hours[k]||0)+x;
   return {hours,notti,inquadratura:nuova.inquadratura||prima.inquadratura||null};
 }
-function applicaLight(id,o,modo){
-  const t=TG.targets.concat(UTGT).find(x=>x.id===id), prima=STATE[id], unisci=modo==='aggiungi'&&!!prima;
-  STATE[id]=Object.assign(unisci?unisciPerNotte(prima,voceDaiLight(o)):voceDaiLight(o),{updated:new Date().toISOString(),fonte:'light'});
+function applicaLight(id,o,modo,b){
+  const t=(b&&b.t)||bersaglioDaId(id), nome=(b&&b.nome)||nomeDellOggetto(id), prima=STATE[id], unisci=modo==='aggiungi'&&!!prima;
+  STATE[id]=Object.assign(unisci?unisciPerNotte(prima,voceDaiLight(o)):voceDaiLight(o),{updated:new Date().toISOString(),fonte:'light',nome});
   delete ORE_TOLTE[id];
   saveState(); if(t) allineaAiLight(t); renderState(); refresh();
-  toast(`Le ore già riprese di ${t?t.names[0]:id} ${unisci?'hanno adesso anche le notti nuove dei light':'sono adesso quelle dei light'}: `+
+  toast(`Le ore già riprese di ${nome} ${unisci?'hanno adesso anche le notti nuove dei light':'sono adesso quelle dei light'}: `+
     `${Object.entries(STATE[id].hours).map(([k,v])=>k+' '+hm(v)).join(' · ')}.`+promemoriaCopia());
+}
+/*  il campo dell'oggetto dei light: il nome scritto si risolve come in Strategia, e sotto si dice che cosa si e' trovato;
+    i tasti dipendono dall'oggetto trovato — con ore gia' presenti «Aggiungi» e «Sostituisci» —, e senza oggetto non salvano */
+function tastiDeiLight(i,b,scritto){
+  const id=b&&b.id, prima=id&&STATE[id]?STATE[id].hours:null;
+  const esito=b&&b.id?`<span class="p-ok">l’oggetto è <b>${esc(b.nome)}</b></span>`
+    : b&&b.senzaClasse?`<span class="p-warn">«${esc(b.senzaClasse)}» nel catalogo non ha una classe: non si prescrive, e le ore non avrebbero dove andare. Scrivi il nome dell’oggetto esteso che hai ripreso.</span>`
+    : `<span class="p-warn">Non trovo «${esc(scritto||'')}» fra le schede, i tuoi oggetti e il catalogo: scrivi il nome come in Strategia — M, NGC, IC, Sh2, Abell… —, o aggiungilo fra i tuoi oggetti.</span>`;
+  return `<div class="small" style="margin-top:4px">${esito}</div>
+    ${prima?`<div class="small muted">adesso le ore già riprese sono: ${oreDette(prima)}</div>
+      <div class="small muted">«Aggiungi» unisce notte per notte: una notte già letta prende il posto di se stessa e non conta due volte. «Sostituisci» vale per una cartella con tutte le notti.</div>`:''}
+    <div class="row" style="margin-top:6px">${prima
+      ?`<button class="primary" onclick="usaLight(${i},'aggiungi')">Aggiungi le notti nuove</button>
+        <button class="chip" onclick="usaLight(${i},'sostituisci')">Sostituisci</button>`
+      :`<button class="primary" onclick="usaLight(${i},'sostituisci')"${id?'':' disabled'}>Usa come ore già riprese</button>`}</div>`;
+}
+function oggettoDeiLight(i){
+  const c=$('lightA'+i), d=$('lightT'+i); if(!c||!d) return;
+  const b=bersaglioDelNome(c.value); c.dataset.id=b&&b.id?b.id:''; d.innerHTML=tastiDeiLight(i,b,c.value);
 }
 function usaLight(i,modo){
   const r=LIGHT_LETTI; if(!r) return;
-  const o=Object.values(r.oggetti)[i], id=($('lightA'+i)||{}).value; if(!o||!id) return;
-  applicaLight(id,o,modo||'sostituisci');
+  const o=Object.values(r.oggetti)[i], c=$('lightA'+i); if(!o||!c) return;
+  const b=bersaglioDelNome(c.value);
+  if(!b||!b.id){ oggettoDeiLight(i); return; }
+  applicaLight(b.id,o,modo||'sostituisci',b);
 }
 function eliminaOre(id){ if(!STATE[id]) return; ORE_TOLTE[id]=STATE[id]; delete STATE[id]; saveState(); renderState(); refresh(); }
 function rimettiOre(id){ if(!ORE_TOLTE[id]) return; STATE[id]=ORE_TOLTE[id]; delete ORE_TOLTE[id]; saveState(); renderState(); refresh(); }
