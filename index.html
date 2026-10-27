@@ -1680,6 +1680,7 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
             salvano in questo browser, su questo PC. Per portarli sul PC dove gira N.I.N.A., in un altro browser, o per non
             perderli se il browser si svuota, salvane una copia: il file <code>progetti.json</code> li contiene tutti.
             Caricando una copia AIS la unisce a quello che c’è qui, senza togliere niente.</div>
+          <div class="ch-sub" id="copiaStato" style="margin-top:6px"></div>
         </div>
         <div class="ch-act">
           <button class="fn fn-exp" onclick="exportState()" title="Scarica progetti.json con tutto quello che AIS ha salvato in questo browser">Salva una copia</button>
@@ -1700,6 +1701,9 @@ button.ordina .verso{display:inline-block;margin-left:4px;font-size:9px}
             dicono se la calibrazione c'è e che cosa manca. Un master light non si conta.</span>
           <input type="file" id="fileIn" webkitdirectory multiple hidden>
         </div>
+        <!-- i light di un oggetto solo, dalla scheda di un progetto o dall'elenco qui sotto: fuori dalla zona di rilascio,
+             che a un clic aprirebbe la sua -->
+        <input type="file" id="fileOggetto" webkitdirectory multiple hidden>
         <div id="scanOut" class="small" style="margin-top:12px"></div>
 
         <div class="subhead">Ore già riprese, per oggetto</div>
@@ -14002,6 +14006,8 @@ function start(){
   postazioniAllApertura();
   comeUnaApp();
   copiaPerSenzaRete();
+  /* la copia sempre aggiornata, se ce n'e' una: solo adesso, a dati caricati */
+  avviaCopiaAuto();
 }
 /* Il sito, o questa macchina per provarlo: solo li' la pagina diventa un'app e tiene la copia per quando manca la rete.
    Dal file sul disco no: lo standalone ha gia' tutto dentro, e i file accanto a lui non ci sono. */
@@ -20307,16 +20313,134 @@ function reducerMap(){
   });
   return out;
 }
-function exportState(){
+function payloadDellaCopia(){
   const gear={};
   for(const k of Object.keys(GEAR_KEY)) gear[k]=gearList(k).filter(x=>x.user);
-  const payload={schema_version:'1.3',updated:new Date().toISOString(),
+  return {schema_version:'1.3',updated:new Date().toISOString(),
     projects:STATE, sites:SITES, gear, targets:UTGT.concat(UTGT_SCARTATE), reducers:reducerMap(),
     postazioni:leggiPostazioni(), progetti:leggiProgetti()};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+}
+const testoDellaCopia=()=>JSON.stringify(payloadDellaCopia(),null,2);
+/* la data della copia cambia a ogni scrittura: per sapere se il contenuto e' cambiato si confronta senza */
+const senzaLaData=t=>String(t).replace(/"updated": "[^"]*",\n/,'');
+function exportState(){
+  const blob=new Blob([testoDellaCopia()],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='progetti.json'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  segnaCopia({auto:false});
+}
+
+/*  IL PROMEMORIA DELLA COPIA, E LA COPIA SEMPRE AGGIORNATA (27 ottobre 2026, Alessandro, punto 4). Tutto sta nella
+    memoria del browser, che puo' svuotarsi senza avviso; e il browser non lascia a una pagina scaricare un file da sola.
+    Due livelli. IL PROMEMORIA, per tutti: AIS ricorda quando ha dato l'ultima copia e com'erano allora progetti, ore gia'
+    riprese, siti, strumentazione, oggetti e postazioni (`improntaDellaCopia`), e l'Archivio dice quando e che cosa e'
+    cambiato da allora; dopo «Salva progetto» e dopo aver usato dei light lo ricorda in una riga. Sa quando ha dato il
+    file, non se lo si e' tenuto. LA COPIA SEMPRE AGGIORNATA, dove il browser lo permette (Edge e Chrome sul PC:
+    `showSaveFilePicker`): si sceglie un file una volta, e AIS lo riscrive quando il contenuto cambia — controlla ogni
+    15 secondi —; il file scelto si ricorda (IndexedDB), e a una nuova apertura il browser puo' chiedere di nuovo il
+    permesso: un clic su «Riprendi». Parte solo dopo `start`, quando i dati sono caricati: prima riscriverebbe il file con
+    una memoria vuota. Sorvegliato da tools/gate-promemoria-copia.js. */
+const ULTIMA_COPIA_KEY='ap_ultima_copia', COPIA_IDB='ais-copia';
+let COPIA_FILE=null, COPIA_SCRITTA=null, COPIA_STATO=null, COPIA_ERRORE='', COPIA_PARTITA=false;
+const ultimaCopia=()=>{ try{ return JSON.parse(localStorage.getItem(ULTIMA_COPIA_KEY)||'null'); }catch(e){ return null; } };
+function improntaDellaCopia(){
+  const pz=leggiPostazioni();
+  return {progetti:leggiProgetti().map(p=>[p.id,p.salvato,(p.oggetto&&p.oggetto.nome)||p.id]),
+    ore:Object.entries(STATE).map(([id,v])=>[id,(v&&v.updated)||JSON.stringify((v&&v.hours)||{})]),
+    siti:SITES.map(s=>s.id), oggetti:UTGT.map(t=>t.id),
+    strumenti:Object.keys(GEAR_KEY).flatMap(k=>gearList(k).filter(x=>x.user).map(x=>k+':'+x.id)),
+    postazioni:pz&&pz.voci?Object.keys(pz.voci):[]};
+}
+function segnaCopia(o){
+  try{ localStorage.setItem(ULTIMA_COPIA_KEY,JSON.stringify({quando:new Date().toISOString(),impronta:improntaDellaCopia(),
+    auto:!!(o&&o.auto),file:(o&&o.file)||null})); }catch(e){}
+  renderCopiaStato();
+}
+/* che cosa e' cambiato dall'ultima copia, detto; null senza copia */
+function cambiatoDallaCopia(){
+  const u=ultimaCopia(); if(!u||!u.impronta) return null;
+  const a=u.impronta, b=improntaDellaCopia(), out=[], breve=v=>v.slice(0,3).join(', ')+(v.length>3?' e altri '+(v.length-3):'');
+  const pa=new Map((a.progetti||[]).map(x=>[x[0],x]));
+  const nuovi=b.progetti.filter(x=>!pa.has(x[0])), agg=b.progetti.filter(x=>pa.has(x[0])&&pa.get(x[0])[1]!==x[1]);
+  const via=(a.progetti||[]).filter(x=>!b.progetti.some(y=>y[0]===x[0]));
+  if(nuovi.length) out.push(nuovi.length===1?'il progetto nuovo di '+nuovi[0][2]:nuovi.length+' progetti nuovi');
+  if(agg.length) out.push(agg.length===1?'il progetto di '+agg[0][2]+' aggiornato':agg.length+' progetti aggiornati');
+  if(via.length) out.push(via.length===1?'il progetto di '+via[0][2]+' eliminato':via.length+' progetti eliminati');
+  const oa=new Map(a.ore||[]), ob=new Map(b.ore);
+  const cambiate=b.ore.filter(([id,x])=>oa.get(id)!==x).map(x=>nomeDellOggetto(x[0]));
+  const tolte=(a.ore||[]).filter(([id])=>!ob.has(id)).map(x=>nomeDellOggetto(x[0]));
+  if(cambiate.length) out.push('le ore già riprese di '+breve(cambiate));
+  if(tolte.length) out.push('le ore già riprese di '+breve(tolte)+' eliminate');
+  const piu=(k,uno,tanti)=>{ const d=b[k].filter(x=>!(a[k]||[]).includes(x)).length; if(d) out.push(d===1?uno:d+' '+tanti); };
+  piu('siti','un sito nuovo','siti nuovi'); piu('oggetti','un oggetto tuo nuovo','oggetti tuoi nuovi');
+  piu('strumenti','uno strumento nuovo','strumenti nuovi'); piu('postazioni','una postazione nuova','postazioni nuove');
+  return out;
+}
+const quandoDetto=iso=>{ const d=new Date(iso); if(isNaN(d)) return '—';
+  const ora=d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}), g=Math.round((new Date(giornoCivile(new Date())+'T12:00:00')-new Date(giornoCivile(d)+'T12:00:00'))/864e5);
+  const s=giornoDetto(giornoCivile(d));
+  return g===0?'oggi alle '+ora:g===1?'ieri alle '+ora:(siElide(s.split(' ')[0])?'l’':'il ')+s+', '+g+' giorni fa'; };
+/* la riga dopo «Salva progetto» e dopo i light: vuota con la copia sempre aggiornata attiva, o se niente e' cambiato */
+function promemoriaCopia(){
+  if(COPIA_STATO==='attiva') return '';
+  const u=ultimaCopia(), c=cambiatoDallaCopia();
+  if(u&&c&&!c.length) return '';
+  return u?' Ultima copia: '+quandoDetto(u.quando)+'; salvane una nuova dall’Archivio.':' Non hai ancora una copia: salvala dall’Archivio, così non la perdi se il browser si svuota.';
+}
+function renderCopiaStato(){
+  const b=$('copiaStato'); if(!b) return;
+  const u=ultimaCopia(), c=cambiatoDallaCopia(), puo=typeof window.showSaveFilePicker==='function';
+  const nome=COPIA_FILE&&COPIA_FILE.name?'«'+esc(COPIA_FILE.name)+'»':'il file scelto';
+  let h;
+  if(COPIA_FILE&&COPIA_STATO==='attiva') h=`<span class="pill p-ok">copia sempre aggiornata</span> in ${nome}: AIS la riscrive quando qualcosa cambia${
+    u?' (ultima '+quandoDetto(u.quando)+')':''}. <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+  else if(COPIA_FILE&&COPIA_STATO==='permesso') h=`<span class="pill p-warn">copia in pausa</span> Il browser chiede di nuovo il permesso di scrivere in ${nome}.
+    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprendi</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+  else if(COPIA_FILE&&COPIA_STATO==='errore') h=`<span class="pill p-bad">copia non scritta</span> ${esc(COPIA_ERRORE)}.
+    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprova</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+  else{
+    h=!u?'<span class="pill p-warn">nessuna copia</span> Da questo browser non hai ancora salvato una copia.'
+      :`Ultima copia: ${quandoDetto(u.quando)}. `+(c&&c.length?`<span class="p-warn">Da allora: ${esc(c.join(', '))}.</span>`:'Da allora non è cambiato niente.');
+    if(puo) h+=` <button class="chip" onclick="scegliFileDellaCopia()" title="Scegli un file una volta: AIS lo riscrive a ogni cambiamento. In una cartella sincronizzata, come OneDrive, arriva anche sull’altro PC">Tieni una copia sempre aggiornata…</button>`;
+  }
+  b.innerHTML=h;
+}
+/* il file scelto si ricorda fra un'apertura e l'altra: IndexedDB tiene l'handle, localStorage no */
+function idbCopia(fare){ return new Promise((ok,ko)=>{ let r; try{ r=indexedDB.open(COPIA_IDB,1); }catch(e){ return ko(e); }
+  r.onupgradeneeded=()=>r.result.createObjectStore('file'); r.onerror=()=>ko(r.error);
+  r.onsuccess=()=>{ try{ fare(r.result,ok,ko); }catch(e){ ko(e); } }; }); }
+const idbScriviCopia=v=>idbCopia((db,ok,ko)=>{ const tx=db.transaction('file','readwrite'), s=tx.objectStore('file');
+  if(v) s.put(v,'copia'); else s.delete('copia'); tx.oncomplete=()=>ok(); tx.onerror=()=>ko(tx.error); });
+const idbLeggiCopia=()=>idbCopia((db,ok,ko)=>{ const q=db.transaction('file').objectStore('file').get('copia'); q.onsuccess=()=>ok(q.result||null); q.onerror=()=>ko(q.error); });
+async function scegliFileDellaCopia(){
+  if(typeof window.showSaveFilePicker!=='function') return;
+  let h=null;
+  try{ h=await window.showSaveFilePicker({suggestedName:'progetti.json',types:[{description:'Copia di AIS',accept:{'application/json':['.json']}}]}); }
+  catch(e){ return; }                                   // la finestra chiusa senza scegliere
+  COPIA_FILE=h; COPIA_SCRITTA=null;
+  try{ await idbScriviCopia(h); }catch(e){}
+  await aggiornaCopiaAuto(true);
+}
+async function aggiornaCopiaAuto(conClic){
+  const h=COPIA_FILE; if(!h||!COPIA_PARTITA) return;
+  try{
+    let p=typeof h.queryPermission==='function'?await h.queryPermission({mode:'readwrite'}):'granted';
+    if(p!=='granted'&&conClic&&typeof h.requestPermission==='function') p=await h.requestPermission({mode:'readwrite'});
+    if(p!=='granted'){ COPIA_STATO='permesso'; renderCopiaStato(); return; }
+    const t=testoDellaCopia(), chiave=senzaLaData(t);
+    if(chiave!==COPIA_SCRITTA){ const w=await h.createWritable(); await w.write(t); await w.close();
+      COPIA_SCRITTA=chiave; COPIA_STATO='attiva'; segnaCopia({auto:true,file:h.name||null}); return; }
+    COPIA_STATO='attiva'; renderCopiaStato();
+  }catch(e){ COPIA_STATO='errore'; COPIA_ERRORE=String((e&&e.message)||e); renderCopiaStato(); }
+}
+async function smettiCopiaAuto(){ COPIA_FILE=null; COPIA_STATO=null; COPIA_SCRITTA=null; try{ await idbScriviCopia(null); }catch(e){} renderCopiaStato(); }
+/* chiamata alla fine di `start`, a dati caricati */
+async function avviaCopiaAuto(){
+  COPIA_PARTITA=true;
+  try{ const h=await idbLeggiCopia(); if(h){ COPIA_FILE=h; await aggiornaCopiaAuto(false); } }catch(e){}
+  renderCopiaStato();
+  setInterval(()=>{ if(COPIA_FILE&&COPIA_STATO!=='permesso') aggiornaCopiaAuto(false); else renderCopiaStato(); },15000);
 }
 /* L'ESITO DELLA COPIA, nell'Archivio e non in una finestra che ferma la pagina (27 ottobre 2026): resta finche' non lo
    si chiude. Una finestra bloccante teneva ferma la pagina, e con lei le guardie che caricano una copia senza aspettarla. */
@@ -20393,17 +20517,25 @@ $('impIn').addEventListener('change',ev=>{
   };
   r.readAsText(f);
 });
+/* le notti di una voce delle ore gia' riprese, dette */
+const nottiDette=v=>{ const n=((v&&v.notti)||[]).map(x=>x.notte); return !n.length?'':n.length===1?'la notte '+conGiorno('de',n[0])
+  :n.length+' notti, '+conGiorno('da',n[0])+' '+conGiorno('a',n[n.length-1]); };
 function renderState(){
-  renderProgetti();
-  const ids=Object.keys(STATE);
-  if(!ids.length){ $('stateList').innerHTML='<p class="small muted">Nessuna ora già ripresa. '+
+  renderProgetti(); renderCopiaStato();
+  const ids=Object.keys(STATE), tolte=Object.keys(ORE_TOLTE).filter(id=>!STATE[id]);
+  const tolteHtml=tolte.map(id=>`<div class="warnbox small" style="margin-bottom:8px">Le ore già riprese di <b>${esc(nomeDellOggetto(id))}</b>
+    sono eliminate. <button class="chip" onclick="rimettiOre(${jsAttr(id)})">Rimetti</button>
+    <span class="muted">Si possono anche rileggere dai light, quando vuoi.</span></div>`).join('');
+  if(!ids.length){ $('stateList').innerHTML=tolteHtml+'<p class="small muted">Nessuna ora già ripresa. '+
     'Trascina qui sopra una cartella di light: le ore si leggono dalle loro intestazioni.</p>'; return; }
-  $('stateList').innerHTML=ids.map(id=>{
-    const t=TG.targets.find(x=>x.id===id);
-    const h=STATE[id].hours||{};
+  $('stateList').innerHTML=tolteHtml+ids.map(id=>{
+    const h=STATE[id].hours||{}, n=nottiDette(STATE[id]);
     return `<div class="chan"><div style="flex:1">
-      <b>${t?t.names[0]:id}</b>
-      <div class="small muted">${Object.entries(h).map(([k,v])=>`${k} ${fmt(v,1)}h`).join(' · ')}</div>
+      <b>${esc(nomeDellOggetto(id))}</b>
+      <div class="small muted">${Object.entries(h).map(([k,v])=>`${k} ${fmt(v,1)}h`).join(' · ')}${n?' · '+esc(n):''}</div>
+      <div class="row" style="gap:8px;margin-top:4px"><button class="chip" onclick="rileggiLight(${jsAttr(id)})">Rileggi dai light</button>
+        <button class="chip" onclick="eliminaOre(${jsAttr(id)})">Elimina</button></div>
+      <div id="oreDa_${esc(id)}"></div>
     </div></div>`;
   }).join('');
 }
@@ -20489,20 +20621,27 @@ function salvaProgetto(){
     salvato:new Date().toISOString(), oggetto:{id:t.id,nome:t.names[0]}, postazione:uso, contesto:c, chiavi, propri,
     scelte:{rx:{t:$('rxTarget').value,n:$('rxNights').value,c:covIntent()}, road:roadFor(t.id), rot:rotFor(t), off:offFor(t)}};
   if(i>=0) v[i]=p; else v.unshift(p);
-  scriviProgetti(v); renderProgetti();
-  toast(`Progetto «${t.names[0]}» ${i>=0?'aggiornato':'salvato'}: lo trovi in Archivio progetti.`);
+  scriviProgetti(v); renderProgetti(); renderCopiaStato();
+  toast(`Progetto «${t.names[0]}» ${i>=0?'aggiornato':'salvato'}: lo trovi in Archivio progetti.`+promemoriaCopia());
 }
 function renderProgetti(){
   const box=$('progettiList'); if(!box) return;
   const v=leggiProgetti();
   if(!v.length){ box.innerHTML='<p class="small muted">Nessun progetto salvato. Nei Risultati, «Salva progetto» salva '+
     'l\'oggetto, la prescrizione e la strumentazione con cui lo riprendi.</p>'; return; }
-  box.innerHTML=v.map(p=>{ const c=p.contesto||{}, fatte=(STATE[p.oggetto.id]||{}).hours||{};
+  box.innerHTML=v.map(p=>{ const c=p.contesto||{}, oid=p.oggetto.id, voce=STATE[oid], fatte=(voce||{}).hours||{}, ci=Object.keys(fatte).length>0;
+    /* le ore gia' riprese dell'oggetto, dentro la scheda: si aggiornano dai light quando si vuole, si eliminano, si rimettono */
+    const ore=`<div class="small" style="margin-top:6px"><b>Ore già riprese</b>: ${ci?Object.entries(fatte).map(([k,x])=>esc(k)+' '+fmt(x,1)+' h').join(' · ')+
+        (nottiDette(voce)?' · '+esc(nottiDette(voce)):''):'nessuna'} <span class="muted">— valgono per l’oggetto, in tutti i suoi progetti</span></div>
+      <div class="row" style="gap:8px;margin-top:4px"><button class="chip" onclick="rileggiLight(${jsAttr(oid)},${jsAttr(p.id)})">${ci?'Aggiorna dai light':'Aggiungi dai light'}</button>${
+        ci?`<button class="chip" onclick="eliminaOre(${jsAttr(oid)})">Elimina le ore già riprese</button>`:''}${
+        !ci&&ORE_TOLTE[oid]?`<button class="chip" onclick="rimettiOre(${jsAttr(oid)})">Rimetti quelle eliminate</button>`:''}</div>
+      <div id="oreProg_${esc(p.id)}"></div>`;
     return `<div class="progetto" data-progetto="${esc(p.id)}"><b>${esc(p.oggetto.nome)}</b>
       <span class="small muted">· salvato il ${esc(giornoDetto(p.salvato))}${p.postazione?' · postazione «'+esc(p.postazione)+'»':''}</span>
       <div class="small" style="margin-top:4px">${esc(contestoDetto(c))}</div>
       <div class="small muted">${(c.canali||[]).map(canaleDetto).join(' · ')} — ${hm(c.oreTotali||0)} in tutto</div>
-      ${Object.keys(fatte).length?`<div class="small">riprese finora: ${Object.entries(fatte).map(([k,x])=>esc(k)+' '+fmt(x,1)+' h').join(' · ')}</div>`:''}
+      ${ore}
       <div class="row"><button class="fn fn-exp" onclick="chiediDiAprireProgetto(${jsAttr(p.id)})">Apri</button>
         <button class="fn fn-bad" onclick="eliminaProgetto(${jsAttr(p.id)})">Elimina</button></div></div>`; }).join('');
 }
@@ -20872,6 +21011,7 @@ function wireDrop(){
   drop.addEventListener('drop',async ev=>{ const t=await fileDelTrascinamento(ev.dataTransfer);
     const r=await leggiLightConAttesa(t.file); r.cartelleChiuse=t.chiuse; mostraLight(r); });
   inp.addEventListener('change',async ev=>{ mostraLight(await leggiLightConAttesa([...ev.target.files])); ev.target.value=''; });
+  const io=$('fileOggetto'); if(io) io.addEventListener('change',async ev=>{ await lightDiUnOggetto([...ev.target.files]); ev.target.value=''; });
 }
 let LIGHT_LETTI=null;
 async function leggiLightConAttesa(files){
@@ -20953,22 +21093,83 @@ function mostraLight(r){
         o.inquadratura.fonte==='telescopio'?' (dal puntamento del telescopio)':''}${
         o.inquadratura.diverse?' · fra i light '+(o.inquadratura.diverse===1?'c’è un’altra inquadratura':'ci sono altre '+o.inquadratura.diverse+' inquadrature')+': vale la più ripresa':''}</div>`:''}
       ${prima?`<div class="small muted">adesso le ore già riprese sono: ${oreDette(prima)}</div>`:''}
-      <div class="row"><select id="lightA${i}">${scelta(o.id)}</select>
-        <button class="primary" onclick="usaLight(${i})">Usa come ore già riprese</button></div></div>`; }).join('')+
+      ${prima?'<div class="small muted">«Aggiungi» unisce notte per notte: una notte già letta prende il posto di se stessa e non conta due volte. «Sostituisci» vale per una cartella con tutte le notti.</div>':''}
+      <div class="row"><select id="lightA${i}">${scelta(o.id)}</select>${prima
+        ?`<button class="primary" onclick="usaLight(${i},'aggiungi')">Aggiungi le notti nuove</button>
+          <button class="chip" onclick="usaLight(${i},'sostituisci')">Sostituisci</button>`
+        :`<button class="primary" onclick="usaLight(${i},'sostituisci')">Usa come ore già riprese</button>`}</div></div>`; }).join('')+
     calibrazioneDetta(r)+
     (fuori.length?`<p class="small muted" style="margin-top:8px">Non contati: ${esc(fuori.join(' · '))}.</p>`:'')+
     (senza.length?`<p class="small p-warn">Filtri che non so a quale canale vanno: ${senza.join(' · ')}. Scrivi il loro nome nei nomi della ruota per N.I.N.A., o leggi il banco, e rileggi.</p>`:'');
 }
-function usaLight(i){
+/*  LE ORE GIA' RIPRESE, DA TOCCARE (27 ottobre 2026, Alessandro: eliminarle col loro tasto e ricaricarle quando vuole, e
+    metterle nel progetto salvato ogni volta che lo desidera, non solo all'inizio). Restano una verita' sola per oggetto
+    (`STATE`): la scheda di ogni progetto le legge, e da li' si aggiornano. Prima «Usa come ore già riprese» SOSTITUIVA
+    sempre: leggendo la sola cartella dell'ultima notte, le notti di prima sparivano. Adesso, se l'oggetto ha gia' delle
+    ore, si sceglie: «Aggiungi le notti nuove» unisce notte per notte — una notte riletta prende il posto di se stessa,
+    quindi non conta due volte — e «Sostituisci» vale per una cartella con tutte le notti. Le ore senza la data della notte
+    si tengono come una notte a parte: quelle nuove, se ci sono, prendono il posto delle vecchie. Eliminate, si rimettono
+    finche' la pagina e' aperta, e si rileggono dai light quando si vuole. Sorvegliato da tools/gate-ore-del-progetto.js. */
+const ORE_TOLTE={}, LIGHT_PER={};
+let LIGHT_DEST=null;
+const nomeDellOggetto=id=>{ const t=TG.targets.concat(UTGT).find(x=>x.id===id); return t?t.names[0]:id; };
+const voceDaiLight=o=>({hours:Object.assign({},o.ore),
+  notti:Object.keys(o.perNotte||{}).sort().map(n=>({notte:n,ore:Object.assign({},o.perNotte[n])})),
+  inquadratura:o.inquadratura||null});
+function unisciPerNotte(prima,nuova){
+  const per=new Map();
+  for(const n of (prima.notti||[])) per.set(n.notte,n);
+  for(const n of (nuova.notti||[])) per.set(n.notte,n);
+  const notti=[...per.values()].sort((a,b)=>a.notte<b.notte?-1:1);
+  const somma=l=>{ const o={}; for(const n of l) for(const [k,v] of Object.entries(n.ore||{})) o[k]=(o[k]||0)+v; return o; };
+  const senzaNotte=v=>{ const s=somma(v.notti||[]), o={}; for(const [k,x] of Object.entries(v.hours||{})) if(x-(s[k]||0)>1e-9) o[k]=x-(s[k]||0); return o; };
+  const restoNuovo=senzaNotte(nuova), resto=Object.keys(restoNuovo).length?restoNuovo:senzaNotte(prima);
+  const hours=somma(notti); for(const [k,x] of Object.entries(resto)) hours[k]=(hours[k]||0)+x;
+  return {hours,notti,inquadratura:nuova.inquadratura||prima.inquadratura||null};
+}
+function applicaLight(id,o,modo){
+  const t=TG.targets.concat(UTGT).find(x=>x.id===id), prima=STATE[id], unisci=modo==='aggiungi'&&!!prima;
+  STATE[id]=Object.assign(unisci?unisciPerNotte(prima,voceDaiLight(o)):voceDaiLight(o),{updated:new Date().toISOString(),fonte:'light'});
+  delete ORE_TOLTE[id];
+  saveState(); if(t) allineaAiLight(t); renderState(); refresh();
+  toast(`Le ore già riprese di ${t?t.names[0]:id} ${unisci?'hanno adesso anche le notti nuove dei light':'sono adesso quelle dei light'}: `+
+    `${Object.entries(STATE[id].hours).map(([k,v])=>k+' '+hm(v)).join(' · ')}.`+promemoriaCopia());
+}
+function usaLight(i,modo){
   const r=LIGHT_LETTI; if(!r) return;
   const o=Object.values(r.oggetti)[i], id=($('lightA'+i)||{}).value; if(!o||!id) return;
-  const t=TG.targets.concat(UTGT).find(x=>x.id===id);
-  STATE[id]={hours:Object.assign({},o.ore), updated:new Date().toISOString(), fonte:'light',
-    notti:Object.keys(o.perNotte||{}).sort().map(n=>({notte:n,ore:Object.assign({},o.perNotte[n])})),
-    inquadratura:o.inquadratura||null};
-  saveState(); if(t) allineaAiLight(t); renderState(); refresh();
-  toast(`Le ore già riprese di ${t?t.names[0]:id} sono adesso quelle dei light: ${Object.entries(o.ore).map(([k,v])=>k+' '+hm(v)).join(' · ')}.`);
+  applicaLight(id,o,modo||'sostituisci');
 }
+function eliminaOre(id){ if(!STATE[id]) return; ORE_TOLTE[id]=STATE[id]; delete STATE[id]; saveState(); renderState(); refresh(); }
+function rimettiOre(id){ if(!ORE_TOLTE[id]) return; STATE[id]=ORE_TOLTE[id]; delete ORE_TOLTE[id]; saveState(); renderState(); refresh(); }
+/* i light di un oggetto solo: dalla scheda di un progetto (`pid`) o dall'elenco; il risultato si mostra li', col suo tasto */
+function rileggiLight(id,pid){ LIGHT_DEST={id,pid:pid||null}; const i=$('fileOggetto'); if(i) i.click(); }
+async function lightDiUnOggetto(files){
+  const d=LIGHT_DEST; if(!d) return;
+  const dove=()=>$(d.pid?'oreProg_'+d.pid:'oreDa_'+d.id);
+  if(dove()) dove().innerHTML='<span class="small muted">leggo le intestazioni…</span>';
+  const r=await leggiLight(files), ogg=Object.values(r.oggetti);
+  const o=ogg.find(x=>x.id===d.id)||(ogg.length===1&&!ogg[0].id?ogg[0]:null);
+  LIGHT_PER[d.id]=o||null;
+  if(dove()) dove().innerHTML=oreDaiLightHtml(d.id,o,ogg,r);
+}
+function oreDaiLightHtml(id,o,ogg,r){
+  const nome=esc(nomeDellOggetto(id));
+  if(!o) return `<div class="warnbox small" style="margin-top:6px">Nei light letti non c’è ${nome}${ogg.length?': ci sono '+
+    ogg.map(x=>esc(x.nome)).join(', '):''} (${r.letti} intestazioni lette). Le ore già riprese non cambiano.</div>`;
+  const prima=STATE[id], notti=o.date||[];
+  const tasti=prima
+    ?`<button class="fn fn-exp" onclick="oreDalSuo(${jsAttr(id)},'aggiungi')">Aggiungi le notti nuove</button>
+      <button class="chip" onclick="oreDalSuo(${jsAttr(id)},'sostituisci')">Sostituisci</button>`
+    :`<button class="fn fn-exp" onclick="oreDalSuo(${jsAttr(id)},'sostituisci')">Usa come ore già riprese</button>`;
+  return `<div class="okbox small" style="margin-top:6px">Dai light di ${nome}: ${oreDette(o.ore)}${notti.length?' · '+(notti.length===1
+      ?'la notte '+esc(conGiorno('de',notti[0])):notti.length+' notti, '+esc(conGiorno('da',notti[0]))+' '+esc(conGiorno('a',notti[notti.length-1]))):''}.
+    ${prima?'<div class="muted" style="margin-top:4px">«Aggiungi» unisce notte per notte: una notte già letta prende il posto di se stessa e non conta due volte. «Sostituisci» vale per una cartella con tutte le notti.</div>':''}
+    <div class="row" style="gap:8px;margin-top:6px">${tasti}<button class="chip" onclick="annullaLightPer(${jsAttr(id)})">Annulla</button></div></div>`;
+}
+function oreDalSuo(id,modo){ const o=LIGHT_PER[id]; if(!o) return; delete LIGHT_PER[id]; applicaLight(id,o,modo); }
+function annullaLightPer(id){ delete LIGHT_PER[id]; const d=LIGHT_DEST; LIGHT_DEST=null;
+  const b=$(d&&d.pid?'oreProg_'+d.pid:'oreDa_'+id); if(b) b.innerHTML=''; }
 
 
 /* =====================================================================
