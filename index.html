@@ -13347,17 +13347,28 @@ function mergeCatalog(curated,ongc,dark,notes){
     (o.aliases||[]).forEach(a=>{ if(!byKey.has(norm(a))) byKey.set(norm(a),o); });
   }
   let enriched=0;
+  /*  I NOMI CALDWELL (27 ottobre 2026, Alessandro: dei light chiamati col numero Caldwell non si trovava l'oggetto, e
+      i nomi Caldwell «tornano utili anche nel catalogo generale»). OpenNGC li porta come alias a tre cifre, «C 055»:
+      chi riprende scrive «Caldwell 55», e nei dati «C 55» e' anche il Cederblad delle nubi oscure (23 sigle, dal 24 al
+      214, in darkcat.json). Misurato su openngc.json: 105 numeri su 109, uno per voce; mancano 9 e 14, che sono gia' nomi
+      delle schede (la Caverna, il Doppio Ammasso), 41 (le Iadi) e 99 (il Sacco di Carbone). Il controllo di fisica
+      interna: Moore li ha numerati da nord a sud, e la declinazione scende col numero in 103 passaggi su 104 (C26 → C27
+      sale di 0,6°), da C1 a 85,3° a C109 a −80,9°. Il nome si aggiunge come «Caldwell N», che non si confonde; la forma
+      corta no. Sul record curato vale la regola della designazione: solo se la voce sta dentro la sua estensione.
+      Sorvegliato da tools/gate-oggetto-dei-light.js §6. */
+  const caldwellDi=al=>(al||[]).map(x=>/^C (\d{3})$/.exec(x)).filter(Boolean).map(m=>'Caldwell '+(+m[1]));
   for(const a of ongc.objects){
-    const [name,ra,de,maj,min,con,otype,arch,conf,mag,alias,why,pa]=a;
+    const [name,ra,de,maj,min,con,otype,arch,conf,mag,alias0,why,pa]=a;
+    const alias=(alias0||[]).concat(caldwellDi(alias0));
     const guardata=Object.prototype.hasOwnProperty.call(DESIGNAZIONI_FUORI_ESTENSIONE,name)?DESIGNAZIONI_FUORI_ESTENSIONE[name]:null;
     if(guardata&&guardata.decisione==='altro'){
       /* un altro oggetto: entra da se', e il nome in comune resta al record curato */
       out.push({name,ra_deg:ra,dec_deg:de,size_arcmin:[maj,min],constellation:con,
-        type:otype,archetype:arch,archetype_confidence:conf,mag,aliases:(alias||[]).filter(x=>!seen.has(norm(x))),
+        type:otype,archetype:arch,archetype_confidence:conf,mag,aliases:alias.filter(x=>!seen.has(norm(x))),
         why:why||null,pa_deg:pa!=null?pa:null,tier:'openngc'});
       continue;
     }
-    const cur=byKey.get(norm(name))||(alias||[]).map(x=>byKey.get(norm(x))).find(Boolean);
+    const cur=byKey.get(norm(name))||(alias0||[]).map(x=>byKey.get(norm(x))).find(Boolean);
     if(cur){
       /*  `senza_innesto` (24 settembre 2026): il record prende da questa voce il NOME, non i dati. La Nebulosa Anima
           porta LBN 667, la sua sigla, che OpenNGC mette su IC 1848: senza la dichiarazione la nebulosa di 150′×75′
@@ -13368,17 +13379,24 @@ function mergeCatalog(curated,ongc,dark,notes){
         if(cur.mag==null&&mag!=null) cur.mag=mag;
         if(!cur.type&&otype) cur.ongc_type=otype;
       }
-      /* la designazione della voce, se il record non la porta gia': dentro la sua estensione e' un suo nome */
-      if(!seen.has(norm(name))&&cur.size_arcmin&&((guardata&&guardata.decisione==='stesso')||
-         sep(cur.ra_deg,cur.dec_deg,ra,de)*60<=Math.max(...cur.size_arcmin)/2+1e-9)){
-        cur.aliases=(cur.aliases||[]).concat(name); seen.add(norm(name)); byKey.set(norm(name),cur);
+      /* la designazione della voce, se il record non la porta gia': dentro la sua estensione e' un suo nome. E COSI' TUTTI
+         I SUOI NOMI (27 ottobre 2026, Alessandro: «le ricerche dovrebbero essere tutte indicizzate con riferimenti
+         incrociati dei vari cataloghi»): misurato, dei 32 529 nomi di OpenNGC 140 non portavano a niente, e quelli veri —
+         46 UGC, 27 LBN, «Orion B», «Gem A», «gam Cyg»… — erano tutti di voci assorbite da un record curato, che ne
+         prendeva solo la designazione. Il nome, non i dati: `senza_innesto` resta per i dati, qui sopra. */
+      const dentro=!!cur.size_arcmin&&((guardata&&guardata.decisione==='stesso')||
+         sep(cur.ra_deg,cur.dec_deg,ra,de)*60<=Math.max(...cur.size_arcmin)/2+1e-9);
+      if(dentro) for(const nm of [name].concat(alias)) if(!seen.has(norm(nm))){
+        cur.aliases=(cur.aliases||[]).concat(nm); seen.add(norm(nm)); byKey.set(norm(nm),cur);
       }
       continue;                                     // l'archetipo resta quello curato
     }
     if(seen.has(norm(name))) continue;              // già coperto da una scheda curata
-    if((alias||[]).some(x=>seen.has(norm(x)))) continue;
+    /* chi e' coperto lo dicono i nomi di OpenNGC, non il nome Caldwell derivato: in catalog.json «Caldwell 43» stava su
+       NGC 7789, e la voce NGC 7814, che lo e', spariva (27 ottobre 2026). Il nome Caldwell si aggiunge se nessuno lo porta. */
+    if((alias0||[]).some(x=>seen.has(norm(x)))) continue;
     out.push({name,ra_deg:ra,dec_deg:de,size_arcmin:[maj,min],constellation:con,
-      type:otype,archetype:arch,archetype_confidence:conf,mag,aliases:alias||[],
+      type:otype,archetype:arch,archetype_confidence:conf,mag,aliases:(alias0||[]).concat(caldwellDi(alias0).filter(x=>!seen.has(norm(x)))),
       why:why||null,pa_deg:pa!=null?pa:null,tier:'openngc'});
   }
   return out;
@@ -13648,6 +13666,14 @@ function findCurated(q){
     che e' Caldwell 27. Adesso l'ordine e': il nome esatto di una scheda, di un oggetto tuo, del catalogo; poi le prime
     lettere o il contenuto, prima sulle schede e poi sul catalogo. «Rosett» resta alla Rosetta. Il servizio era gia'
     esatto, e il Ponte il difetto non l'ha mai visto. Sorvegliato da tools/gate-nomi-delle-schede.js §6. */
+/*  UN OGGETTO, QUALUNQUE NOME LO CHIAMI (27 ottobre 2026, Alessandro: «le ricerche dovrebbero essere tutte indicizzate con
+    riferimenti incrociati dei vari cataloghi»). Il record del catalogo che porta il nome di una scheda, o di un oggetto
+    tuo, e' quella scheda: `insiemeDellaClassifica` lo toglie dalla lista proprio per questo. Ma chi lo trovava per un
+    altro dei suoi nomi riceveva il record, e la prescrizione costruiva un altro bersaglio, con un altro id. Misurato
+    nella pagina: per le 13 schede, 16 nomi degli altri cataloghi portavano al doppione — «Pleiades» a cat_m45,
+    «Andromeda Galaxy» a cat_m31, «LBN 373» e «Caldwell 20» a cat_ngc-7000 — e le ore gia' riprese finivano sotto quel
+    id. Adesso il nome trovato nel catalogo passa per l'identita' del record. Sorvegliato da
+    tools/gate-oggetto-dei-light.js §6. */
 function bersaglioDellaDomanda(q,tuoi){
   if(!q) return null;
   const n=norm(q);
@@ -13655,11 +13681,14 @@ function bersaglioDellaDomanda(q,tuoi){
   if(esatta) return {scheda};
   const tuo=(tuoi||[]).find(x=>norm(x.names[0])===n);
   if(tuo) return {scheda:tuo};
+  const delRecord=o=>{ const k=norm(o.name);
+    const s=TG.targets.find(t=>t.names.some(x=>norm(x)===k))||(tuoi||[]).find(x=>(x.names||[]).some(y=>norm(y)===k));
+    return s?{scheda:s}:{oggetto:o}; };
   const o=trovaEsatto(q);
-  if(o) return {oggetto:o};
+  if(o) return delRecord(o);
   if(scheda) return {scheda};
   const vicino=findInCatalog(q);
-  return vicino?{oggetto:vicino}:null;
+  return vicino?delRecord(vicino):null;
 }
 
 
