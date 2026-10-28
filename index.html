@@ -1023,7 +1023,10 @@ td.archcell{max-width:120px}
 .bc-riga-notte{display:flex;align-items:center;gap:8px}
 .bc-notte{display:block;flex:1 1 auto;min-width:0}
 .bc-notte[data-tip],.bc-resa[data-tip]{border-bottom:none}
-.bc-notte .tl{height:9px;min-width:0;border-radius:3px}
+.bc-notte .tl{height:9px;min-width:0;border-radius:3px;overflow:visible}
+.tl .tl-ora{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--fg);border-radius:1px;box-shadow:0 0 0 1px var(--bg2)}
+.bc-adesso{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.tlkey i.ora{width:2px;height:12px;background:var(--fg);border-radius:1px}
 .bc-cielo{flex:none}
 .bc-pill{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .bc-dual{font-size:11px;color:var(--dim)}
@@ -6860,6 +6863,11 @@ function nightWindows(tg,site,start,count,opts){
   const minNight = o.minNight!=null?o.minNight:1.0;
   const maxScan  = o.horizonDays||180;
   const s0=start instanceof Date?start:new Date(start);
+  /*  DA ADESSO (29 ottobre 2026, la prescrizione istantanea di Alessandro): `daAdesso`, un istante, toglie dalla PRIMA
+      notte scandita le ore prima di lui; le altre notti restano intere. Se l'istante cade prima del buio non toglie
+      niente; se cade dopo l'alba, quella notte non ha piu' ore e si scarta come ogni notte troppo corta. L'altezza
+      massima resta quella della notte intera. Sta nella chiave della cache, al minuto. */
+  const daAdesso=o.daAdesso!=null&&isFinite(+o.daAdesso)?Math.floor(+o.daAdesso/60000)*60000:null;
   /*  `maxScan` STA NELLA CHIAVE, e non e' un dettaglio.
 
       Due richieste con lo stesso bersaglio, sito, data e conteggio ma orizzonte di
@@ -6871,7 +6879,8 @@ function nightWindows(tg,site,start,count,opts){
       una richiesta con horizonDays=1, senza un errore che lo dicesse.               */
   const key=[tg.id||tg.names&&tg.names[0],tg.ra_deg,tg.dec_deg,tg.archetype,
              site.lat,site.lon,site.sqm,site.horizonMin,firmaOrizzonte(site),
-             s0.getFullYear(),s0.getMonth(),s0.getDate(),count,overhead,minNight,maxScan,o.suMatrice?'matrice':''].join('|');
+             s0.getFullYear(),s0.getMonth(),s0.getDate(),count,overhead,minNight,maxScan,o.suMatrice?'matrice':'',
+             daAdesso!=null?'da'+daAdesso:''].join('|');
   if(_nwCache[key]) return _nwCache[key];
   // la cache serve a non ricalcolare centomila posizioni solari a ogni refresh,
   // non a crescere per tutta la sessione
@@ -6907,10 +6916,12 @@ function nightWindows(tg,site,start,count,opts){
     if(!t0||!t1){ skipped.push({date,clockH:0,why:'niente notte astronomica'}); continue; }
     const step=5*60000;
     let up=0,eq=0,maxAlt=-90,azMax=null,first=null,last=null,dmSum=0,dmN=0,moonUp=0,mk=0,sepSu=Infinity,kSu=0;
+    const inizio=k===0&&daAdesso!=null?daAdesso:-Infinity;
     for(let t=t0.getTime(); t<=t1.getTime(); t+=step){
       const jd=toJD(new Date(t)), lst=lstDeg(jd,site.lon);
       const a=altaz(tg.ra_deg,tg.dec_deg,site.lat,lst);
       if(a.alt>maxAlt){ maxAlt=a.alt; azMax=a.az; }
+      if(t<inizio) continue;
       if(a.alt<floor(a.az)) continue;
       up+=step/3600000; if(!first) first=new Date(t); last=new Date(t+step);
       /* ORE DI OROLOGIO e ORE EQUIVALENTI, e non sono la stessa cosa. Le prime le
@@ -12496,6 +12507,18 @@ function ancoraNotte(date,lon){
   return new Date(Math.round(t/PASSO_NP)*PASSO_NP);
 }
 
+/* LA NOTTE IN CORSO (29 ottobre 2026, Alessandro: aprendo AIS di notte, il segno dell'ora sui riquadri). La data di
+   partenza era quella del giorno in tempo universale, `toISOString`: all'01:00 di un 29 ottobre in ora solare il 29, e
+   la lista mostrava la notte dal 29 al 30, non quella in corso. La notte in corso e' quella cominciata ieri sera finche'
+   non finisce — l'alba astronomica, o la nautica dove l'astronomica non c'e', come la barra dei riquadri —; dopo, quella
+   di stasera. La data si scrive in ora locale. */
+function dataDellaNotteInCorso(ora,site){
+  const g=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const ieri=new Date(ora.getFullYear(),ora.getMonth(),ora.getDate()-1,12,0,0);
+  if(!site||!isFinite(+site.lat)||!isFinite(+site.lon)) return g(ora);
+  const np=nightProfile(ieri,+site.lat,+site.lon), fine=np.astro.end||np.nautical.end;
+  return g(fine&&ora<fine?ieri:ora);
+}
 function nightProfile(date,lat,lon){
   const base=ancoraNotte(date,lon);
   const pts=[]; let dark=[],naut=[];
@@ -12553,6 +12576,9 @@ function evaluate(tg,dv,site,np,state,cov){
   // campionamento della notte
   const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end;
   const segs=[]; let critH=0, softH=0, equivH=0, maxAlt=-90;
+  /* DA ADESSO (29 ottobre 2026): `np.da`, se c'e', e' l'istante da cui contare anche le ore che restano, `oreDaAdesso`.
+     La barra resta la notte intera, e niente altro cambia: ore, Luna, resa e settimane sono della notte. */
+  const da=np.da!=null&&isFinite(+np.da)?+np.da:null; let oreDaAdesso=0;
   /* La Luna si misura MENTRE l'oggetto è utilizzabile, non a un istante.
      Prima veniva campionata una sola volta, a metà della notte astronomica: una
      Luna che tramonta all'una risultava presente tutta la notte o assente tutta la
@@ -12574,6 +12600,7 @@ function evaluate(tg,dv,site,np,state,cov){
       const lvl = !dentro ? 0 : (alt>=quotaPreferita ? 2 : 1);
       if(dentro){
         critH+=step/3600000;                          // ore di orologio disponibili
+        if(da!=null&&t>=da) oreDaAdesso+=step/3600000;  // quelle che restano da adesso
         equivH+=(step/3600000)*oreEquivalenti(alt);   // quanto valgono, rispetto allo zenit
         if(lvl===1) softH+=step/3600000;             // disponibili ma sotto la quota preferita
       }
@@ -13062,7 +13089,7 @@ function evaluate(tg,dv,site,np,state,cov){
      numero diverso e non va confuso con lei: la prima taglia, la seconda no. */
   const critFloor=sogliaAz(azAlCulmine!=null?azAlCulmine:180);
   const softFloor=critFloor;
-  return {tg,segs,critH,critHeff,softH,equivH,qualitaMedia:critH>0?equivH/critH:0,
+  return {tg,segs,critH,oreDaAdesso:da!=null?oreDaAdesso:null,daAdesso:da,critHeff,softH,equivH,qualitaMedia:critH>0?equivH/critH:0,
           maxAlt,critBand,critFloor,softFloor,quotaPreferita,azAlCulmine,
           moonF,lpF,skyF,isNarrow,dMagV,moonUpFrac,moonIllum:mi,moonAlt:mAA.alt,rho,penalizzazioneLunare:penaLuna,
           tsub:_tsub,                       // la posa con cui e' stato calcolato il fattore
@@ -13848,7 +13875,7 @@ function start(){
     if(mio){ SITE_DEFAULT=!!mio.assunto; applicaSitoPersonale(mio); }
     else { SITE_DEFAULT=!trovato; applySite(trovato||siteFromDB(DB.sites[0])); }
   }
-  $('date').value=new Date().toISOString().slice(0,10);
+  $('date').value=dataDellaNotteInCorso(new Date(),SITE);
 
   loadGear(); loadReducers(); loadUserFilters(); UTGT=accettaSchedeUtente(loadUserTargets(),'salvati in questo browser');
   if(UTGT_AGGIORNATE) persistTargets();     // una ricostruzione si fa una volta sola
@@ -15729,6 +15756,8 @@ function refresh(){
 
   const d=new Date($('date').value+'T12:00:00');
   const np=nightProfile(d,SITE.lat,SITE.lon);
+  /* la notte in corso porta l'ora di adesso: il segno sulle barre e le ore che restano (`evaluate`) */
+  { const ora=Date.now(); if(adessoNellaNotte(np,ora)) np.da=ora; }
   const mid=np.astro.start&&np.astro.end
     ? new Date((np.astro.start.getTime()+np.astro.end.getTime())/2) : d;
   const mi=moonIllum(toJD(mid)), mp=moonPos(toJD(mid));
@@ -15896,6 +15925,12 @@ function rxContext(){
     soglia+' per almeno '+fmt(rn.minNight||1,1)+
     ' h da questo sito. Non è una questione di ore: da qui, in questa stagione, non c\'è.')
     }">mai utilizzabile</span>`;
+  /* nella notte in corso la prescrizione istantanea si sceglie anche qui; accesa, lo si dice */
+  if(NP_LISTA&&NP_LISTA.da!=null&&chiesta===$('date').value) nota+=` · <button type="button" class="fl-chip${ISTANTANEA?' on':''}"
+    aria-pressed="${ISTANTANEA?'true':'false'}" onclick="prescrizioneIstantanea(${!ISTANTANEA})" data-tip="${esc(ISTANTANEA
+      ?'La prima notte del piano comincia adesso, alle '+oraDellaNotte(new Date(NP_LISTA.da))+', non dal buio: le ore e la sequenza per N.I.N.A. sono quelle che restano. Le notti dopo restano intere. Un clic la toglie.'
+      :'Sono le '+oraDellaNotte(new Date(NP_LISTA.da))+': la prescrizione conta la notte intera, dal buio. Con la prescrizione istantanea la prima notte comincia adesso.')}">Prescrizione istantanea${
+      ISTANTANEA?': da adesso, alle '+oraDellaNotte(new Date(NP_LISTA.da)):''}</button>`;
   return `<div class="nightbox">
     <div class="nb-k">${tip('Notte di riferimento','moon')}</div>
     <div class="nb-v"><input type="date" id="rxDate" value="${esc(chiesta)}">${
@@ -15971,13 +16006,40 @@ let RIQ_TUTTI=false, RIQ_SOTTO=false;
 function riquadriTutti(v){ RIQ_TUTTI=!!v; renderBest(); }
 function riquadriSotto(v){ RIQ_SOTTO=!!v; renderBest(); }
 const oraDellaNotte=t=>t?t.toTimeString().slice(0,5):'—';
+/*  L'ORA DELLA NOTTE E LA PRESCRIZIONE ISTANTANEA (29 ottobre 2026, Alessandro). Aprendo AIS di notte, su ogni barra
+    della notte un segno dice dov'e' adesso fra il buio e l'alba; e se sono le 01:00, una prescrizione che conti la notte
+    intera promette ore gia' passate. La notte in corso porta l'ora di adesso (`np.da`, in `refresh`): `evaluate` conta
+    anche le ore che restano (`oreDaAdesso`), la barra disegna il segno, e la testa della lista dice l'ora e offre la
+    «Prescrizione istantanea». La sceglie chi riprende — AIS non la accende da solo —: allora i riquadri dicono le ore
+    da adesso e si ordinano su quelle, e la prima notte della prescrizione comincia adesso (`daAdesso`, in
+    `nightWindows`); le notti dopo restano intere. Fuori dalla notte in corso, ne' segno ne' tasto. Ogni cinque minuti,
+    se nessun campo e' in uso, la pagina si rifa' e il segno si sposta. Sorvegliato da tools/gate-ora-della-notte.js. */
+let ISTANTANEA=false;
+function adessoNellaNotte(np,ora){
+  const t0=np&&(np.astro.start||np.nautical.start), t1=np&&(np.astro.end||np.nautical.end);
+  return !!(t0&&t1&&ora>=t0.getTime()&&ora<t1.getTime());
+}
+const istantaneaAttiva=()=>!!(ISTANTANEA&&NP_LISTA&&NP_LISTA.da!=null);
+const daAdessoPerIlPiano=()=>istantaneaAttiva()?{daAdesso:NP_LISTA.da}:{};
+function prescrizioneIstantanea(v){ ISTANTANEA=!!v; refresh(); }
+setInterval(()=>{
+  if(!NP_LISTA||NP_LISTA.da==null) return;
+  const a=document.activeElement;
+  if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+  refresh();
+},5*60000);
 function riquadroHtml(x,c,basso){
   const e=x.e, i=x.i, nome=e.tg.names[0], arch=TG.archetypes[e.tg.archetype];
   /* `data-campo` dice quale campo e'; `acceso` lo porta quello dell'ordine scelto */
   const acc=k=>(k===ORDINE_DELLA_LISTA.chiave?' acceso':'')+'" data-campo="'+k;
   const conOre=e.critH>0.3, morde=MOTORE.scelta.ilCieloMorde(e);
   const np=c.np, t0=np&&(np.astro.start||np.nautical.start), t1=np&&(np.astro.end||np.nautical.end);
-  const ore=conOre
+  const adesso=np&&np.da!=null?oraDellaNotte(new Date(np.da)):null, ist=c.ist&&e.oreDaAdesso!=null;
+  const ore=ist
+    ? (e.oreDaAdesso>0.3
+      ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili da adesso, alle '+adesso+', all’alba, in '+e.critBand+' sopra il tuo orizzonte; la notte intera ne dà '+fmt(e.critH,1)+'.')}">${fmt(e.oreDaAdesso,1)}<i> h da adesso</i></span>`
+      : `<span class="pill p-bad${acc('ore')}" data-tip="${esc('Da adesso, alle '+adesso+', all’alba non resta mezz’ora utile; la notte intera ne dà '+fmt(e.critH,1)+'.')}">0 h da adesso</span>`)
+    : conOre
     ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili stanotte in '+e.critBand+', il canale che decide l’immagine, sopra il tuo orizzonte.')}">${fmt(e.critH,1)}<i> h</i></span>`
     : `<span class="pill p-bad${acc('ore')}">0 h</span>`;
   const sub=[e.tg.names[1],e.tg.constellation].filter(Boolean).map(esc).join(' · ');
@@ -15985,10 +16047,11 @@ function riquadroHtml(x,c,basso){
   const luna=e.moonF<0.9&&frasettaLunare(e.penalizzazioneLunare);
   /* il cielo che morde sta accanto alla barra della notte: la freccia dice le ore che restano, il tooltip chi le toglie */
   const il=e.lpF<0.9?Math.round((1-e.lpF)*100):0;
-  const cielo=morde?`<span class="bc-cielo"><span class="pill p-warn" data-tip="${esc('Stanotte restano '+fmt(e.critHeff,1)+' h utili, tolto quello che Luna e luce artificiale tolgono.'+
+  const cielo=morde?`<span class="bc-cielo"><span class="pill p-warn" data-tip="${esc((ist?'Sulla notte intera, dal buio, restano ':'Stanotte restano ')+fmt(e.critHeff,1)+' h utili, tolto quello che Luna e luce artificiale tolgono.'+
       (luna?' Luna: '+luna+'. '+fraseDellaSogliaLuna(e.penalizzazioneLunare):'')+(il?' Luce artificiale: −'+il+'% su questo canale.':''))}">→ ${fmt(e.critHeff,1)} h</span></span>`:'';
   const tipNotte=t0&&t1
-    ? `La notte, dal buio (${oraDellaNotte(t0)}) all’alba (${oraDellaNotte(t1)}). In verde le ore in cui ${nome} sta sopra ${fmt(e.quotaPreferita,0)}°, la quota buona per ${e.critBand}; in rosso quelle in cui è utilizzabile ma più basso; vuota quando è sotto il tuo orizzonte.`
+    ? `La notte, dal buio (${oraDellaNotte(t0)}) all’alba (${oraDellaNotte(t1)}). In verde le ore in cui ${nome} sta sopra ${fmt(e.quotaPreferita,0)}°, la quota buona per ${e.critBand}; in rosso quelle in cui è utilizzabile ma più basso; vuota quando è sotto il tuo orizzonte.`+
+      (adesso&&e.oreDaAdesso!=null?` Il segno chiaro è adesso, alle ${adesso}: da qui all’alba ${fmt(e.oreDaAdesso,1)} h utili.`:'')
     : 'La notte: in questa data non c’è buio astronomico né nautico.';
   const rx=c.RXH>0?MOTORE.scelta.prescribe(e,c.RXH,c.DVX):null;
   const rxPill=rx&&rx.disponibile===false
@@ -16037,7 +16100,7 @@ function bestNightHtml(){
     <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`:'';
   const primi=MOTORE.scelta.riquadriDiStanotte(ee), utili=MOTORE.scelta.riquadriDiStanotte(ee,Infinity);
   const conOre=new Set(utili.map(o=>o.i)), sotto=lista.filter((x,k)=>!conOre.has(k));
-  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase()};
+  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase(), ist:istantaneaAttiva()};
   const griglia=(xs,basso)=>`<div class="bestgrid">${xs.map(x=>riquadroHtml(x,c,basso)).join('')}</div>`;
   const mostrati=(RIQ_TUTTI?utili:primi).map(o=>lista[o.i]);
   let h=mostrati.length?griglia(mostrati,false)
@@ -16053,10 +16116,20 @@ function bestNightHtml(){
     sotto.length===1?'quello che stanotte ha':'i '+sotto.length+' che stanotte hanno'} meno di mezz’ora utile</button>`);
   if(tasti.length) h+=`<div class="bc-altri">${tasti.join('')}</div>`;
   if(RIQ_SOTTO&&sotto.length) h+=`<div class="bc-sotto-titolo">Stanotte meno di mezz’ora utile</div>`+griglia(sotto,true);
-  return h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
+  return testaDellAdesso()+h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
     <span><i style="background:var(--ha)"></i>utilizzabile, ma più basso</span>
-    <span><i style="background:var(--line)"></i>sotto il tuo orizzonte</span>
+    <span><i style="background:var(--line)"></i>sotto il tuo orizzonte</span>${NP_LISTA&&NP_LISTA.da!=null?'<span><i class="ora"></i>adesso</span>':''}
     <span class="muted">La barra di ogni riquadro è la notte, dal buio all’alba.</span></div>`;
+}
+/* la testa della lista nella notte in corso: l'ora, e la prescrizione istantanea da scegliere */
+function testaDellAdesso(){
+  const np=NP_LISTA; if(!np||np.da==null) return '';
+  const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end, on=ISTANTANEA;
+  return `<div class="bc-adesso"><span class="small">Sono le <b>${oraDellaNotte(new Date(np.da))}</b>: la notte va dal buio delle
+      ${oraDellaNotte(t0)} all’alba delle ${oraDellaNotte(t1)}, e il segno chiaro su ogni barra è adesso.</span>
+    <button type="button" class="fl-chip${on?' on':''}" aria-pressed="${on?'true':'false'}" onclick="prescrizioneIstantanea(${!on})"
+      data-tip="${esc('Le ore dei riquadri, il loro ordine e la prima notte della prescrizione partono da adesso, non dal buio. Le notti dopo restano intere.')}">Prescrizione istantanea</button>
+    <span class="small muted">${on?'Ore, ordine e prima notte della prescrizione partono da adesso.':'Le ore dei riquadri sono della notte intera.'}</span></div>`;
 }
 function renderBest(){ const b=$('bestNight'); if(b) b.innerHTML=bestNightHtml(); }
 /*  Il confine del telefono in tutta la pagina: fin li' i filtri e gli ordini partono chiusi. */
@@ -16151,7 +16224,7 @@ function oraDelCulmine(e){
 const ORDINI={
   resa:{val:null,cresce:false,nome:'Resa',
     tip:'L’ordine del motore, quello di partenza: pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte. Un secondo clic rovescia l’ordine.'},
-  ore:{val:e=>isFinite(e.critH)?e.critH:null,cresce:false,nome:'Ore utili',
+  ore:{val:e=>{ const v=istantaneaAttiva()&&e.oreDaAdesso!=null?e.oreDaAdesso:e.critH; return isFinite(v)?v:null; },cresce:false,nome:'Ore utili',
     tip:'Ordina per ore utili stanotte, nel canale che decide l’immagine e sopra il tuo orizzonte: prima chi ne ha di più. Un secondo clic rovescia l’ordine.'},
   notte:{val:e=>oraDelCulmine(e),cresce:true,nome:'Notte',
     tip:'Ordina per l’ora in cui l’oggetto sta più alto stanotte: nell’ordine in cui la notte li offre, da chi è più alto al tramonto a chi lo è all’alba. In fondo chi stanotte non ha ore utili. Un secondo clic rovescia l’ordine.'},
@@ -16285,7 +16358,7 @@ function initFiltri(){
    quello che fa nightsBounds() per la sua guardia. */
 function nightsForHours(t,from,need,pr){
   if(!(need>0)) return null;
-  const W=nightWindows(t,SITE,from,60,Object.assign({},OPSET,{suMatrice:!!((DB.cameras.find(c=>c.id===CFG.cam)||{}).cfa_penalty)}));
+  const W=nightWindows(t,SITE,from,60,Object.assign({},OPSET,daAdessoPerIlPiano(),{suMatrice:!!((DB.cameras.find(c=>c.id===CFG.cam)||{}).cfa_penalty)}));
   /* Si cammina sulla CAPACITA', come fa nightsBounds(): sommare le ore di
      orologio direbbe che quattro notti di plenilunio valgono quattro notti buie,
      e la guardia del piano — che la capacita' la conta — risponderebbe il
@@ -16904,7 +16977,7 @@ function renderRx(np){
   allineaAiLight(t);
   /* Qui si chiude la catena. La notte si risolve UNA volta, e da qui in giu' —
      ore, Luna, soglie, posa, piano — vale quella risolta, non quella chiesta. */
-  const RN=MOTORE.cielo.resolveNight(t,SITE,rxDate(),OPSET);
+  const RN=MOTORE.cielo.resolveNight(t,SITE,rxDate(),Object.assign({},OPSET,daAdessoPerIlPiano()));
   RXNIGHT=RN;
   /* Si ridisegna solo se c'e' qualcosa di nuovo da dire. */
   if(RN.shift>0||RN.past>0||RN.usable===false) $('rxCtx').innerHTML=rxContext();
@@ -16915,7 +16988,7 @@ function renderRx(np){
      riprende, le ore no: sono quelle che l'oggetto concede da questo sito, in
      queste notti. nightWindows() e' gia' quella del piano e della guardia. */
   const NN=rxNights();
-  const WA=nightWindows(t,SITE,RN.date,NN,Object.assign({},OPSET,{suMatrice:!!((DB.cameras.find(c=>c.id===CFG.cam)||{}).cfa_penalty)}));
+  const WA=nightWindows(t,SITE,RN.date,NN,Object.assign({},OPSET,daAdessoPerIlPiano(),{suMatrice:!!((DB.cameras.find(c=>c.id===CFG.cam)||{}).cfa_penalty)}));
   RXAVAIL=WA.nights.slice(0,NN).reduce((a,x)=>a+x.availH,0);
   const hours=rxHours();
   const e=RN.shift>0?MOTORE.scelta.evaluate(t,dv,SITE,npRx,STATE,covIntent())
@@ -17977,7 +18050,7 @@ function rxPlanHtml(pr,e,dv,t){
      per sapere quanto vale «tre pose» in ore. Nessuna circolarità. */
   const expo=MOTORE.posa.exposurePlan(pr,dv,SITE,Object.assign({},OPSET,
     {panels,archetype:t.archetype,tg:t,strategy:RXSTRAT}));
-  const opts=Object.assign({},OPSET,{site:SITE,date,panels,expo,mode:PLANMODE,strategy:RXSTRAT});
+  const opts=Object.assign({},OPSET,daAdessoPerIlPiano(),{site:SITE,date,panels,expo,mode:PLANMODE,strategy:RXSTRAT});
   /* LE ORE GIA' RIPRESE (26 ottobre 2026). Il progetto e la posa restano questi; il piano delle notti e la sequenza
      ricevono quello che manca, al buio (`daRiprendere`), nelle prime notti che bastano: le altre restano libere. Il
      piano del progetto intero resta in `plProgetto`, perche' «Salva progetto» e il confronto allora/adesso parlano del
@@ -20365,6 +20438,8 @@ function timeline(e,np){
   };
   e.segs.forEach(s=>{ if(s.lvl!==cur){flush(s.t);cur=s.lvl;st=s.t;} });
   flush(t1);
+  /* il segno dell'ora, se la notte e' quella in corso */
+  if(np.da!=null&&np.da>=t0.getTime()&&np.da<=t1.getTime()) html+=`<b class="tl-ora" style="left:${100*(np.da-t0)/span}%"></b>`;
   html+='</div>';
   return html;
 }
