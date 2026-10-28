@@ -13837,9 +13837,10 @@ function start(){
      assunto: e' un punto di partenza per far girare i numeri, non il tuo cielo. */
   {
     const pick=loadPick();
-    const trovato=pick?[...DB.sites.map(siteFromDB),...SITES].find(x=>x.id===pick):null;
-    SITE_DEFAULT=!trovato;
-    applySite(trovato||siteFromDB(DB.sites[0]));
+    const mio=pick==='__custom'?loadSitoPersonale():null;
+    const trovato=pick&&!mio?[...DB.sites.map(siteFromDB),...SITES].find(x=>x.id===pick):null;
+    if(mio){ SITE_DEFAULT=!!mio.assunto; applicaSitoPersonale(mio); }
+    else { SITE_DEFAULT=!trovato; applySite(trovato||siteFromDB(DB.sites[0])); }
   }
   $('date').value=new Date().toISOString().slice(0,10);
 
@@ -14826,6 +14827,7 @@ function readSite(){
         seeing:completo.sito.seeing,seeingAssunto:!!completo.sito.seeingAssunto,
         horizonMin:hor,clearFrac:completo.sito.clearFrac,parziale:completo.parziale};
   if(Array.isArray(prec)&&minProf!=null&&Math.abs(hor-minProf)<1e-6) SITE.orizzonte=prec;
+  ricordaIlSitoPersonale();
 }
 /*  La FWHM del giudizio per la pagina: il seeing del sito con la guida del banco in uso, dalla stessa funzione del
     servizio. Non si conserva in SITE: cambia quando cambia la montatura o il suo RMS caratteristico. */
@@ -15430,6 +15432,31 @@ const loadPick=()=>{try{return localStorage.getItem('ap_site')||''}catch(e){retu
 const persistPick=id=>{try{ id?localStorage.setItem('ap_site',id)
                              :localStorage.removeItem('ap_site') }catch(e){}};
 let SITE_DEFAULT=false;              // nessuno ha ancora scelto: il cielo e' assunto
+
+/* IL SITO PERSONALIZZATO SI RICORDA (28 ottobre 2026, Alessandro). Misurato su 10dc40b: `ap_site` ricordava solo l'id
+   di un sito dell'elenco, e coordinate scritte a mano, o venute dal profilo di N.I.N.A. lontane piu' di un chilometro da
+   un sito dell'elenco, stavano solo nei campi: Milano a mano, ripartenza, Borno. Una ripartenza c'e' a ogni apertura di
+   AIS e a ogni passaggio di postazione: il profilo dell'Askar, col suo sito a 45,31° 9,16°, tornava ogni volta sotto il
+   cielo di serie. Adesso, quando il sito e' «Personalizzato…», `readSite` ne ricorda i campi — coordinate, cielo con la
+   sua fonte, seeing, orizzonte minimo e quello per azimut, notti serene — e se era assunto o dichiarato; all'avvio torna
+   com'era. La chiave sta nelle dichiarazioni della postazione: ogni postazione ha il suo. Scegliere un sito dell'elenco
+   resta la scelta che si ricorda. Sorvegliato da tools/gate-sito-personale.js. */
+const SITO_PERSONALE_KEY='ap_sito_personale';
+function ricordaIlSitoPersonale(){
+  const sel=$('site'); if(!sel||sel.value!=='__custom') return;
+  const v={lat:$('lat').value,lon:$('lon').value,sqm:$('sqm').value,fonteSqm:$('sqm').dataset.src||null,see:$('see').value,
+    hor:$('hor').value,cnf:$('cnf').value,orizzonte:SITE&&Array.isArray(SITE.orizzonte)?SITE.orizzonte:null,assunto:!!SITE_DEFAULT};
+  persistPick('__custom');
+  try{ localStorage.setItem(SITO_PERSONALE_KEY,JSON.stringify(v)); }catch(e){}
+}
+const loadSitoPersonale=()=>{ try{ const v=JSON.parse(localStorage.getItem(SITO_PERSONALE_KEY)||'null');
+  return v&&String(v.lat).trim()!==''&&String(v.lon).trim()!==''&&isFinite(+v.lat)&&isFinite(+v.lon)?v:null; }catch(e){ return null; } };
+function applicaSitoPersonale(v){
+  $('lat').value=v.lat; $('lon').value=v.lon; $('sqm').value=v.sqm; $('sqm').dataset.src=v.fonteSqm||'stima';
+  $('see').value=v.see; $('hor').value=v.hor; $('cnf').value=v.cnf;
+  SITE=Object.assign({},SITE||{},{orizzonte:Array.isArray(v.orizzonte)?v.orizzonte:null});
+  $('site').value='__custom'; syncRms(); readSite();
+}
 
 const loadSites=()=>{
   let v=[]; try{v=JSON.parse(localStorage.getItem('ap_sites')||'[]')}catch(e){}
@@ -18832,10 +18859,13 @@ async function leggiBancoNina(){
     const [ic,im]=await Promise.all([ninaChiedi('/equipment/camera/info'),ninaChiedi('/equipment/mount/info')]);
     A={camera:ic.ok?ic.dato:null,mount:im.ok?im.dato:null};
   }
-  BANCO_NINA=Object.assign(bancoDalProfiloNina(r.dato,h.ok?h.dato:null,A),{dalPonte:!!r.ponte});
-  dillo(htmlBancoNina(BANCO_NINA));
   postazioneVista(r.dato);
+  BANCO_NINA=bancoDaGrezzo({P:r.dato,H:h.ok?h.dato:null,A},!!r.ponte);
+  dillo(htmlBancoNina(BANCO_NINA));
 }
+/* il banco porta il profilo da cui viene e i dati grezzi di N.I.N.A.: se «Usa questo banco» passa alla postazione del
+   profilo, la pagina riparte e il banco si rifa' da quelli, con le dichiarazioni di quella postazione */
+const bancoDaGrezzo=(g,dalPonte)=>Object.assign(bancoDalProfiloNina(g.P,g.H,g.A),{dalPonte,chi:profiloDelDato(g.P),grezzo:g});
 function htmlBancoNina(b){
   const nome=(elenco,id)=>{ const v=(elenco||[]).find(x=>x.id===id); return v?(v.name||v.id):id; };
   const simili=(elenco,ids)=>ids&&ids.length?' <span class="muted">— simili: '+ids.map(i=>esc(nome(elenco,i))).join(', ')+'</span>':'';
@@ -18918,7 +18948,7 @@ function htmlBancoNina(b){
       Profilo di N.I.N.A.: <b>${esc(b.profilo||'senza nome')}</b>${b.dalPonte?' <span class="muted">· letto dal Ponte, dentro N.I.N.A.</span>':''}</div>
     <div style="overflow-x:auto"><table class="small" style="width:100%"><thead><tr><th></th><th>In N.I.N.A.</th><th>Proposta</th><th>Perché</th></tr></thead>
     <tbody>${righe.join('')}</tbody></table></div>
-    ${avvisoMezzoBanco(b)}
+    ${avvisoMezzoBanco(b)}${notaDellaPostazione(b)}
     <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="applicaBancoNina()">Usa questo banco</button>
     <button type="button" class="chip" onclick="BANCO_NINA=null;$('bancoNina').innerHTML=''">Lascia com'è</button></div></div>`;
 }
@@ -18987,8 +19017,47 @@ function filtroDellaRuota(i,id){
   b.filtri[i].voce=id||null; b.filtri[i].via=id?'a_mano':null;
   $('bancoNina').innerHTML=htmlBancoNina(b);
 }
-function applicaBancoNina(){
+/*  IL BANCO VA NELLA POSTAZIONE DEL SUO PROFILO (28 ottobre 2026). Alessandro, dal minix: la carta dell'invio diceva che in
+    N.I.N.A. era attivo un altro profilo, l'RC8, e che ULTIMATE e LPS_P2 IDAS non erano nella sua ruota; ma il profilo attivo
+    era quello giusto, l'Askar, e i due filtri erano nella sua ruota. Misurato su 10dc40b: con la postazione dell'RC8 in uso,
+    «Leggi il banco» e «Usa questo banco» col profilo dell'Askar attivo scrivevano il banco dell'Askar nelle dichiarazioni
+    della postazione dell'RC8, che restava in uso: quelle dell'RC8 si perdevano, e la carta diceva «preparata per la
+    postazione RC8: Askar 71F». Il banco letto e' di un profilo, come nel Ponte: «Usa questo banco» lo mette nella
+    postazione di quel profilo. Se non c'e', nasce come copia di quella in uso e il banco si applica qui; se c'e', si passa
+    a lei — la pagina riparte con le sue dichiarazioni, come passando a mano — e il banco si applica sopra, con le scelte
+    fatte nella tabella. Quella di prima resta com'era. Non e' la postazione che cambia da sola: e' il clic, e la tabella lo
+    dice prima. Sorvegliato da tools/gate-postazioni.js, §10. */
+const BANCO_DA_APPLICARE='ap_banco_da_applicare';
+function notaDellaPostazione(b){
+  const v=POSTAZIONI_SPENTE?null:leggiPostazioni(), chi=b&&b.chi;
+  if(!v||!chi||!v.uso||!v.voci[v.uso]||v.uso===chi.id) return '';
+  const prima=esc(v.voci[v.uso].nome);
+  return `<div class="small" style="margin-top:8px">La postazione in uso è <b>«${prima}»</b>, questo è il banco del profilo
+    <b>«${esc(chi.nome)}»</b>: «Usa questo banco» ${v.voci[chi.id]?'passa alla sua postazione e lo applica lì'
+      :'crea la sua postazione, come copia di quella in uso, e lo applica lì'}. «${prima}» resta com'è.</div>`;
+}
+function postazioneDelBanco(b){
+  const v=POSTAZIONI_SPENTE?null:leggiPostazioni(), chi=b.chi;
+  if(!v||!chi||v.uso===chi.id) return null;
+  const prima=v.uso&&v.voci[v.uso]?v.voci[v.uso].nome:null;
+  if(prima) v.voci[v.uso].chiavi=fotoDellaPostazione();
+  if(!v.voci[chi.id]){
+    v.voci[chi.id]={nome:chi.nome,chiavi:fotoDellaPostazione(),ruota:chi.ruota,manuale:chi.manuale};
+    v.uso=chi.id; scriviPostazioni(v); USO_ALL_APERTURA=chi.id; rigaDellaPostazione();
+    return {nome:chi.nome,prima,nuova:true};
+  }
+  Object.assign(v.voci[chi.id],{nome:chi.nome,ruota:chi.ruota,manuale:chi.manuale});
+  v.uso=chi.id; scriviPostazioni(v); scriviLaPostazione(v.voci[chi.id].chiavi);
+  const scelte=b.filtri.map((f,i)=>f.via==='a_mano'?{i,voce:f.voce}:null).filter(Boolean);
+  try{ sessionStorage.setItem(BANCO_DA_APPLICARE,JSON.stringify({grezzo:b.grezzo,scelte,nome:chi.nome,prima})); }catch(e){}
+  location.reload();
+  return {ripartita:true};
+}
+function applicaBancoNina(passata){
   const b=BANCO_NINA; if(!b) return;
+  if(!passata){ passata=postazioneDelBanco(b); if(passata&&passata.ripartita) return; }
+  const doveE=passata?'; il banco è nella postazione «'+esc(passata.nome)+'»'+(passata.nuova&&passata.prima?', nata come copia di «'+esc(passata.prima)+'»':'')+
+    (passata.prima?', e «'+esc(passata.prima)+'» è rimasta com\'era':''):'';
   const esiste=(sel,v)=>v!=null&&[...$(sel).options].some(o=>o.value===String(v));
   if(b.ottica.voce&&esiste('tel',b.ottica.voce)){
     $('tel').value=b.ottica.voce; LAST_GEAR.tel=b.ottica.voce; fillReducers(b.ottica.voce);
@@ -19048,12 +19117,12 @@ function applicaBancoNina(){
     $('bancoNina').innerHTML='<div class="warnbox" style="margin-top:8px"><b>Il banco di AIS non è quello di N.I.N.A.</b> '+
       esc(manca.join(' e '))+(manca.length>1?' non sono':' non è')+' nel catalogo: restano '+
       esc([tel&&tel.name,cam&&cam.name].filter(Boolean).join(' + '))+', e le ore sono per quelli. Aggiungi quello che manca dal profilo, '+
-      'coi tasti nella tabella: il banco si rilegge da solo.<br><span class="small muted">Applicato il resto'+notaOrizzonte+notaFiltri+notaPeriferiche+
+      'coi tasti nella tabella: il banco si rilegge da solo.<br><span class="small muted">Applicato il resto'+doveE+notaOrizzonte+notaFiltri+notaPeriferiche+
       (!b.camera.voce&&b.filtri.length?'; i filtri della ruota no, finché la camera non c\'è':'')+'.</span></div>'+htmlBancoNina(b);
     return;
   }
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
-    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+
+    '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+doveE+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+
     (b.ottica.daConfermare?'; il telescopio è proposto da apertura e focale, controllalo':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.</span></div>';
   BANCO_NINA=null;
 }
@@ -19103,7 +19172,7 @@ const VIA_BERSAGLI_DEL_PONTE='/ponte/bersagli', VIA_CONSEGNA_DEL_PONTE='/ponte/c
     ha, resta quello che c'e', e da li' in poi ogni cambiamento si salva in quel profilo. Si salva solo nel profilo da
     cui si e' letto: il Ponte lo ricontrolla. Fuori dal pannello niente di tutto questo parte. */
 const VIA_DICHIARAZIONI_DEL_PONTE='/ponte/dichiarazioni';
-const CHIAVI_DELLA_POSTAZIONE=['ap_cfg','ap_bin','ap_banco_nina','ap_site','ap_sites','ap_filters','ap_using','ap_roles',
+const CHIAVI_DELLA_POSTAZIONE=['ap_cfg','ap_bin','ap_banco_nina','ap_site','ap_sito_personale','ap_sites','ap_filters','ap_using','ap_roles',
   'ap_ninafilters','ap_ninacap','ap_opset','ap_tetto_dichiarato','ap_nomiruota'];
 const VERSIONE_DELLA_POSTAZIONE=1;
 let POSTAZIONE_LETTA=null, POSTAZIONE_ATTESA=null, POSTAZIONE_GIRO=null;
@@ -19319,6 +19388,16 @@ function postazioniAllApertura(){
     :'Postazione «'+nota.nome+'»: banco, sito e filtri sono i suoi.');
   if(nota&&nota.nuova){ go('strumentazione'); leggiBancoNina(); }
   else if(v) controllaNina();
+  /* «Usa questo banco» e' passato alla postazione del suo profilo: il banco si rifa' dai dati di N.I.N.A. con le
+     dichiarazioni di questa, con le scelte fatte nella tabella, e si applica */
+  let daApplicare=null;
+  try{ daApplicare=JSON.parse(sessionStorage.getItem(BANCO_DA_APPLICARE)||'null'); sessionStorage.removeItem(BANCO_DA_APPLICARE); }catch(e){}
+  if(daApplicare&&daApplicare.grezzo){
+    go('strumentazione');
+    BANCO_NINA=bancoDaGrezzo(daApplicare.grezzo,false);
+    for(const s of daApplicare.scelte||[]) if(BANCO_NINA.filtri[s.i]){ BANCO_NINA.filtri[s.i].voce=s.voce; BANCO_NINA.filtri[s.i].via='a_mano'; }
+    applicaBancoNina({nome:daApplicare.nome,prima:daApplicare.prima,nuova:false});
+  }
   const alRitorno=()=>{ if(document.visibilityState==='visible'&&Date.now()-ULTIMO_CONTROLLO>5000) controllaNina(); };
   window.addEventListener('focus',alRitorno); document.addEventListener('visibilitychange',alRitorno);
   /* due schede di AIS sulla stessa memoria: se l'altra cambia postazione, questa riparte con lei */
