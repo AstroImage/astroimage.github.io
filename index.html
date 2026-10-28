@@ -7274,6 +7274,27 @@ function resaDellaNotte(tg,dv,site,g,notte,expo){
   if(giorno!==notte) return {resa:Math.min(1,mixPenalty(g1,dv,tg,site,{dMagV:0},expo||null)),valutata:false,luna:null};
   return {resa:Math.min(1,mixPenalty(g1,dv,tg,site,x,expo||null)),valutata:true,luna:x.moonK};
 }
+/*  LE ORE GIA' RIPRESE VALGONO SOLO SU UN CAMPO SIMILE (28 ottobre 2026, Alessandro: su NGC 7635 «vengono rilevate le ore
+    già riprese per quell'oggetto pur essendoci una notevole differenza di campo inquadrato»; il campo e la rotazione
+    devono essere analoghi, la camera e il cielo no). Il campo dei light lo dicono le loro intestazioni — NAXIS1 e NAXIS2
+    per XPIXSZ su FOCALLEN —: misurato sui 59 light veri di NGC 7635 del minix, RC8 a 1624 mm con la ASI2600MM, 49,7′ ×
+    33,2′. SIMILE vuol dire ogni lato entro il 10 %, mai meno di 2′: Alessandro aveva detto «circa 10 primi», che sul
+    campo dell'RC8 e' il 20–30 % del lato e su quello di un rifrattore corto il 5 %; il 10 % e' quei 10′ su un campo di
+    100′. Fuori da li' le ore non si contano — ne' nel piano, ne' nel verdetto, ne' nella lista —, a meno che chi riprende
+    abbia scelto di proseguire coi dati gia' ripresi su questo campo (`campoAccettato`): consigliere, non schedulatore. La
+    rotazione non sta qui: la porta ai light `allineaAiLight`, entro 3′. Ore senza il campo — lette prima del 28 ottobre —
+    non si possono controllare: valgono come prima, e la pagina lo dice. Sorvegliato da tools/gate-campo-dei-light.js. */
+const CAMPO_SIMILE={parte:0.10, minimo:2};
+function campoDeiLight(st,dv){
+  const c=st&&st.inquadratura&&st.inquadratura.campo, qui={w:dv&&dv.fovX,h:dv&&dv.fovY};
+  if(!c||!(c.w>0)||!(c.h>0)||!(qui.w>0)||!(qui.h>0)) return {noto:false,simile:null,accettato:false,valide:true,luce:c||null,qui};
+  const tol=x=>Math.max(CAMPO_SIMILE.minimo,CAMPO_SIMILE.parte*x);
+  const simili=(a,b)=>Math.abs(a.w-b.w)<=tol(Math.max(a.w,b.w))+1e-9&&Math.abs(a.h-b.h)<=tol(Math.max(a.h,b.h))+1e-9;
+  const simile=simili(c,qui), accettato=!simile&&!!(st.campoAccettato&&simili(st.campoAccettato,qui));
+  return {noto:true,simile,accettato,valide:simile||accettato,luce:c,qui};
+}
+/*  le ore gia' riprese che contano su questo campo: quelle, o niente */
+const oreSulCampo=(st,dv)=>st&&campoDeiLight(st,dv).valide?st:null;
 function giaRipreseAlBuio(st,tg,dv,site,alloc,expo){
   if(!st) return null;
   const notti=Array.isArray(st.notti)?st.notti.filter(n=>n&&/^\d{4}-\d\d-\d\d$/.test(String(n.notte))&&n.ore):[];
@@ -12930,8 +12951,8 @@ function evaluate(tg,dv,site,np,state,cov){
   const fit=framing(tg,dv);
   const samp=samplingVerdict(dv.scale,giudizio.fwhm,giudizio);
 
-  // stato progetto
-  const st=state[tg.id]||null;
+  // stato progetto: le ore gia' riprese, se sono di un campo simile a questo (28 ottobre 2026)
+  const st=oreSulCampo(state[tg.id]||null,dv);
   let progress=null;
   if(st){
     /* le ore gia' riprese al buio, con la Luna delle loro notti, come le toglie il piano (`giaRipreseAlBuio`, 26 ottobre
@@ -13741,7 +13762,9 @@ const MOTORE = {
              poseDelCanale, chiaveDellaPosa, profonditaDelPiano, statoDellaBrillanza, pezziDellaSerieCorta },
   piano:   { planNights, bestStart,                                   // come si spalma sulle notti
              /* e quello che manca, togliendo al buio le ore gia' riprese: 26 ottobre 2026 */
-             giaRipreseAlBuio, daRiprendere, progettoDellePose },
+             giaRipreseAlBuio, daRiprendere, progettoDellePose,
+             /* le ore gia' riprese contano su un campo simile a quello dei light (28 ottobre 2026) */
+             campoDeiLight, oreSulCampo },
   esporta: { ninaSequence, ninaCheck,                                 // che cosa esce verso N.I.N.A.
              /* e col contorno di chi riprende: il suo Startup, il suo End, i suoi inneschi globali, 27 ottobre 2026 */
              contornoDaSequenza, conIlTuoContorno },
@@ -16800,8 +16823,8 @@ function renderRx(np){
       sopra pretendeva le ore di orologio. Erano due cose diverse.                   */
   const rxd=MOTORE.scelta.prescriviSuCapacita(e,dv,SITE,WA.nights.slice(0,NN),
     {road:scelta,pannelli:ppRx.panels,copertura:covIntent(),rotazione:rotFor(t),posa:OPSET,
-     /* il verdetto conta le ore gia' riprese, al buio (26 ottobre 2026) */
-     giaRiprese:togliGiaRiprese()?(STATE[t.id]||null):null});
+     /* il verdetto conta le ore gia' riprese, al buio (26 ottobre 2026), se sono di un campo simile (28 ottobre) */
+     giaRiprese:togliGiaRiprese()?MOTORE.piano.oreSulCampo(STATE[t.id]||null,dv):null});
   RXCAP=rxd.capacita>0?rxd.capacita:RXAVAIL;
   const pr=rxd.pr;
   RXCOV=ppRx;
@@ -17518,17 +17541,27 @@ function allineaAiLight(t){
   if(!t||!t.id) return null;
   const q=STATE[t.id]&&STATE[t.id].inquadratura;
   if(!q||q.ra==null||q.dec==null||!togliGiaRiprese()){ delete INQ_DAI_LIGHT[t.id]; return null; }
+  /* IL CAMPO PRIMA DELLA ROTAZIONE (28 ottobre 2026): con un campo diverso da quello dei light, e senza che chi riprende
+     abbia scelto di proseguire coi dati gia' ripresi, centro e rotazione non si toccano — le ore non contano */
+  const campo=MOTORE.piano.campoDeiLight(STATE[t.id],derive(cfgMotore()));
+  if(!campo.valide) return (INQ_DAI_LIGHT[t.id]={q,campo,lontano:0,usata:false,diverso:true});
   const cd=Math.max(0.02,Math.cos(t.dec_deg*Math.PI/180));
   let dRa=q.ra-t.ra_deg; if(dRa>180) dRa-=360; if(dRa<-180) dRa+=360;
   const lontano=Math.hypot(dRa*cd,q.dec-t.dec_deg);
-  if(lontano>2) return (INQ_DAI_LIGHT[t.id]={q,lontano,usata:false});
+  if(lontano>2) return (INQ_DAI_LIGHT[t.id]={q,campo,lontano,usata:false});
   const rot=q.rot!=null?((q.rot%360)+360)%360:rotFor(t), off=offDallaVista(t,q.ra,q.dec,rot);
   const r0=rotFor(t), o0=offFor(t);
   const uguale=Math.abs(((r0-rot)%360+540)%360-180)<0.05&&Math.abs(o0.du-off.du)<0.05&&Math.abs(o0.dv-off.dv)<0.05;
   const prima=uguale?((INQ_DAI_LIGHT[t.id]||{}).prima||null):{rot:r0,off:o0};
   if(!uguale){ saveRotFor(t,rot); saveOffFor(t,off); }
-  return (INQ_DAI_LIGHT[t.id]={q,lontano,usata:true,prima});
+  return (INQ_DAI_LIGHT[t.id]={q,campo,lontano,usata:true,prima});
 }
+/*  «Prosegui coi dati gia' ripresi» su un campo diverso da quello dei light (28 ottobre 2026, Alessandro: se si vuole
+    procedere lo stesso, AIS gestisce inquadratura e rotazione e offre la prescrizione adeguata): la scelta vale per QUESTO
+    campo — cambiando ancora banco si richiede —, e «Non proseguire» la ritira. */
+function proseguiCoiLight(id){ const st=STATE[id]; if(!st) return; const dv=derive(cfgMotore());
+  st.campoAccettato={w:dv.fovX,h:dv.fovY}; saveState(); refresh(); }
+function nonProseguire(id){ const st=STATE[id]; if(!st) return; delete st.campoAccettato; saveState(); refresh(); }
 /* «Usa questa inquadratura»: la proposta diventa quella in uso, e la prescrizione si rifa' */
 function usaInquadratura(){
   const t=SHEET_T, c=centroDellaVista(); if(!t||!c) return;
@@ -17748,6 +17781,19 @@ function giaRipreseHtml(t,prR,N,Nr,pl,expo){
   const scatola=x=>`<div class="warnbox" id="rxGiaRiprese" style="margin:0 0 8px">${x}${casella}</div>`;
   const dette=`<b>Ore già riprese di ${esc(t.names[0])}</b>: ${oreDette(h)}`;
   if(!on) return scatola(dette+'. Il piano qui sotto è il progetto intero, come se non ci fossero.');
+  /* IL CAMPO DEI LIGHT (28 ottobre 2026, `campoDeiLight`): diverso, e le ore non contano finche' chi riprende non sceglie
+     di proseguire coi dati gia' ripresi; simile, o scelto, e si dice; non salvato, e si dice come saperlo */
+  const c=dl&&dl.campo, campoDetto=x=>fmt(x.w,1)+'′ × '+fmt(x.h,1)+'′';
+  const daDove=dl&&dl.q.banco&&(dl.q.banco.tel||dl.q.banco.cam)?' ('+esc([dl.q.banco.tel,dl.q.banco.cam].filter(Boolean).join(' · '))+')':'';
+  if(c&&c.noto&&!c.valide) return scatola(dette+`. Vengono da un campo di ${campoDetto(c.luce)}${daDove}; questo banco ne inquadra
+    ${campoDetto(c.qui)}: più del 10% di differenza su un lato, e le pose nuove non si integrerebbero bene con quelle già fatte.
+    Il piano qui sotto è il progetto intero.
+    <div class="row" style="margin-top:6px;gap:8px;align-items:center"><button class="fn fn-frame" onclick="proseguiCoiLight(${jsAttr(t.id)})">Prosegui coi dati già ripresi</button>
+    <span class="small muted">AIS porta centro e rotazione a quelli dei light, e toglie dal piano le ore già riprese su questo campo.</span></div>`);
+  const sulCampo=!c?'':!c.noto?'Il campo dei light non è salvato con queste ore: rileggile dai light, nell’Archivio, e AIS controlla che sia simile a questo.'
+    :c.accettato?`Il campo dei light, ${campoDetto(c.luce)}${daDove}, è diverso da questo, ${campoDetto(c.qui)}: hai scelto di proseguire coi dati già ripresi.
+      <button class="chip" onclick="nonProseguire(${jsAttr(t.id)})">Non proseguire</button>`
+    :`Il campo dei light, ${campoDetto(c.luce)}${daDove}, è simile a questo, ${campoDetto(c.qui)}.`;
   if(!prR) return scatola(dette+'. Nessuna è di un canale di questa tecnica: il piano qui sotto è il progetto intero.');
   const g=prR.giaRiprese, P=g.panels, minuto=1/120;
   /* nel piano: le pose che la sequenza riprendera', canale per canale (`poseDelCanale`, come le righe delle notti) */
@@ -17775,6 +17821,7 @@ function giaRipreseHtml(t,prR,N,Nr,pl,expo){
   return scatola(`<b>Ore già riprese di ${esc(t.names[0])}</b>: il piano e la sequenza per N.I.N.A. qui sotto riprendono solo
     quello che manca. La posa resta quella del progetto: le pose nuove si integrano con quelle già fatte.
     ${inquadratura?'<div style="margin-top:4px">'+inquadratura+'</div>':''}
+    ${sulCampo?'<div style="margin-top:4px">'+sulCampo+'</div>':''}
     <table class="progconfr"><tr><th>canale</th><th>il progetto: di posa → al buio</th><th>già riprese: di posa → al buio</th><th>mancano, al buio</th><th>nel piano</th></tr>${righe}</table>
     <div class="small">«Al buio» vuol dire come le conta la prescrizione: senza Luna e con la posa del progetto. Un’ora di posa presa
     con la Luna vale meno, e AIS la conta per quello che vale.
@@ -17802,7 +17849,7 @@ function rxPlanHtml(pr,e,dv,t){
      piano del progetto intero resta in `plProgetto`, perche' «Salva progetto» e il confronto allora/adesso parlano del
      progetto, non del suo resto. */
   const plProgetto=MOTORE.piano.planNights(pr,e,dv,N,opts);
-  const stFatte=togliGiaRiprese()?STATE[t.id]:null;
+  const stFatte=togliGiaRiprese()?MOTORE.piano.oreSulCampo(STATE[t.id]||null,dv):null;
   const prR=stFatte?MOTORE.piano.daRiprendere(pr,MOTORE.piano.giaRipreseAlBuio(stFatte,t,dv,SITE,pr.alloc,expo),
     MOTORE.piano.progettoDellePose(plProgetto,expo,OPSET)):null;
   let pl=plProgetto, Nr=N;
@@ -20888,6 +20935,11 @@ async function intestazioneXisf(file){
   /* il centro pianificato anche in gradi, dove N.I.N.A. lo scrive come proprieta' (XISFHeader) */
   if(prop('Observation:Object:RA')!=null&&prop('Observation:Object:Dec')!=null){
     carte.__RA_OGGETTO=prop('Observation:Object:RA'); carte.__DEC_OGGETTO=prop('Observation:Object:Dec'); }
+  /* per il campo (28 ottobre 2026): le dimensioni dall'attributo geometry dell'immagine, focale e pixel dalle proprieta'
+     se le chiavi FITS mancano (XISF: la focale in metri, il pixel in micron) */
+  const geo=img&&img.getAttribute('geometry'); if(geo&&!carte.NAXIS1){ const [w,h]=geo.split(':'); carte.NAXIS1=w; carte.NAXIS2=h; }
+  if(!carte.FOCALLEN&&prop('Instrument:Telescope:FocalLength')) carte.FOCALLEN=String(parseFloat(prop('Instrument:Telescope:FocalLength'))*1000);
+  if(!carte.XPIXSZ&&prop('Instrument:Sensor:XPixelSize')) carte.XPIXSZ=prop('Instrument:Sensor:XPixelSize');
   return carte;
 }
 /* da un nome di filtro alle chiavi delle ore gia' riprese; colore: la posa viene da un sensore a colori */
@@ -20948,7 +21000,18 @@ function inquadraturaDellaPosa(h){
   if(ra==null||dec==null){ const r=sessagesimale(h.OBJCTRA), d=sessagesimale(h.OBJCTDEC); if(r!=null&&d!=null){ ra=r*15; dec=d; } }
   if(ra==null||dec==null){ ra=n(h.RA); dec=n(h.DEC); fonte='telescopio'; }
   if(ra==null||dec==null) return null;
-  return {ra:((ra%360)+360)%360,dec,rot:n(h.OBJCTROT),fonte};
+  return {ra:((ra%360)+360)%360,dec,rot:n(h.OBJCTROT),fonte,campo:campoDellaPosa(h),
+    banco:{tel:String(h.TELESCOP||'').trim()||null,cam:String(h.INSTRUME||'').trim()||null}};
+}
+/*  IL CAMPO DI UNA POSA, in primi (28 ottobre 2026): NAXIS1 e NAXIS2 per la scala, XPIXSZ su FOCALLEN. Sui light veri di
+    NGC 7635 del minix — RC8 a 1624 mm, ASI2600MM da 3,76 µm, 6248 × 4176 — fa 0,478″/px e 49,7′ × 33,2′. N.I.N.A.
+    scrive XPIXSZ col binning dentro; i light misurati sono tutti in binning 1, e il binning 2 non e' stato visto. */
+function campoDellaPosa(h){
+  const n=v=>{ const x=parseFloat(v); return isFinite(x)&&x>0?x:null; };
+  const f=n(h.FOCALLEN), px=n(h.XPIXSZ), w=n(h.NAXIS1), hh=n(h.NAXIS2);
+  if(!f||!px||!w||!hh) return null;
+  const scala=206.265*px/f;
+  return {w:w*scala/60,h:hh*scala/60};
 }
 /* l'inquadratura dei light di un oggetto: quella delle pose piu' numerose, entro 1′ e 1°; il centro pianificato prima di
    quello del telescopio, che col dither si media. Le altre si contano (`diverse`): un mosaico, o un'inquadratura cambiata */
@@ -20963,7 +21026,9 @@ function inquadraturaDeiLight(lista){
   gruppi.sort((a,b)=>b.length-a.length);
   const g=gruppi[0], ra0=g[0].ra;
   const ra=((ra0+g.reduce((a,x)=>a+dRa(x.ra,ra0),0)/g.length)%360+360)%360, dec=g.reduce((a,x)=>a+x.dec,0)/g.length;
-  return {ra,dec,rot:g[0].rot,fonte:g[0].fonte,pose:g.length,diverse:gruppi.length-1};
+  /* il campo e il banco: quelli delle pose del gruppo che li dicono (28 ottobre 2026) */
+  const conCampo=g.find(x=>x.campo)||{};
+  return {ra,dec,rot:g[0].rot,fonte:g[0].fonte,pose:g.length,diverse:gruppi.length-1,campo:conCampo.campo||null,banco:conCampo.banco||g[0].banco||null};
 }
 /* tutte le pose di una cartella: lette, classificate; i light sommati per oggetto e per chiave, con l'assetto di
    ciascuno (luci), e la calibrazione con il suo (cal) */
@@ -21159,6 +21224,7 @@ function mostraLight(r){
       <div class="small muted">${Object.entries(o.pose).map(([k,n])=>{ const [f,s]=k.split('|'); return esc(f)+' '+n+'×'+s+' s'; }).join(' · ')}</div>
       ${o.inquadratura?`<div class="small muted">inquadratura dei light: centro ${esc(coordinateDette(o.inquadratura.ra,o.inquadratura.dec))}${
         o.inquadratura.rot!=null?' · rotazione '+fmt(o.inquadratura.rot,1)+'°':' · rotazione non detta'}${
+        o.inquadratura.campo?' · campo '+fmt(o.inquadratura.campo.w,1)+'′ × '+fmt(o.inquadratura.campo.h,1)+'′':''}${
         o.inquadratura.fonte==='telescopio'?' (dal puntamento del telescopio)':''}${
         o.inquadratura.diverse?' · fra i light '+(o.inquadratura.diverse===1?'c’è un’altra inquadratura':'ci sono altre '+o.inquadratura.diverse+' inquadrature')+': vale la più ripresa':''}</div>`:''}
       <div class="row" style="margin-top:6px">${campo(o,i)}</div>
