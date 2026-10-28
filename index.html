@@ -16434,8 +16434,9 @@ function renderPreview(t,dv){
      lo stesso — c'e' il verdetto sull'inquadratura, i pannelli, la rotazione. */
   const spento=()=>{ box.innerHTML=`<button type="button" class="pv-go pv-off">
       <span><b>Anteprima non disponibile.</b><br>
-      Arriva dal CDS e richiede la rete: ${location.protocol==='file:'
-        ? 'stai usando la versione offline.' : 'sembra che non ci sia connessione.'}<br>
+      ${location.protocol==='file:' ? 'Arriva dal CDS e richiede la rete: stai usando la versione offline.'
+        : navigator.onLine===false ? 'Arriva dal CDS e richiede la rete, che adesso non c’è.'
+        : 'Arriva dal CDS, che adesso non risponde: non è la tua connessione. Riprova più tardi.'}<br>
       Apri comunque la vista del campo &rsaquo;</span></button>`;
     const g=box.querySelector('.pv-go'); if(g) g.onclick=()=>apriVista(t); };
   const to=setTimeout(()=>{ if(!img.complete||!img.naturalWidth) spento(); },8000);
@@ -17295,23 +17296,70 @@ function renderRx(np){
    postazione resta quella di prima, con il verdetto testuale. Nessuna dipendenza
    viene aggiunta al percorso critico dell'app. */
 const ALADIN_SRC='https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js';
-let _alPromise=null, _alInst=null;
+/*  LA COPIA DI RISERVA, QUANDO IL CDS NON RISPONDE (28 ottobre 2026, Alessandro: l'immagine reale «ha smesso di
+    funzionare»). Misurato il 28 ottobre: la connessione c'era — Google e GitHub in 0,15–0,3 s —, ma tutto il CDS,
+    130.79.128.x, non apriva la porta 443, da qui e da un'altra rete (ECONNREFUSED): Aladin, alasky, alaskybis, il sito,
+    Simbad, VizieR. Non un rifiuto verso AIS: nessuna connessione, per nessuno. Fuori da Strasburgo le copie rispondevano:
+    la libreria sta anche su npm, pubblicata dal CDS (jsdelivr e unpkg, 3.8.2), e le tessere di DSS2 colore all'ESA
+    (skies.esac.esa.int/DSSColor, «public mirror» di ivo://CDS/P/DSS2/color); DSS2 rosso e PanSTARRS una copia non ce
+    l'hanno.
+    Si chiede prima al CDS, come sempre; se in CINQUE secondi non risponde si va alla copia, e lo si dice. Una richiesta
+    al CDS che resta appesa — il caso del 28 ottobre — non tiene ferma la vista: la prova si interrompe da sola. Niente si
+    scarica in locale. La miniatura viene da hips2fits, che sta solo al CDS: il suo riquadro dice che il CDS non risponde,
+    non che manca la rete. Sorvegliato da tools/gate-copia-di-riserva.js. */
+const CDS_ATTESA=5000;
+const ALADIN_RISERVA=['https://cdn.jsdelivr.net/npm/aladin-lite@3.8.2/dist/aladin.js',
+  'https://unpkg.com/aladin-lite@3.8.2/dist/aladin.js'];
+const IMMAGINI_DI_RISERVA={'P/DSS2/color':'https://skies.esac.esa.int/DSSColor/'};
+const CDS_PROVA={aladin:'https://aladin.cds.unistra.fr/', immagini:'https://alasky.cds.unistra.fr/DSS/DSSColor/properties'};
+/*  il CDS risponde? Basta una risposta qualunque, anche un errore HTTP: si guarda se il server c'e'. La risposta vale
+    cinque minuti, poi si richiede: quando il CDS torna, si torna da lui. */
+const _cds={};
+function cdsRisponde(chi){
+  const c=_cds[chi]; if(c&&Date.now()-c.t<300000) return c.p;
+  const ctl=typeof AbortController==='function'?new AbortController():null;
+  const p=new Promise(res=>{ const to=setTimeout(()=>{ if(ctl) ctl.abort(); res(false); },CDS_ATTESA);
+    fetch(CDS_PROVA[chi],{method:'HEAD',mode:'no-cors',cache:'no-store',signal:ctl?ctl.signal:undefined})
+      .then(()=>{ clearTimeout(to); res(true); },()=>{ clearTimeout(to); res(false); }); });
+  _cds[chi]={t:Date.now(),p}; return p;
+}
+/*  da dove arriva la libreria, e quali immagini usare: il CDS se risponde, la copia se no */
+const fontiDiAladin=cds=>cds?[ALADIN_SRC].concat(ALADIN_RISERVA):ALADIN_RISERVA.slice();
+function immagineDellaVista(scelta,cds){
+  if(cds) return {survey:scelta, nota:''};
+  const copia=IMMAGINI_DI_RISERVA[scelta];
+  /* la riga non nomina chi ospita la copia (Alessandro, 28 ottobre 2026: niente crediti a chi ospita le copie) */
+  return copia?{survey:copia, nota:'Il CDS non risponde: le immagini arrivano dalla sua copia di riserva.'}
+    :{survey:IMMAGINI_DI_RISERVA['P/DSS2/color'], nota:'Il CDS non risponde, e l’immagine scelta ha solo la sua: intanto DSS2 colore, dalla copia di riserva.'};
+}
+let _alPromise=null, _alInst=null, ALADIN_DA=null;
+function caricaScript(src,ms){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.charset='utf-8';
+  const to=setTimeout(()=>{ s.remove(); rej(new Error('timeout')); },ms);
+  s.onload=()=>{ clearTimeout(to); res(); }; s.onerror=()=>{ clearTimeout(to); s.remove(); rej(new Error('rete')); };
+  document.head.appendChild(s); }); }
+/*  le copie su npm, dalla 3.6, sono solo un modulo — come script normale «Unexpected token 'export'», misurato —: si
+    caricano con import(), che jsdelivr e unpkg permettono da qualunque pagina, e il modulo da' A come `default` */
+function caricaModulo(src,ms){ return Promise.race([import(src).then(m=>{ if(m&&m.default) window.A=m.default; }),
+  new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]); }
 function ensureAladin(){
   if(_alPromise) return _alPromise;
-  _alPromise=new Promise((res,rej)=>{
-    if(window.A&&window.A.aladin) return res(window.A);
-    const s=document.createElement('script');
-    s.src=ALADIN_SRC; s.charset='utf-8';
-    const to=setTimeout(()=>rej(new Error('timeout')),12000);
-    s.onload=()=>{clearTimeout(to);
-      const A=window.A;
-      if(!A) return rej(new Error('script caricato ma A non definito'));
-      // v3 compila WebAssembly: se espone A.init va atteso, altrimenti si parte
-      (A.init&&typeof A.init.then==='function') ? A.init.then(()=>res(A)).catch(rej) : res(A);
-    };
-    s.onerror=()=>{clearTimeout(to);rej(new Error('rete'))};
-    document.head.appendChild(s);
-  });
+  _alPromise=(async()=>{
+    if(window.A&&window.A.aladin) return window.A;
+    let ultimo=null;
+    for(const src of fontiDiAladin(await cdsRisponde('aladin'))){
+      try{
+        await (ALADIN_RISERVA.indexOf(src)>=0?caricaModulo(src,15000):caricaScript(src,12000));
+        const A=window.A;
+        if(!A) throw new Error('script caricato ma A non definito');
+        // v3 compila WebAssembly: se espone A.init va atteso, altrimenti si parte
+        if(A.init&&typeof A.init.then==='function') await A.init;
+        ALADIN_DA=src; return A;
+      }catch(e){ ultimo=e; }
+    }
+    throw ultimo||new Error('rete');
+  })();
+  /* se nessuna fonte risponde, la prossima vista riprova invece di restare sul fallimento */
+  _alPromise.catch(()=>{ _alPromise=null; });
   return _alPromise;
 }
 
@@ -17524,10 +17572,14 @@ function drawField(t,dv,rot){
   const span=Math.max(w,h,obj)*1.7;
   ALADIN_DELLA_SCHEDA=null;
   box.innerHTML='<div class="small muted" style="padding:14px">Carico l\'immagine del campo…</div>';
-  ensureAladin().then(A=>{
+  const fonte=$('alFonte');
+  Promise.all([ensureAladin(),cdsRisponde('immagini')]).then(([A,cds])=>{
     box.innerHTML='';
+    /* le immagini: quelle scelte dal CDS, o la sua copia all'ESA se il CDS non risponde (28 ottobre 2026) */
+    const im=immagineDellaVista($('alSurvey')?$('alSurvey').value:'P/DSS2/color',cds);
+    if(fonte){ fonte.textContent=im.nota; fonte.hidden=!im.nota; }
     // il selettore, non l'elemento: e' la forma documentata dell'API v3
-    const al=A.aladin('#aladin',{survey:$('alSurvey')?$('alSurvey').value:'P/DSS2/color',
+    const al=A.aladin('#aladin',{survey:im.survey,
       fov:span, target:`${fc.ra} ${fc.dec}`, cooFrame:'ICRSd',
       showReticle:false, showShareControl:false, showSimbadPointerControl:false,
       showProjectionControl:false, showFullscreenControl:true, showGotoControl:false,
@@ -17547,10 +17599,14 @@ function drawField(t,dv,rot){
     if(al.on) al.on('positionChanged',()=>ridisegnaCampo());
     ridisegnaCampo();
   }).catch(err=>{
+    if(fonte) fonte.hidden=true;
+    /* perche' non c'e': senza rete, o dal file sul disco, o col CDS e le sue copie che non rispondono — tre cose diverse */
+    const perche=location.protocol==='file:'?'arriva dai server del CDS e serve una connessione (stai usando la versione offline)'
+      :navigator.onLine===false?'arriva dai server del CDS e serve una connessione, che adesso non c’è'
+      :'arriva dai server del CDS, che adesso non rispondono, e nemmeno le loro copie';
     box.innerHTML=`<div class="small muted" style="padding:14px">
       <span class="pill p-dim">campo non disponibile</span>
-      L'immagine reale arriva dai server del CDS e serve una connessione${
-        location.protocol==='file:'?' (stai usando la versione offline)':''}.
+      L'immagine reale ${perche}.
       Il giudizio qui sopra è calcolato e vale comunque: ${esc(err.message)}.</div>`;
   });
 }
@@ -20214,6 +20270,7 @@ function openSheet(i){
         centro, come nell'Assistente di inquadratura di N.I.N.A. La rotella ingrandisce.</p>
       <div id="rotAdvice" class="small" style="margin-top:6px"></div>
       <div id="aladin"></div>
+      <div id="alFonte" class="small muted" style="margin-top:4px" hidden></div>
       <p class="small muted" style="margin-top:6px">Il riquadro azzurro è il tuo sensore a
         questa focale${(()=>{const m=mosaicPanels(t,dvS);return m.cols*m.rows>1?', quelli gialli i pannelli del mosaico':'';})()}.
         Immagini <a href="https://aladin.cds.unistra.fr/" target="_blank" rel="noopener">Aladin Lite</a> / CDS Strasbourg.</p>
