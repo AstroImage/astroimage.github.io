@@ -1647,13 +1647,14 @@ td.archcell{max-width:120px}
           <h2>Archivio progetti</h2>
           <div class="ch-sub">I progetti, le ore già riprese, i tuoi siti, la tua strumentazione e le postazioni si
             salvano in questo browser, su questo PC. Per portarli sul PC dove gira N.I.N.A., in un altro browser, o per non
-            perderli se il browser si svuota, salvane una copia: il file <code>progetti.json</code> li contiene tutti.
+            perderli se il browser si svuota, salvane una copia: un file che li contiene tutti, chiamato col sito, il
+            telescopio, l’oggetto e il giorno.
             Caricando una copia AIS la unisce a quello che c’è qui, senza togliere niente.</div>
           <div class="ch-sub" id="copiaStato" style="margin-top:6px"></div>
         </div>
         <div class="ch-act">
-          <button class="fn fn-exp" onclick="exportState()" title="Scarica progetti.json con tutto quello che AIS ha salvato in questo browser">Salva una copia</button>
-          <button class="fn fn-exp" onclick="document.getElementById('impIn').click()" title="Unisce a quello che c’è qui un progetti.json salvato prima">Carica una copia</button>
+          <button class="fn fn-exp" onclick="exportState()" title="Scarica una copia di tutto quello che AIS ha salvato in questo browser, chiamata col sito, il telescopio, l’oggetto e il giorno">Salva una copia</button>
+          <button class="fn fn-exp" onclick="document.getElementById('impIn').click()" title="Unisce a quello che c’è qui una copia salvata prima">Carica una copia</button>
           <input type="file" id="impIn" accept=".json" hidden>
           <button class="fn fn-bad" onclick="clearState()">Azzera</button>
         </div>
@@ -14678,7 +14679,7 @@ function addReducer(){
   if(!t.user) t.user_reducers=true;                 // il telescopio resta di catalogo, il riduttore e' tuo
   persistReducers(); fillReducers(t.id); $('red').value=String(f);
   segnaScelta(); refresh();
-  gearMsg('ok',`${f}x aggiunto a ${esc(t.name)}: ${focal} mm. Resta salvato ed entra in progetti.json.`);
+  gearMsg('ok',`${f}x aggiunto a ${esc(t.name)}: ${focal} mm. Resta salvato ed entra nella copia dell’Archivio.`);
 }
 const syncRed=()=>{ const r=derive(cfgMotore()).r; $('red').value=String(r.factor); };
 
@@ -17214,7 +17215,7 @@ function renderRx(np){
      la scheda completa è metà del valore dell'app e nessuno ci arrivava. */
   const actions=`<div class="rxact">
       <button type="button" class="bt-progetto" id="rxSalvaProgetto" onclick="salvaProgetto()"
-        data-tip="Salva oggetto, prescrizione e strumentazione: lo ritrovi in Archivio progetti, e lo porti su un altro PC con progetti.json.">Salva progetto</button>
+        data-tip="Salva oggetto, prescrizione e strumentazione: lo ritrovi in Archivio progetti, e lo porti su un altro PC con una copia dall’Archivio.">Salva progetto</button>
       <button class="primary" onclick="rxOpenSheet(${jsAttr(t.id)})">${
         fromCat?'Apri la scheda di classe':'Apri la scheda completa'}</button>
       ${fromCat?`<button onclick="openTargetForm(null,${jsAttr(fromCat.name)})"
@@ -20358,12 +20359,30 @@ function payloadDellaCopia(){
     postazioni:leggiPostazioni(), progetti:leggiProgetti()};
 }
 const testoDellaCopia=()=>JSON.stringify(payloadDellaCopia(),null,2);
+/*  IL NOME DELLA COPIA DICE DA DOVE VIENE (28 ottobre 2026, Alessandro: «deve salvare il file con un nome che ne indichi
+    almeno in parte la sua identità», per esempio «MILANO ASKAR 71 F NGC 7635.json»). Era sempre `progetti.json`, e due
+    copie, di Borno e di Milano, non si distinguevano. Adesso: AIS, il sito, il telescopio, l'oggetto prescritto e il giorno —
+    «AIS Milano Askar 71F NGC 7635 2026-10-28.json». Il sito senza la provincia e la localita' («Borno (BS) - Altopiano
+    del Sole» e' «Borno»), il telescopio senza le parentesi; quello che manca non si scrive, e nessun carattere che Windows
+    rifiuta in un nome di file. Il giorno mette in fila le copie dello stesso banco. La copia porta comunque TUTTO quello che
+    sta nel browser: il nome dice dove si era, non che dentro c'e' solo quello. Sorvegliato da tools/gate-promemoria-copia.js. */
+function nomeDellaCopia(){
+  /* il pollice («Ritchey-Chretien 8"») diventa ″, che in un nome di file si puo': le virgolette no */
+  const pulito=x=>String(x||'').replace(/\([^)]*\)/g,' ').replace(/"/g,'″').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40).trim();
+  const s=$('site'), opz=s&&s.value!=='__custom'&&s.selectedIndex>=0?s.options[s.selectedIndex]:null;
+  const sito=opz?pulito(String(opz.textContent).split(/\s+\(|\s+[-–]\s+|,/)[0]):'';
+  const tel=pulito((DB.telescopes.find(x=>x.id===CFG.tel)||{}).name);
+  /* l'oggetto prescritto; se nessuno lo e', quello dell'ultimo progetto salvato */
+  const ultimo=leggiProgetti().slice().sort((a,b)=>String(b.salvato||'').localeCompare(String(a.salvato||'')))[0];
+  const ogg=pulito(RXEVAL&&RXEVAL.tg?RXEVAL.tg.names[0]:ultimo&&ultimo.oggetto?ultimo.oggetto.nome:'');
+  return ['AIS',sito,tel,ogg,giornoCivile(new Date())].filter(Boolean).join(' ')+'.json';
+}
 /* la data della copia cambia a ogni scrittura: per sapere se il contenuto e' cambiato si confronta senza */
 const senzaLaData=t=>String(t).replace(/"updated": "[^"]*",\n/,'');
 function exportState(){
   const blob=new Blob([testoDellaCopia()],{type:'application/json'});
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='progetti.json'; a.click();
+  a.href=URL.createObjectURL(blob); a.download=nomeDellaCopia(); a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   segnaCopia({auto:false});
 }
@@ -20430,12 +20449,14 @@ function renderCopiaStato(){
   const u=ultimaCopia(), c=cambiatoDallaCopia(), puo=typeof window.showSaveFilePicker==='function';
   const nome=COPIA_FILE&&COPIA_FILE.name?'«'+esc(COPIA_FILE.name)+'»':'il file scelto';
   let h;
+  /* una copia nuova, in un altro file, accanto a «Riprendi» e «Smetti» (28 ottobre 2026) */
+  const nuova=puo?` <button class="chip" onclick="scegliFileDellaCopia()" data-tip="Una copia sempre aggiornata in un file nuovo, col nome di adesso: AIS, il sito, il telescopio, l’oggetto e il giorno. Quella di prima riceve l’ultima scrittura e poi resta com’è: una copia per Borno, una per Milano.">Nuova copia…</button>`:'';
   if(COPIA_FILE&&COPIA_STATO==='attiva') h=`<span class="pill p-ok">copia sempre aggiornata</span> in ${nome}: AIS la riscrive quando qualcosa cambia${
-    u?' (ultima '+quandoDetto(u.quando)+')':''}. <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+    u?' (ultima '+quandoDetto(u.quando)+')':''}. <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>${nuova}`;
   else if(COPIA_FILE&&COPIA_STATO==='permesso') h=`<span class="pill p-warn">copia in pausa</span> Il browser chiede di nuovo il permesso di scrivere in ${nome}.
-    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprendi</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprendi</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>${nuova}`;
   else if(COPIA_FILE&&COPIA_STATO==='errore') h=`<span class="pill p-bad">copia non scritta</span> ${esc(COPIA_ERRORE)}.
-    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprova</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>`;
+    <button class="chip" onclick="aggiornaCopiaAuto(true)">Riprova</button> <button class="chip" onclick="smettiCopiaAuto()">Smetti</button>${nuova}`;
   else{
     h=!u?'<span class="pill p-warn">nessuna copia</span> Da questo browser non hai ancora salvato una copia.'
       :`Ultima copia: ${quandoDetto(u.quando)}. `+(c&&c.length?`<span class="p-warn">Da allora: ${esc(c.join(', '))}.</span>`:'Da allora non è cambiato niente.');
@@ -20450,11 +20471,16 @@ function idbCopia(fare){ return new Promise((ok,ko)=>{ let r; try{ r=indexedDB.o
 const idbScriviCopia=v=>idbCopia((db,ok,ko)=>{ const tx=db.transaction('file','readwrite'), s=tx.objectStore('file');
   if(v) s.put(v,'copia'); else s.delete('copia'); tx.oncomplete=()=>ok(); tx.onerror=()=>ko(tx.error); });
 const idbLeggiCopia=()=>idbCopia((db,ok,ko)=>{ const q=db.transaction('file').objectStore('file').get('copia'); q.onsuccess=()=>ok(q.result||null); q.onerror=()=>ko(q.error); });
+/*  Scegliere il file la prima volta, o UNA COPIA NUOVA quando una c'e' gia' (Alessandro, 28 ottobre 2026: piu' copie,
+    una per Borno e una per Milano, col tasto accanto a «Riprendi» e «Smetti»). Quella di prima riceve l'ultima
+    scrittura e poi resta com'e'; da li' in avanti AIS riscrive la nuova. La finestra si apre per prima, finche' il clic
+    e' fresco: il browser la apre solo da un gesto. */
 async function scegliFileDellaCopia(){
   if(typeof window.showSaveFilePicker!=='function') return;
   let h=null;
-  try{ h=await window.showSaveFilePicker({suggestedName:'progetti.json',types:[{description:'Copia di AIS',accept:{'application/json':['.json']}}]}); }
+  try{ h=await window.showSaveFilePicker({suggestedName:nomeDellaCopia(),types:[{description:'Copia di AIS',accept:{'application/json':['.json']}}]}); }
   catch(e){ return; }                                   // la finestra chiusa senza scegliere
+  if(COPIA_FILE&&COPIA_FILE!==h&&COPIA_STATO==='attiva') await aggiornaCopiaAuto(false);
   COPIA_FILE=h; COPIA_SCRITTA=null;
   try{ await idbScriviCopia(h); }catch(e){}
   await aggiornaCopiaAuto(true);
