@@ -418,6 +418,10 @@ label.f > input, label.f > select{text-transform:none;font-size:14px;letter-spac
   line-height:1.7;letter-spacing:.06em;text-transform:uppercase}
 
 /* ---- celle derivate: la catena strumentale ---- */
+.orizzbox{margin:2px 0 16px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-2)}
+.orizzbox .oz-t{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.orizzbox svg{display:block;width:100%;height:72px;margin-top:8px}
+.orizzbox .oz-ax{display:flex;justify-content:space-between;font-size:11px;color:var(--dim2);font-variant-numeric:tabular-nums}
 .derived{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;
   background:var(--line2);border:1px solid var(--line2);border-radius:var(--radius);
   overflow:hidden;margin-top:var(--s4)}
@@ -1508,6 +1512,8 @@ td.archcell{max-width:120px}
           <label class="f">Notti utili %<input type="number" id="cnf" step="5"></label>
           <label class="f">Data<input type="date" id="date"></label>
         </div>
+        <div id="orizzonteBox" class="orizzbox"></div>
+        <input type="file" id="orizzonteIn" accept=".hrz,.hzn,.txt,.csv" hidden onchange="caricaOrizzonte(this)">
 
         <div class="subhead">La notte, calcolata</div>
         <div class="derived" id="night"></div>
@@ -14811,7 +14817,7 @@ function readSite(){
      scrive a mano un numero DIVERSO dal minimo del profilo sta dichiarando un
      orizzonte piatto, e allora il profilo si lascia andare: una dichiarazione
      esplicita vince, come dappertutto in questo motore. */
-  const prec=SITE&&SITE.orizzonte;
+  const prec=SITE&&SITE.orizzonte, precFonte=SITE&&SITE.orizzonteFonte;
   const hor=+$('hor').value;
   const minProf=Array.isArray(prec)&&prec.length?Math.min(...prec.map(x=>x[1])):null;
   /*  IL SEEING VUOTO SI ASSUME COME NEL SERVIZIO, E SI DICE (regia, 16 settembre 2026). Qui c'era
@@ -14826,7 +14832,7 @@ function readSite(){
   SITE={lat:+$('lat').value,lon:+$('lon').value,sqm:+$('sqm').value,
         seeing:completo.sito.seeing,seeingAssunto:!!completo.sito.seeingAssunto,
         horizonMin:hor,clearFrac:completo.sito.clearFrac,parziale:completo.parziale};
-  if(Array.isArray(prec)&&minProf!=null&&Math.abs(hor-minProf)<1e-6) SITE.orizzonte=prec;
+  if(Array.isArray(prec)&&minProf!=null&&Math.abs(hor-minProf)<1e-6){ SITE.orizzonte=prec; SITE.orizzonteFonte=precFonte||null; }
   ricordaIlSitoPersonale();
 }
 /*  La FWHM del giudizio per la pagina: il seeing del sito con la guida del banco in uso, dalla stessa funzione del
@@ -15402,7 +15408,8 @@ function applySite(s){
   $('hor').value=s.horizonMin;
   /* Il profilo entra QUI, prima che `readSite` ricostruisca SITE dai campi: e'
      l'unico dato del sito che nessun campo puo' contenere. */
-  SITE=Object.assign({},SITE||{},{orizzonte:Array.isArray(s.orizzonte)?s.orizzonte:null});
+  SITE=Object.assign({},SITE||{},{orizzonte:Array.isArray(s.orizzonte)?s.orizzonte:null,
+    orizzonteFonte:Array.isArray(s.orizzonte)?(s.orizzonteFonte||{da:s.shipped?'catalogo':'sito'}):null});
   $('cnf').value=Math.round(s.clearFrac*100);
   $('site').value=s.id; syncRms(); readSite();
 }
@@ -15445,7 +15452,8 @@ const SITO_PERSONALE_KEY='ap_sito_personale';
 function ricordaIlSitoPersonale(){
   const sel=$('site'); if(!sel||sel.value!=='__custom') return;
   const v={lat:$('lat').value,lon:$('lon').value,sqm:$('sqm').value,fonteSqm:$('sqm').dataset.src||null,see:$('see').value,
-    hor:$('hor').value,cnf:$('cnf').value,orizzonte:SITE&&Array.isArray(SITE.orizzonte)?SITE.orizzonte:null,assunto:!!SITE_DEFAULT};
+    hor:$('hor').value,cnf:$('cnf').value,orizzonte:SITE&&Array.isArray(SITE.orizzonte)?SITE.orizzonte:null,
+    orizzonteFonte:SITE&&Array.isArray(SITE.orizzonte)?(SITE.orizzonteFonte||null):null,assunto:!!SITE_DEFAULT};
   persistPick('__custom');
   try{ localStorage.setItem(SITO_PERSONALE_KEY,JSON.stringify(v)); }catch(e){}
 }
@@ -15454,8 +15462,106 @@ const loadSitoPersonale=()=>{ try{ const v=JSON.parse(localStorage.getItem(SITO_
 function applicaSitoPersonale(v){
   $('lat').value=v.lat; $('lon').value=v.lon; $('sqm').value=v.sqm; $('sqm').dataset.src=v.fonteSqm||'stima';
   $('see').value=v.see; $('hor').value=v.hor; $('cnf').value=v.cnf;
-  SITE=Object.assign({},SITE||{},{orizzonte:Array.isArray(v.orizzonte)?v.orizzonte:null});
+  SITE=Object.assign({},SITE||{},{orizzonte:Array.isArray(v.orizzonte)?v.orizzonte:null,
+    orizzonteFonte:Array.isArray(v.orizzonte)?(v.orizzonteFonte||null):null});
   $('site').value='__custom'; syncRms(); readSite();
+}
+
+/* L'ORIZZONTE DEL SITO, DETTO E DISEGNATO (28 ottobre 2026). Alessandro, dal terrazzo di Milano: in N.I.N.A. ha caricato
+   l'orizzonte di Milano, e in Condizioni niente diceva quale orizzonte AIS usasse, ne' che la selezione degli oggetti ne
+   tenesse conto. Misurato: la lista di stanotte (`evaluate`) e le notti della prescrizione (`nightWindows`) contano le ore
+   sopra max(15°, orizzonte all'azimut), col profilo per azimut del sito se c'e' e col numero di «Orizzonte min» se no;
+   sul minix il profilo dell'Askar porta «New site Casa Milano .hrz», 361 punti: nord 4–8°, sud 52–60°. Nella sua schermata
+   il sito salvato «Milano terrazzo» ha l'orizzonte minimo a 35°, che con un profilo sarebbe il suo punto piu' basso, 0°:
+   35° piatti, che a nord — dove la soglia vera e' il limite di 15° — tagliano 20° di troppo, e a sud lasciano passare da
+   17 a 25° che il palazzo copre.
+   Adesso un riquadro sotto i campi dice quale orizzonte vale — per azimut o piatto —, da dove viene (il profilo di N.I.N.A.
+   col suo file, un file caricato qui, il catalogo, o un sito salvato prima che la provenienza si scrivesse), lo disegna
+   con la soglia che conta, e dice che la lista e la prescrizione lo usano. «Carica un orizzonte…» legge il file di N.I.N.A.
+   (righe con azimut e altezza) e lo mette nel sito: in quello tuo, se e' un sito salvato; se no il sito diventa
+   personalizzato, e si ricorda. Sorvegliato da tools/gate-orizzonte-del-sito.js. */
+function orizzonteDaTesto(t){
+  const visti=new Map();
+  for(const riga of String(t||'').split(/\r?\n/)){
+    const s=riga.trim(); if(!s||/^(#|;|\/\/)/.test(s)) continue;
+    let pz=s.split(/[\s;]+/);
+    pz=pz.length===1&&s.includes(',')?s.split(','):pz.map(x=>x.replace(',','.'));
+    if(pz.length<2) continue;
+    const az=+pz[0], alt=+pz[1];
+    if(!isFinite(az)||!isFinite(alt)) continue;
+    if(az<0||az>360||alt<-10||alt>90) return null;
+    const k=Math.round(n360(az)*100)/100;
+    if(!visti.has(k)) visti.set(k,Math.round(alt*100)/100);
+  }
+  const punti=[...visti].sort((a,b)=>a[0]-b[0]);
+  return punti.length>=2?punti:null;
+}
+function usaOrizzonte(punti,fonte){
+  const min=Math.min(...punti.map(x=>x[1])), mio=SITES.find(s=>s.id===$('site').value);
+  SITE=Object.assign({},SITE||{},{orizzonte:punti,orizzonteFonte:fonte}); $('hor').value=String(min);
+  if(mio){ mio.orizzonte=punti; mio.horizonMin=min; mio.orizzonteFonte=fonte; persistSites(); }
+  else $('site').value='__custom';
+  readSite(); refresh();
+}
+function togliOrizzonte(){
+  const mio=SITES.find(s=>s.id===$('site').value);
+  SITE=Object.assign({},SITE||{},{orizzonte:null,orizzonteFonte:null});
+  if(mio){ mio.orizzonte=null; mio.orizzonteFonte=null; persistSites(); }
+  else $('site').value='__custom';
+  readSite(); refresh();
+}
+function caricaOrizzonte(input){
+  const f=input&&input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ input.value='';
+    const punti=orizzonteDaTesto(String(r.result||''));
+    if(!punti){ toast('«'+f.name+'» non è un orizzonte: servono righe con azimut e altezza in gradi, almeno due.'); return; }
+    usaOrizzonte(punti,{da:'file',nome:f.name});
+    toast('Orizzonte da «'+f.name+'»: '+punti.length+' punti.'); };
+  r.onerror=()=>{ input.value=''; toast('Il file «'+f.name+'» non si legge.'); };
+  r.readAsText(f);
+}
+const LATI_DELL_ORIZZONTE=[['nord',315],['est',45],['sud',135],['ovest',225]];
+function renderOrizzonte(){
+  const box=$('orizzonteBox'); if(!box||!SITE) return;
+  const p=Array.isArray(SITE.orizzonte)&&SITE.orizzonte.length>=2?SITE.orizzonte:null;
+  const lim=LIMITE_OPERATIVO(), f=orizzonteDi(SITE), piatto=isFinite(+SITE.horizonMin)?+SITE.horizonMin:0;
+  const gradi=g=>fmt(g,0)+'°';
+  let descr, uso;
+  if(p){
+    const alt=p.map(x=>x[1]), fz=SITE.orizzonteFonte;
+    const lati=LATI_DELL_ORIZZONTE.map(([nome,da])=>{ const v=[]; for(let k=0;k<90;k++) v.push(f(da+k));
+      const a=Math.min(...v), b=Math.max(...v); return nome+' '+(Math.round(a)===Math.round(b)?gradi(a):fmt(a,0)+'–'+gradi(b)); });
+    const fonte=!fz||fz.da==='sito'?'salvato col sito, senza la sua provenienza'
+      :fz.da==='nina'?'dal profilo'+(fz.profilo?' <b>«'+esc(fz.profilo)+'»</b>':'')+' di N.I.N.A.'+(fz.nome?', file «'+esc(fz.nome)+'»':'')
+      :fz.da==='file'?'dal file <b>«'+esc(fz.nome||'')+'»</b>, caricato qui':'dal catalogo di AIS, col sito';
+    descr=`${p.length} punti, da ${gradi(Math.min(...alt))} a ${gradi(Math.max(...alt))}: ${lati.join(', ')}. Viene ${fonte}.`;
+    uso=`La lista di stanotte e la prescrizione contano solo le ore sopra questo profilo, e mai sotto il limite operativo di ${gradi(lim)}.
+      Il campo «Orizzonte min» mostra il punto più basso: scriverci un altro numero torna a un orizzonte piatto.`;
+  } else {
+    descr=`${gradi(piatto)} in ogni direzione, dal campo «Orizzonte min»: nessun profilo per azimut.`;
+    uso=`La lista di stanotte e la prescrizione contano solo le ore sopra ${gradi(Math.max(lim,piatto))}${piatto<lim?', il limite operativo':''}.
+      Se il tuo orizzonte cambia con la direzione, carica il suo file (quello di N.I.N.A., righe con azimut e altezza) o leggi il
+      banco da N.I.N.A. in Strumentazione.`;
+  }
+  const y=a=>perLaMacchina(90-Math.max(-5,Math.min(90,a)),2), curva=[];
+  for(let z=0;z<=360;z+=2) curva.push([z,f(z)]);
+  const coperto='M0,95 '+curva.map(([z,a])=>'L'+z+','+y(a)).join(' ')+' L360,95 Z';
+  const soglia=curva.map(([z,a],i)=>(i?'L':'M')+z+','+y(Math.max(lim,a))).join(' ');
+  const riga=a=>`<line x1="0" x2="360" y1="${y(a)}" y2="${y(a)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  box.innerHTML=`<div class="oz-t"><b>Orizzonte</b><span class="pill ${p?'p-ok':'p-dim'}">${p?'per azimut':'piatto'}</span>
+      <span class="small">${descr}</span></div>
+    <svg viewBox="0 -2 360 97" preserveAspectRatio="none" role="img" aria-label="L'orizzonte del sito per azimut, da nord a nord">
+      ${riga(30)}${riga(60)}
+      <path d="${coperto}" fill="var(--dim2)" fill-opacity=".35" stroke="none"/>
+      <line x1="0" x2="360" y1="${y(lim)}" y2="${y(lim)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+      <path d="${soglia}" fill="none" stroke="var(--fn-plan)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="oz-ax"><span>N</span><span>E</span><span>S</span><span>O</span><span>N</span></div>
+    <div class="small muted" style="margin-top:6px">${uso} In grigio il cielo coperto; la linea è la soglia che conta, il
+      tratteggio il limite operativo.</div>
+    <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="chip fn fn-cfg" onclick="$('orizzonteIn').click()">Carica un orizzonte…</button>${
+      p?'<button type="button" class="chip" onclick="togliOrizzonte()">Torna a un orizzonte piatto</button>':''}</div>`;
 }
 
 const loadSites=()=>{
@@ -15472,7 +15578,7 @@ function saveSite(){
   readSite();
   const id='u_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,20)+'_'+Date.now().toString(36).slice(-4);
   SITES.push({id,name,lat:SITE.lat,lon:SITE.lon,sqm:SITE.sqm,seeing:SITE.seeing,
-    horizonMin:SITE.horizonMin,orizzonte:SITE.orizzonte||null,clearFrac:SITE.clearFrac,
+    horizonMin:SITE.horizonMin,orizzonte:SITE.orizzonte||null,orizzonteFonte:SITE.orizzonte?(SITE.orizzonteFonte||null):null,clearFrac:SITE.clearFrac,
     sqm_manual:$('sqm').dataset.src==='manuale'});
   persistSites(); renderSiteSelect(); $('site').value=id;
   SITE_DEFAULT=false; persistPick(id);
@@ -15545,6 +15651,7 @@ function refresh(){
   const dv=derive(cfgMotore());
   RXDV=dv;                          // il riepilogo LEGGE questa, non la ricalcola
   renderSetups();                   // la lista segue la configurazione in uso
+  renderOrizzonte();
   /*  Il giudizio col ferro del banco (18 settembre 2026): la guida e' l'RMS caratteristico, la stessa della posa. */
   const giud=giudizioDellaPagina(dv), fwhm=giud.fwhm;
   const samp=samplingVerdict(dv.scale,fwhm,giud);
@@ -19103,9 +19210,10 @@ function applicaBancoNina(passata){
      tuo lo conserva, uno del catalogo no */
   let notaOrizzonte='';
   if(b.orizzonte&&b.orizzonte.punti){
-    SITE=Object.assign({},SITE||{},{orizzonte:b.orizzonte.punti}); $('hor').value=String(b.orizzonte.min);
+    const fonte={da:'nina',profilo:b.profilo||null,nome:b.orizzonte.file||null};
+    SITE=Object.assign({},SITE||{},{orizzonte:b.orizzonte.punti,orizzonteFonte:fonte}); $('hor').value=String(b.orizzonte.min);
     const mio=SITES.find(s=>s.id===$('site').value);
-    if(mio){ mio.orizzonte=b.orizzonte.punti; mio.horizonMin=b.orizzonte.min; persistSites();
+    if(mio){ mio.orizzonte=b.orizzonte.punti; mio.horizonMin=b.orizzonte.min; mio.orizzonteFonte=fonte; persistSites();
       notaOrizzonte='; l\'orizzonte di N.I.N.A. resta nel sito «'+esc(mio.name)+'»'; }
     else notaOrizzonte='; l\'orizzonte di N.I.N.A. vale finché non cambi sito: per tenerlo, «Salva sito…» in Condizioni';
   }
