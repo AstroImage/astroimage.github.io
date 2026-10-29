@@ -52,13 +52,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
-     ]
+     ],
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -156,13 +157,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
-     ]
+     ],
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -260,13 +262,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
-     ]
+     ],
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -364,13 +367,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "sho",
       "hoo"
-     ]
+     ],
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -468,13 +472,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
-     ]
+     ],
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -574,10 +579,11 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
-     "road": "default"
+     "road": "default",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
     },
     "L": {
      "floor": 0,
@@ -1326,15 +1332,15 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
      ],
      "note": "15-20 min per canale, solo per le stelle",
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "media"
     }
    },
@@ -1479,15 +1485,15 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "hargb",
       "sho"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa",
      "soggetto": {
       "floor": 1.5,
@@ -1663,14 +1669,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo",
       "sho"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa"
     },
     "L": {
@@ -1818,14 +1824,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "sho",
       "hoo"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa"
     },
     "L": {
@@ -1967,13 +1973,13 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo_stelle"
      ],
-     "source": "i numeri delle stelle delle schede a emissione (0,5/1/1,5, come NGC 6888 e M27), decisi da Alessandro il 14 settembre 2026 convertendo la HaRGB in «HOO + stelle RGB»; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa",
      "soggetto": {
       "floor": 2,
@@ -2145,14 +2151,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo_hdr",
       "sho"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa"
     }
    },
@@ -2251,12 +2257,12 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": "hoo_rgbstars",
      "note": "Obbligatorio per le stelle: campo del Cigno",
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento e motivata nella nota di questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "media"
     },
     "L": {
@@ -2421,15 +2427,15 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "sho_melotte",
       "hoo_wide",
       "hargb"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa",
      "soggetto": {
       "floor": 1.5,
@@ -2587,14 +2593,14 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "sho_trunk",
       "hargb_wide"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa",
      "soggetto": {
       "floor": 1.5,
@@ -2720,13 +2726,13 @@
     },
     "RGB": {
      "floor": 0.5,
-     "useful": 1,
-     "saturates": 1.5,
+     "useful": 1.5,
+     "saturates": 3,
      "scala": "stelle",
      "road": [
       "hoo_extreme"
      ],
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
      "confidence": "bassa"
     },
     "L": {

@@ -3850,8 +3850,10 @@ function posaDecisa(dv,site,band,tg){
   }
   return m.get(k);
 }
-function resaSottoLaLuna(dv,site,tg,band,dMagV,cr){
-  const stellar=!!((TG.archetypes||{})[tg.archetype]||{}).stellar;
+/*  `stelle` dice che il canale e' lo strato delle stelle di una strada a riga: le stelle sono stelle anche sotto la Luna,
+    come quelle di un ammasso (un criterio solo, 29 ottobre 2026). */
+function resaSottoLaLuna(dv,site,tg,band,dMagV,cr,stelle){
+  const stellar=!!((TG.archetypes||{})[tg.archetype]||{}).stellar||!!stelle;
   const pen=moonPenalty(band,dMagV,0,stellar,lpExcessFlux(site.sqm),cr);
   if(!(pen<1)||!dv||!dv.c) return pen;
   const p=posaDecisa(dv,site,band,tg);
@@ -4286,6 +4288,10 @@ function roadChannels(budget,roadId){
    anche i numeri del soggetto (`RGB.soggetto`), una strada `soggetto` legge quelli, e le strade
    `stelle` restano sui loro. Oggi nessuna scheda li porta: il posto c'e', e col passo 6 si
    riempie. Sorvegliato da tools/gate-generazione.js §3. */
+/*  UN CRITERIO SOLO PER LE STELLE (Alessandro, 29 ottobre 2026). Le classi fatte di sole stelle, e i loro canali di banda
+    larga: il colore e la luminanza dell'ammasso aperto sono stelle come lo strato delle stelle di una nebulosa. */
+const CLASSI_DI_SOLE_STELLE=new Set(['cluster_open']), BANDE_DELLE_STELLE=new Set(['RGB','L']);
+const bandaDiSoleStelle=(tg,b)=>!!tg&&CLASSI_DI_SOLE_STELLE.has(tg.archetype)&&BANDE_DELLE_STELLE.has(b);
 function partiDellaStrada(budget,r,arch){
   let out;
   if(r&&Array.isArray(r.canali)){
@@ -4305,6 +4311,9 @@ function partiDellaStrada(budget,r,arch){
      scala del soggetto non dichiarata», come le voci generate del passo 7. */
   else if(r&&r.banda_larga==='soggetto'&&c&&!c.nonValutabile&&c.scala==='stelle')
     out.RGB={...c,prestito:true};
+  /*  LO STRATO DELLE STELLE si dice al riempimento (29 ottobre 2026): ha la sua parte protetta (`fillBudget`). */
+  else if(r&&r.banda_larga==='stelle'&&c&&!c.nonValutabile&&c.scala==='stelle')
+    out.RGB={...c,stratoDelleStelle:true};
   return divisioneARiga(comandaLaL(out,arch),arch);
 }
 /*  DOVE COMANDA LA L, LA L NON RICEVE MAI MENO DI NESSUN ALTRO CANALE (regola di Alessandro, regia, 24 settembre 2026):
@@ -4464,7 +4473,11 @@ function cancelloDellaStrada(parts,dual,unaPassata,strada){
     base ai suoi tetti e l'aggiunta al suo pavimento. */
 function pavimentoDellaStrada(parts,dual,unaPassata,strada){
   const ag=conAggiunta(parts);
-  return ag?ag.oreAlBersaglio(0):roadSum(parts,v=>v.floor,dual,unaPassata,strada);
+  if(ag) return ag.oreAlBersaglio(0);
+  const F=roadSum(parts,v=>v.floor,dual,unaPassata,strada);
+  /*  Con lo strato delle stelle la soglia e' la stessa del riempimento (`pavimentoConLeStelle`). */
+  const s=parts&&parts.RGB&&parts.RGB.stratoDelleStelle&&!parts.RGB.nonValutabile&&parts.RGB.floor>0?parts.RGB:null;
+  return F==null||!s?F:pavimentoConLeStelle(F-s.floor,s.floor,tettoDi(s));
 }
 /*  LA STRADA CON UN'AGGIUNTA, come la vedono il livello e il cancello: la base (la L che comanda e l'RGB) ai suoi tetti, e
     l'aggiunta che prende `QUOTA_DELL_AGGIUNTA` delle ore oltre quei tetti, divisa fra le aggiunte in proporzione ai loro
@@ -4558,7 +4571,7 @@ function costGroups(parts,dual,unaPassata){
   for(const [b,v] of Object.entries(parts)){
     if(joint&&(b==='Ha'||b==='OIII')) continue;
     g.push({id:b,bands:[b],joint:false,critical:!!v.critical,confidence:confidenzaPiuBassa([v]),floor:v.floor,
-      useful:v.useful,sat:tettoDi(v),
+      useful:v.useful,sat:tettoDi(v),...(v.stratoDelleStelle?{stelle:true}:{}),
       /*  quando la L comanda porta soglia e tetto alzati a quelli del colore, e accanto le sue ore proprie: sono quelle che
           la riga di «Da dove vengono le ore» scrive, perche' sono quelle che la sua provenienza spiega. Si chiamavano
           `dellaScheda`, e non lo erano: su M81 vengono dalla fotometria (rinominate il 25 settembre 2026, senza lettori). */
@@ -4588,6 +4601,16 @@ function costGroups(parts,dual,unaPassata){
   return g;
 }
 
+/*  La parte delle stelle nelle strade a riga: AstroBin, 29 ottobre 2026, immagini mono con Hα, OIII e RGB (234): sotto le
+    10 h in tutto le stelle prendono di mediana il 20 % delle ore (45 immagini), fra 10 e 20 h il 17 % (49); in assoluto
+    1,0 h e 2,25 h. */
+const QUOTA_DELLE_STELLE=0.20;
+/*  La soglia di una strada con lo strato delle stelle: le prime ore a cui le righe stanno ai loro pavimenti (`altri`)
+    con le stelle alla loro quota, e le stelle al loro pavimento. h − min(tetto, quota·h) = altri ha una soluzione sola. */
+const pavimentoConLeStelle=(altri,floor,tetto)=>{
+  const t=tetto>0?tetto:floor, h=QUOTA_DELLE_STELLE*altri/(1-QUOTA_DELLE_STELLE)<=t?altri/(1-QUOTA_DELLE_STELLE):altri+t;
+  return Math.max(altri+floor,h);
+};
 /* Il riempimento. Prima i pavimenti: se ci stanno tutti ognuno riceve il suo,
    altrimenti si spartisce in proporzione ai pavimenti e nessuno resta a zero —
    chi resta sotto lo dichiara (`belowFloor`). Poi il resto va, a piccoli passi,
@@ -4658,23 +4681,42 @@ function fillBudget(groups,hours,o){
      Il livello «parziale» che ne discendeva non esiste piu': vedi `prescribe`. */
   const got={}, dropped=[];
   let left=hours;
-  const conFloor=pri.filter(g=>g.floor>0);
-  const sommaFloor=conFloor.reduce((a,g)=>a+g.floor,0);
-  /* La stessa condizione decide il livello in `prescribe`: si restituisce, non si fa
-     ricalcolare. Due tolleranze per una domanda sola aprivano una fessura. */
-  const sottoPavimenti=sommaFloor>hours+1e-9 && sommaFloor>0;
-  if(sottoPavimenti){
-    /* Non ci stanno tutti i pavimenti: si spartisce in proporzione ai pavimenti,
-       cosi' i rapporti fra i canali restano quelli della strada. */
-    const k=hours/sommaFloor;
-    for(const g of pri) got[g.id]=g.floor>0?g.floor*k:0;
-    left=0;
+  /* LO STRATO DELLE STELLE HA LA SUA PARTE (Alessandro, 29 ottobre 2026: «le stelle dovranno avere anche loro il giusto
+     peso … non più marginali in HOO con stelle RGB», e i canali di riga restano i prioritari). Misurato su 36ace69:
+     NGC 7000 in HOO con le stelle, Askar 71F con la 2600MC, a Borno 0,43 h di stelle su 10 h e 1,72 su 40, sotto il
+     loro pavimento di 1,42; a Milano 0,03 e 0,10. La spartizione in proporzione ai pavimenti le schiacciava: i pavimenti
+     di riga pagano il cielo e quello delle stelle no (regola (a)).
+     ADESSO, FINCHE' LE RIGHE SONO CORTE — i loro pavimenti non ci stanno —, le stelle prendono per prime
+     `QUOTA_DELLE_STELLE` delle ore, mai oltre il loro tetto, anche sotto il loro pavimento (lo dichiarano), e le righe
+     si spartiscono il resto in proporzione ai pavimenti come prima: le righe hanno sempre almeno quattro quinti. Quando
+     le righe stanno ai loro pavimenti le stelle salgono al loro con le ore che restano, e poi si avanza insieme come
+     prima. Al passaggio niente salta, e piu' ore non danno mai meno stelle ne' meno riga. Una prima versione dava alle
+     stelle il loro pavimento anche con le righe corte: a 2 h ne prendevano il 58 %. Non legge `useful`, che dopo
+     `ripartenza.md` §3 non decide niente (tools/gate-forma.js §1). La soglia della strada e' `pavimentoConLeStelle`. */
+  const S=pri.find(g=>g.stelle&&g.floor>0)||null, altri=pri.filter(g=>g!==S);
+  const So=altri.filter(g=>g.floor>0).reduce((a,g)=>a+g.floor,0);
+  const quota=S?Math.min(S.sat>0?S.sat:S.floor,QUOTA_DELLE_STELLE*hours):0;
+  const righeCorte=S?hours-quota<So-1e-9:So>hours+1e-9;
+  let baseS=0;
+  if(righeCorte){
+    /* Non ci stanno i pavimenti delle righe: le stelle la loro quota, il resto in proporzione ai pavimenti, cosi' i
+       rapporti fra i canali di riga restano quelli della strada. */
+    let resto=hours;
+    if(S){ got[S.id]=Math.min(quota,resto); resto-=got[S.id]; baseS=got[S.id]; }
+    for(const g of altri) got[g.id]=g.floor>0&&So>0?g.floor*resto/So:0;
+    left=So>0?0:resto;
   } else {
-    for(const g of pri){
+    for(const g of altri){
       if(g.floor>0){ got[g.id]=g.floor; left-=g.floor; }
       else got[g.id]=0;
     }
+    if(S){ got[S.id]=Math.max(quota,Math.min(S.floor,left)); left-=got[S.id]; baseS=Math.max(got[S.id],S.floor); }
   }
+  /* La stessa condizione decide il livello in `prescribe`: si restituisce, non si fa
+     ricalcolare. Due tolleranze per una domanda sola aprivano una fessura. */
+  const sottoPavimenti=righeCorte||(!!S&&got[S.id]<S.floor-1e-9);
+  const sommaFloor=S?pavimentoConLeStelle(So,S.floor,S.sat):So;
+  const pav=g=>g===S?baseS:g.floor;
   /* UNA FASE SOLA, E IL BERSAGLIO E' LA POSIZIONE. Passato il pavimento, ogni
      passo va al canale che sta piu' indietro nel PROPRIO tragitto fra pavimento
      e tetto: (ore - pavimento) / (tetto - pavimento). Cosi' i canali avanzano
@@ -4705,7 +4747,7 @@ function fillBudget(groups,hours,o){
         if(got[g.id]<=0) continue;
         const lim=cap(g);
         if(got[g.id]>=lim-1e-9) continue;
-        const r=(got[g.id]-(g.floor||0))/Math.max(lim-(g.floor||0),1e-6);
+        const r=(got[g.id]-(pav(g)||0))/Math.max(lim-(pav(g)||0),1e-6);
         if(r<worst){worst=r;best=g;}
       }
       if(!best) return;
@@ -4725,7 +4767,8 @@ function fillBudget(groups,hours,o){
   /*  Nelle strade a riga delle regioni HII, oltre i tetti, i canali a riga in parti uguali (`divisioneARiga`). */
   const aRiga=left>1e-9?pri.filter(g=>g.praticaARiga&&got[g.id]>0):[];
   if(aRiga.length>=2){ const d=left/aRiga.length; for(const g of aRiga) got[g.id]+=d; left=0; }
-  return {got,dropped,unused:left,order:pri,sottoPavimenti,sommaPavimenti:sommaFloor};
+  return {got,dropped,unused:left,order:pri,sottoPavimenti,sommaPavimenti:sommaFloor,
+    parteDelleStelle:S?{[S.id]:baseS}:{}};
 }
 
 /* QUI STAVA `CRIT_WEIGHT`, ritirato con `ripartenza.md` §3.
@@ -5426,7 +5469,8 @@ function prescribe(e,hours,dv,panels,opts){
      pavimento vengono marcati: l'avvertimento resta, e' il divieto che sparisce. */
   const alloc=groups.map(g=>{ const h=fill.got[g.id]||0;
       return {...g, hours:h, dropped:(h<=0 && g.floor>0),
-              belowFloor:(g.floor||0)>0 && h<g.floor-1e-9}; })
+              belowFloor:(g.floor||0)>0 && h<g.floor-1e-9,
+              ...(fill.parteDelleStelle&&fill.parteDelleStelle[g.id]!=null?{parteProtetta:fill.parteDelleStelle[g.id]}:{})}; })
     .sort((a,b)=>((b.critical?1:0)-(a.critical?1:0))||(b.hours-a.hours));
   /* QUALE FILTRO PRODUCE QUESTO CANALE — deciso qui, dove il motore gia' c'e'.
 
@@ -7109,7 +7153,7 @@ function mixPenalty(live,dv,tg,site,night,expo){
        entra in tutte e due: `bandaCromatica` sul gruppo le media, invece di prendere
        il colore della sola prima banda. */
     const cr=bandaCromatica(g.joint?'Ha+OIII':g.bands[0],cam);
-    const p=Math.max(1e-3,resaSottoLaLuna(dv,site,tg,g.bands[0],night.dMagV,cr)*effOf(g));   // la Luna da un punto solo
+    const p=Math.max(1e-3,resaSottoLaLuna(dv,site,tg,g.bands[0],night.dMagV,cr,g.stelle)*effOf(g));   // la Luna da un punto solo
     num+=g.hours; den+=g.hours/p;
   }
   return den>0?num/den:1;
@@ -7510,7 +7554,7 @@ function planNights(pr,e,dv,nights,opts){
        gia' cosi' (`moonF=(1+xLP)/(1+xLP+xMoon)`); qui non lo faceva. */
     /* Il colore del vetro si calcola una volta per gruppo, non una per notte. */
     const crG=bandaCromatica(g.joint?'Ha+OIII':g.bands[0],dv.c);
-    const pen=nn.map(x=>resaSottoLaLuna(dv,site,e.tg,g.bands[0],x.dMagV,crG));
+    const pen=nn.map(x=>resaSottoLaLuna(dv,site,e.tg,g.bands[0],x.dMagV,crG,g.stelle));
     const hi=Math.max(...pen), lo=Math.min(...pen);
     /* Il pavimento della singola casella. In modalità sessione si misura in POSE,
        non in ore: cinque scatti da 120 s sono venti minuti e sono un contributo
@@ -12841,13 +12885,19 @@ function evaluate(tg,dv,site,np,state,cov){
     /* IL BUDGET DELLE STELLE NON SCALA COL CIELO (passo 6, regola (a) di Alessandro, 14 settembre 2026).
        Le stelle sono sorgenti puntiformi, non un soggetto esteso: nel disco di seeing il fondo cielo pesa come una
        stella di magnitudine SQM − 2,5·log10(area della PSF), e la stella di cui si compra il colore — magnitudine di
-       riferimento dichiarata: la 13ª — lo domina in ogni cielo da cui si riprende. Il conto dell'incrocio, con la
-       tabella e i due seeing, sta in docs/motore.md: e' la giustificazione, non un meccanismo. Quindi i numeri
-       dell'RGB dichiarato `stelle` prendono l'ottica (`timeFactor` al cielo di riferimento) e non il cielo del sito. Nessun punto d'incrocio
-       qui e nessun avviso: il seeing non entra in nessuna decisione. Misurato prima: a SQM 18,5 il colore delle
-       stelle prendeva dal 14 al 35 % delle ore, fino al 69 %. I numeri del SOGGETTO accanto (`RGB.soggetto`)
-       portano l'oggetto esteso, e il cielo lo pagano. */
-    const stelle=b==='RGB'&&v.scala==='stelle';
+       riferimento dichiarata: la 12ª (Alessandro, 29 ottobre 2026; prima la 13ª) — lo domina in ogni cielo da cui si
+       riprende. Il conto dell'incrocio, con la tabella e i due seeing, sta in docs/motore.md: e' la giustificazione,
+       non un meccanismo. Quindi i numeri dell'RGB dichiarato `stelle` prendono l'ottica (`timeFactor` al cielo di
+       riferimento) e non il cielo del sito. Nessun punto d'incrocio qui e nessun avviso: il seeing non entra in nessuna
+       decisione. Misurato prima: a SQM 18,5 il colore delle stelle prendeva dal 14 al 35 % delle ore, fino al 69 %. I
+       numeri del SOGGETTO accanto (`RGB.soggetto`) portano l'oggetto esteso, e il cielo lo pagano.
+       UN CRITERIO SOLO PER LE STELLE (Alessandro, 29 ottobre 2026: «senza più fare distinguo tra le sole stelle e gli
+       ammassi aperti»). L'ammasso aperto e' stelle e basta, e il suo colore e la sua luminanza pagavano il cielo intero:
+       da Milano (SQM 17,3) 138 h di progetto contro le 3,8 del cielo di riferimento, l'Askar 71F con la 2600MC.
+       AstroBin, 29 ottobre 2026: 519 immagini di 23 ammassi aperti senza filtri di riga, mediana 1,65 h, 1,65 anche
+       sotto i cieli di citta' (Bortle 7–9, 87 immagini). Adesso la regola vale anche per loro (`bandaDiSoleStelle`); i
+       globulari no: i loro membri stanno quasi tutti sotto la 12ª e il nucleo non si risolve, e li' il cielo conta. */
+    const stelle=(b==='RGB'&&v.scala==='stelle')||bandaDiSoleStelle(tg,b);
     const sf=stelle?1:sfCielo;
     let useful=v.useful*f*sf, floor=v.floor*f*sf, saturates=v.saturates?v.saturates*f*sf:0;
     /*  LE ORE DALLA FOTOMETRIA DELL'OGGETTO, dove c'e' la misura (capitolo delle ore, 24 settembre 2026): pavimento e
