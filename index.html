@@ -1024,6 +1024,8 @@ td.archcell{max-width:120px}
 .bc-notte{display:block;flex:1 1 auto;min-width:0}
 .bc-notte[data-tip],.bc-resa[data-tip]{border-bottom:none}
 .bc-notte .tl{height:9px;min-width:0;border-radius:3px;overflow:visible}
+.tl .tl-sotto{background:repeating-linear-gradient(135deg,var(--dim2) 0 2px,transparent 2px 5px);opacity:.75}
+.tlkey i.sotto{background:repeating-linear-gradient(135deg,var(--dim2) 0 2px,transparent 2px 5px)}
 .tl .tl-ora{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--fg);border-radius:1px;box-shadow:0 0 0 1px var(--bg2)}
 .bc-adesso{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
 .tlkey i.ora{width:2px;height:12px;background:var(--fg);border-radius:1px}
@@ -6742,11 +6744,30 @@ const K_ARIA=()=>{const a=(typeof DB!=='undefined'&&DB)?(DB.airmass||{}):{};
   return a.k_mag_per_massa_aria!=null?+a.k_mag_per_massa_aria:0.15;};
 /* Quanto vale un'ora a quell'altezza, rispetto a un'ora allo zenit. Uno al di sopra
    di ogni ragionevole altezza, e mai sopra uno: non si guadagna tempo puntando in su,
-   si smette di perderne. */
+   si smette di perderne.
+   IL FONDO CRESCE VERSO L'ORIZZONTE (29 ottobre 2026, Alessandro: da Milano il cielo basso e' piu' chiaro, «ma non solo
+   a Milano»). Qui c'era tau² soltanto, col fondo «dov'e'» a ogni altezza; ma il fondo si produce lungo la linea di vista,
+   e la linea di vista bassa ne attraversa di piu'. Nel regime dominato dal fondo l'SNR va come S·sqrt(t/B): per pareggiare
+   lo zenit serve t = t0 / (tau² · B0/B), e un'ora vale tau² / (B/B0). Il rapporto B/B0 e' `fondoAllAltezza`, la legge di
+   Krisciunas & Schaefer 1991 (PASP 103, 1033): B/B0 = X_vR · 10^(-0,4 k (X-1)), con X_vR = (1 - 0,96 sin²Z)^(-1/2).
+   Un'ora a 30° vale 0,46 di un'ora allo zenit invece di 0,76 (+0,54 mag di fondo); a 45° 0,68 invece di 0,89; a 15°
+   0,22 invece di 0,46.
+   UNA LEGGE SOLA, PER OGNI CIELO. La legge e' quella della luce dell'aria; la luce delle citta', diffusa negli strati
+   bassi, cresce come la massa d'aria, X · 10^(-0,4 k (X-1)): fino a 25° le due quasi coincidono (a 30° +0,54 e +0,60
+   mag), sotto la seconda e' piu' ripida (a 15° +0,81 e +1,03). Pesarle con l'SQM avrebbe fatto dipendere dal cielo le
+   ore equivalenti, e la regola del motore e' che il cielo paga nel budget, non nel calendario (test.js). Quindi la legge
+   e' la stessa a Borno e a Milano; e verso le cupole delle citta' il fondo basso e' piu' chiaro di cosi': lo dichiara
+   l'orizzonte del sito, dove chi riprende dice da che altezza il cielo gli serve. Entra solo dove entrava tau²: le ore
+   equivalenti, e da li' qualita' della notte, resa, settimane e offerta annuale; le ore di orologio del piano e della
+   sequenza no. */
+const fondoAllAltezza=(alt,X,tau)=>{
+  const Z=(90-alt)*D2R;
+  return Math.pow(Math.max(1e-6,1-0.96*Math.sin(Z)*Math.sin(Z)),-0.5)*tau;
+};
 const oreEquivalenti=alt=>{
   if(!(alt>-2)) return 0;
-  const tau=Math.pow(10,-0.4*K_ARIA()*(airmass(alt)-1));
-  return Math.min(1,tau*tau);
+  const X=airmass(alt), tau=Math.pow(10,-0.4*K_ARIA()*(X-1));
+  return Math.min(1,tau*tau/Math.max(1,fondoAllAltezza(alt,X,tau)));
 };
 
 const orizzonteDi=site=>{
@@ -12578,7 +12599,7 @@ function evaluate(tg,dv,site,np,state,cov){
   const segs=[]; let critH=0, softH=0, equivH=0, maxAlt=-90;
   /* DA ADESSO (29 ottobre 2026): `np.da`, se c'e', e' l'istante da cui contare anche le ore che restano, `oreDaAdesso`.
      La barra resta la notte intera, e niente altro cambia: ore, Luna, resa e settimane sono della notte. */
-  const da=np.da!=null&&isFinite(+np.da)?+np.da:null; let oreDaAdesso=0;
+  const da=np.da!=null&&isFinite(+np.da)?+np.da:null; let oreDaAdesso=0, basseDaAdesso=0, equivDaAdesso=0;
   /* La Luna si misura MENTRE l'oggetto è utilizzabile, non a un istante.
      Prima veniva campionata una sola volta, a metà della notte astronomica: una
      Luna che tramonta all'una risultava presente tutta la notte o assente tutta la
@@ -12599,10 +12620,12 @@ function evaluate(tg,dv,site,np,state,cov){
       const dentro = alt>=sogliaAz(az);
       const lvl = !dentro ? 0 : (alt>=quotaPreferita ? 2 : 1);
       if(dentro){
+        const q=oreEquivalenti(alt);
         critH+=step/3600000;                          // ore di orologio disponibili
-        if(da!=null&&t>=da) oreDaAdesso+=step/3600000;  // quelle che restano da adesso
-        equivH+=(step/3600000)*oreEquivalenti(alt);   // quanto valgono, rispetto allo zenit
+        equivH+=(step/3600000)*q;                     // quanto valgono, rispetto allo zenit
         if(lvl===1) softH+=step/3600000;             // disponibili ma sotto la quota preferita
+        if(da!=null&&t>=da){                          // quelle che restano da adesso, divise allo stesso modo
+          oreDaAdesso+=step/3600000; equivDaAdesso+=(step/3600000)*q; if(lvl===1) basseDaAdesso+=step/3600000; }
       }
       segs.push({t,lvl});
       /* La Luna si misura su TUTTE le ore utilizzabili, non solo su quelle sopra la
@@ -13089,7 +13112,8 @@ function evaluate(tg,dv,site,np,state,cov){
      numero diverso e non va confuso con lei: la prima taglia, la seconda no. */
   const critFloor=sogliaAz(azAlCulmine!=null?azAlCulmine:180);
   const softFloor=critFloor;
-  return {tg,segs,critH,oreDaAdesso:da!=null?oreDaAdesso:null,daAdesso:da,critHeff,softH,equivH,qualitaMedia:critH>0?equivH/critH:0,
+  return {tg,segs,critH,oreDaAdesso:da!=null?oreDaAdesso:null,basseDaAdesso:da!=null?basseDaAdesso:null,
+          equivDaAdesso:da!=null?equivDaAdesso:null,daAdesso:da,critHeff,softH,equivH,qualitaMedia:critH>0?equivH/critH:0,
           maxAlt,critBand,critFloor,softFloor,quotaPreferita,azAlCulmine,
           moonF,lpF,skyF,isNarrow,dMagV,moonUpFrac,moonIllum:mi,moonAlt:mAA.alt,rho,penalizzazioneLunare:penaLuna,
           tsub:_tsub,                       // la posa con cui e' stato calcolato il fattore
@@ -16035,12 +16059,19 @@ function riquadroHtml(x,c,basso){
   const conOre=e.critH>0.3, morde=MOTORE.scelta.ilCieloMorde(e);
   const np=c.np, t0=np&&(np.astro.start||np.nautical.start), t1=np&&(np.astro.end||np.nautical.end);
   const adesso=np&&np.da!=null?oraDellaNotte(new Date(np.da)):null, ist=c.ist&&e.oreDaAdesso!=null;
+  /* IL NUMERO RESTA LE ORE DI OROLOGIO, IL CONTO STA NEL SUGGERIMENTO (29 ottobre 2026): quante sopra la quota buona e
+     quante piu' basse, come i colori della barra, e quanto valgono allo zenit */
+  const divise=(tot,basse,eq)=>' Di queste, '+fmt(Math.max(0,tot-basse),1)+' h sopra '+fmt(e.quotaPreferita,0)+'°, la quota buona per '+
+    e.critBand+', e '+fmt(basse,1)+' h più basse, ma sopra il tuo orizzonte. Valgono '+fmt(eq,1)+
+    ' h allo zenit: in basso l’aria toglie segnale e il cielo è più chiaro.';
   const ore=ist
     ? (e.oreDaAdesso>0.3
-      ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili da adesso, alle '+adesso+', all’alba, in '+e.critBand+' sopra il tuo orizzonte; la notte intera ne dà '+fmt(e.critH,1)+'.')}">${fmt(e.oreDaAdesso,1)}<i> h da adesso</i></span>`
+      ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili da adesso, alle '+adesso+', all’alba, in '+e.critBand+' sopra il tuo orizzonte; la notte intera ne dà '+fmt(e.critH,1)+'.'+
+          divise(e.oreDaAdesso,e.basseDaAdesso,e.equivDaAdesso))}">${fmt(e.oreDaAdesso,1)}<i> h da adesso</i></span>`
       : `<span class="pill p-bad${acc('ore')}" data-tip="${esc('Da adesso, alle '+adesso+', all’alba non resta mezz’ora utile; la notte intera ne dà '+fmt(e.critH,1)+'.')}">0 h da adesso</span>`)
     : conOre
-    ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili stanotte in '+e.critBand+', il canale che decide l’immagine, sopra il tuo orizzonte.')}">${fmt(e.critH,1)}<i> h</i></span>`
+    ? `<span class="bc-h${acc('ore')}" data-tip="${esc('Ore utili stanotte in '+e.critBand+', il canale che decide l’immagine, sopra il tuo orizzonte.'+
+        divise(e.critH,e.softH,e.equivH))}">${fmt(e.critH,1)}<i> h</i></span>`
     : `<span class="pill p-bad${acc('ore')}">0 h</span>`;
   const sub=[e.tg.names[1],e.tg.constellation].filter(Boolean).map(esc).join(' · ');
   const tuo=e.tg.user?`<span class="pill p-dim" data-tip="${esc(G.noscheda)}">tuo · senza scheda</span>`:'';
@@ -16050,7 +16081,7 @@ function riquadroHtml(x,c,basso){
   const cielo=morde?`<span class="bc-cielo"><span class="pill p-warn" data-tip="${esc((ist?'Sulla notte intera, dal buio, restano ':'Stanotte restano ')+fmt(e.critHeff,1)+' h utili, tolto quello che Luna e luce artificiale tolgono.'+
       (luna?' Luna: '+luna+'. '+fraseDellaSogliaLuna(e.penalizzazioneLunare):'')+(il?' Luce artificiale: −'+il+'% su questo canale.':''))}">→ ${fmt(e.critHeff,1)} h</span></span>`:'';
   const tipNotte=t0&&t1
-    ? `La notte, dal buio (${oraDellaNotte(t0)}) all’alba (${oraDellaNotte(t1)}). In verde le ore in cui ${nome} sta sopra ${fmt(e.quotaPreferita,0)}°, la quota buona per ${e.critBand}; in rosso quelle in cui è utilizzabile ma più basso; vuota quando è sotto il tuo orizzonte.`+
+    ? `La notte, dal buio (${oraDellaNotte(t0)}) all’alba (${oraDellaNotte(t1)}). In verde-azzurro le ore in cui ${nome} sta sopra ${fmt(e.quotaPreferita,0)}°, la quota buona per ${e.critBand}; in ambra quelle in cui è più basso, ma sopra il tuo orizzonte; tratteggiata quando è sotto il tuo orizzonte o sotto ${fmt(LIMITE_OPERATIVO(),0)}°.`+
       (adesso&&e.oreDaAdesso!=null?` Il segno chiaro è adesso, alle ${adesso}: da qui all’alba ${fmt(e.oreDaAdesso,1)} h utili.`:'')
     : 'La notte: in questa data non c’è buio astronomico né nautico.';
   const rx=c.RXH>0?MOTORE.scelta.prescribe(e,c.RXH,c.DVX):null;
@@ -16117,8 +16148,8 @@ function bestNightHtml(){
   if(tasti.length) h+=`<div class="bc-altri">${tasti.join('')}</div>`;
   if(RIQ_SOTTO&&sotto.length) h+=`<div class="bc-sotto-titolo">Stanotte meno di mezz’ora utile</div>`+griglia(sotto,true);
   return testaDellAdesso()+h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
-    <span><i style="background:var(--ha)"></i>utilizzabile, ma più basso</span>
-    <span><i style="background:var(--line)"></i>sotto il tuo orizzonte</span>${NP_LISTA&&NP_LISTA.da!=null?'<span><i class="ora"></i>adesso</span>':''}
+    <span><i style="background:var(--warn)"></i>più basso, ma sopra il tuo orizzonte</span>
+    <span><i class="sotto"></i>sotto il tuo orizzonte: non si vede</span>${NP_LISTA&&NP_LISTA.da!=null?'<span><i class="ora"></i>adesso</span>':''}
     <span class="muted">La barra di ogni riquadro è la notte, dal buio all’alba.</span></div>`;
 }
 /* la testa della lista nella notte in corso: l'ora, e la prescrizione istantanea da scegliere */
@@ -20423,7 +20454,15 @@ function evalPool(){
   _pool=MOTORE.scelta.insiemeDellaClassifica(TG.targets,UTGT,CAT); _poolKey=key; return _pool;
 }
 /*  La barra della notte di ogni riquadro (27 ottobre 2026: prima era la colonna «Notte» della tabella). I colori sono
-    i due livelli di `segs`: sopra la quota buona del canale, e utilizzabile ma piu' basso. */
+    i tre livelli di `segs`.
+    I COLORI DEGLI ALTRI PLANNER (29 ottobre 2026, Alessandro: «credevo che la parte rossa fosse l'oggetto sotto
+    l'orizzonte … è questa la prassi generale dei planner», e cosi' come ha ingannato lui ingannerebbe chiunque). Il
+    rosso diceva «utilizzabile ma piu' basso», e il tratto sotto l'orizzonte era lasciato vuoto, scuro come il riquadro:
+    l'occhio leggeva il rosso come «finito» e il vuoto non lo vedeva. Adesso verde-azzurro sopra la quota buona del canale,
+    ambra dove e' piu' basso ma sopra il tuo orizzonte — un «attenzione», non un «no» —, e un tratteggio grigio, ben
+    visibile, dove e' sotto l'orizzonte o sotto il limite operativo. Il rosso nella barra non c'e' piu': nel riquadro dice
+    gia' «no» altrove. Sorvegliato da tools/gate-colori-della-notte.js. */
+const COLORE_DEL_LIVELLO={2:'var(--oiii)',1:'var(--warn)'};
 function timeline(e,np){
   const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end;
   if(!t0||!t1||!e.segs.length) return '<span class="muted small">—</span>';
@@ -20431,10 +20470,10 @@ function timeline(e,np){
   let html='<div class="tl">';
   let cur=null,st=null;
   const flush=(end)=>{
-    if(cur===null||cur===0) return;
+    if(cur===null) return;
     const l=100*(st-t0)/span, w=100*(end-st)/span;
-    const col=cur===2?'var(--oiii)':'var(--ha)';
-    html+=`<i style="left:${l}%;width:${w}%;background:${col}"></i>`;
+    html+=cur===0?`<i class="tl-sotto" style="left:${l}%;width:${w}%"></i>`
+      :`<i data-livello="${cur}" style="left:${l}%;width:${w}%;background:${COLORE_DEL_LIVELLO[cur]}"></i>`;
   };
   e.segs.forEach(s=>{ if(s.lvl!==cur){flush(s.t);cur=s.lvl;st=s.t;} });
   flush(t1);
