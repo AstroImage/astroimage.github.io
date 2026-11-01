@@ -939,6 +939,9 @@
   {
    "id": "cem70g",
    "name": "iOptron CEM70G",
+   "aliases": [
+    "CEM70"
+   ],
    "type": "equatoriale worm",
    "rms_typ_arcsec": 0.6,
    "rms_long_fl_arcsec": 0.7,

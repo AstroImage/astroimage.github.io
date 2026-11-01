@@ -2227,11 +2227,18 @@ function orizzonteDaNina(R){
     uguale o, da tre lettere in su, come inizio («ENHA» di «ENHANCE»). Un nome fatto solo di nomi di banda («H», «Ha»,
     «Lum», «Red») prende per candidati i filtri di quella banda: «L» non e' la L di «L-Ultimate». Fra piu' candidati vince
     quello gia' dichiarato da chi riprende, se e' uno solo; altrimenti il nome non basta, e si dice coi candidati: AIS non
-    indovina un filtro, perche' da lui dipendono pose e ore. */
+    indovina un filtro, perche' da lui dipendono pose e ore.
+    I DICHIARATI DI UN'ALTRA RUOTA (1° novembre 2026, Alessandro da Borno: la «H» della ruota dell'RC8 era l'Ha da 7 nm).
+    Misurato su 4f0ff0d col profilo vero dell'RC8 e i filtri dichiarati della ruota dell'Askar: «L» diventava l'IDAS LPS P2
+    e «H» l'Ha da 7 nm, perche' decideva un dichiarato il cui nome in N.I.N.A. era di un'altra ruota («LPS_P2 IDAS», «HA
+    7NM»). Un dichiarato decide solo se e' di questa ruota: senza un nome di ruota (spuntato a mano), o col suo nome fra i
+    nomi di questa ruota (`nomiRuota`, `ruota`). Gli altri si dicono (`altraRuota`), e il filtro si sceglie nella tabella.
+    Senza nomi — i light, chi chiama con tre argomenti — decide come prima. Sorvegliato da tools/gate-banco-letto.js. */
 const BANDA_DAL_NOME={H:'Ha',HA:'Ha',HALPHA:'Ha',O:'OIII',OIII:'OIII',O3:'OIII',S:'SII',SII:'SII',S2:'SII',
   L:'L',LUM:'L',LUMINANCE:'L',LUMINANZA:'L',R:'R',RED:'R',ROSSO:'R',G:'G',GREEN:'G',VERDE:'G',B:'B',BLUE:'B',BLU:'B'};
 const paroleDelFiltro=s=>String(s==null?'':s).toUpperCase().replace(/(\d)\s*NM\b/g,'$1NM').split(/[^A-Z0-9]+/).filter(Boolean);
-function filtroDalNome(nome,filtri,posseduti){
+const chiaveDiRuota=x=>String(x==null?'':x).trim().toUpperCase();
+function filtroDalNome(nome,filtri,posseduti,nomiRuota,ruota){
   const parole=paroleDelFiltro(nome), elenco=Array.isArray(filtri)?filtri:[], miei=Array.isArray(posseduti)?posseduti:[];
   if(!parole.length) return {voce:null,via:null,candidati:[]};
   /* PRIMA IL NOME ESATTO (Alessandro, 23 ottobre 2026: se un modello corrisponde esattamente si propone quello, e la
@@ -2252,12 +2259,16 @@ function filtroDalNome(nome,filtri,posseduti){
     via='nome';
   }
   if(cand.length===1) return {voce:cand[0].id,via,candidati:[]};
-  const dichiarati=cand.filter(f=>miei.includes(f.id));
+  const nomi=nomiRuota&&typeof nomiRuota==='object'&&!Array.isArray(nomiRuota)?nomiRuota:{};
+  const qui=new Set((Array.isArray(ruota)&&ruota.length?ruota:[nome]).map(chiaveDiRuota));
+  const diQuesta=id=>!nomi[id]||qui.has(chiaveDiRuota(nomi[id]));
+  const tutti=cand.filter(f=>miei.includes(f.id)), dichiarati=tutti.filter(f=>diQuesta(f.id));
+  const altraRuota=tutti.filter(f=>!diQuesta(f.id)).map(f=>f.id);
   if(dichiarati.length===1) return {voce:dichiarati[0].id,via:via+'_e_dichiarato',candidati:cand.map(f=>f.id)};
   /* PIU' DICHIARATI E UN NOME DI SOLA BANDA («H» con l'Ha da 3 e da 7 nm dichiarati, misurato coi filtri di partenza):
      il filtro non si indovina, ma non si perde nemmeno — quei filtri restano, e il nome in N.I.N.A. e' giusto per tutti e
      due, perche' nella ruota quella banda si chiama cosi'. Chi riprende sceglie quale c'e' davvero. */
-  return {voce:null,via:null,candidati:cand.map(f=>f.id),dichiarati:via==='banda'?dichiarati.map(f=>f.id):[]};
+  return {voce:null,via:null,candidati:cand.map(f=>f.id),dichiarati:via==='banda'?dichiarati.map(f=>f.id):[],altraRuota};
 }
 /*  LE PERIFERICHE DAL PROFILO (22 ottobre 2026). Alessandro: «Leggi il banco» prende dal profilo anche tutte le altre
     periferiche. Le capacita' della sequenza (CAP_DEF) vengono dal profilo, e da due apparecchi collegati per quello che il
@@ -2314,7 +2325,9 @@ function perifericheDalProfilo(P,A){
     .filter(x=>x.id&&!NESSUN_APPARECCHIO.test(x.id));
   return {capacita,voci,altre};
 }
-function bancoDalProfiloNina(P,H,Ap){
+/*  `dichiarati` ({posseduti, nomiRuota}) sono i filtri con cui si sceglie fra piu' candidati: la pagina passa quelli della
+    postazione del profilo letto (`dichiaratiDelProfilo`); senza, quelli in uso. */
+function bancoDalProfiloNina(P,H,Ap,dichiarati){
   const num=v=>(typeof v==='number'&&isFinite(v))?v:null;
   const T=(P&&P.TelescopeSettings)||{}, C=(P&&P.CameraSettings)||{}, A=(P&&P.AstrometrySettings)||{};
   const F=(P&&P.FramingAssistantSettings)||{}, W=(P&&P.FilterWheelSettings)||{};
@@ -2380,8 +2393,12 @@ function bancoDalProfiloNina(P,H,Ap){
       :{voce:null,via:null,daConfermare:false,candidati:geo.map(y=>y.id)};
   }
   camera.letto={driver:d.name||null,pixel_um:d.pixel_um,width_px:larghezza,height_px:altezza,geometriaDiSerie:diSerie,matrice};
+  const dic=dichiarati&&typeof dichiarati==='object'?dichiarati:{};
+  const posseduti=Array.isArray(dic.posseduti)?dic.posseduti:(typeof OWNED!=='undefined'?OWNED:[]);
+  const nomiRuota=dic.nomiRuota&&typeof dic.nomiRuota==='object'?dic.nomiRuota:(typeof loadNomiRuota==='function'?loadNomiRuota():{});
+  const ruota=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>String(f.Name));
   const filtri=(W.FilterWheelFilters||[]).filter(f=>f&&f.Name!=null).map(f=>Object.assign({nome:String(f.Name),pos:num(f.Position)},
-    filtroDalNome(f.Name,DB.filters,typeof OWNED!=='undefined'?OWNED:[])));
+    filtroDalNome(f.Name,DB.filters,posseduti,nomiRuota,ruota)));
   /*  l'orizzonte arriva da un'altra domanda (`H`); il profilo dice solo da quale file viene */
   const file=String(A.HorizonFilePath||'').split(/[\\/]/).pop()||null;
   const punti=H?orizzonteDaNina(H):null;
@@ -15542,7 +15559,8 @@ const persistPick=id=>{try{ id?localStorage.setItem('ap_site',id)
 let SITE_DEFAULT=false;              // nessuno ha ancora scelto: il cielo e' assunto
 
 /* IL SITO PERSONALIZZATO SI RICORDA (28 ottobre 2026, Alessandro). Misurato su 10dc40b: `ap_site` ricordava solo l'id
-   di un sito dell'elenco, e coordinate scritte a mano, o venute dal profilo di N.I.N.A. lontane piu' di un chilometro da
+   di un sito dell'elenco, e coordinate scritte a mano, o venute dal profilo di N.I.N.A. lontane piu' di un chilometro (dal
+   1° novembre 2026 cinque, STESSO_SITO_KM) da
    un sito dell'elenco, stavano solo nei campi: Milano a mano, ripartenza, Borno. Una ripartenza c'e' a ogni apertura di
    AIS e a ogni passaggio di postazione: il profilo dell'Askar, col suo sito a 45,31° 9,16°, tornava ogni volta sotto il
    cielo di serie. Adesso, quando il sito e' «Personalizzato…», `readSite` ne ricorda i campi — coordinate, cielo con la
@@ -19092,15 +19110,26 @@ async function leggiRuotaNina(){
 }
 /*  LEGGI IL BANCO DA N.I.N.A. (21 ottobre 2026): il profilo attivo, letto con l'Advanced API dalla porta unica, e la
     proposta del motore (`bancoDalProfiloNina`). Si mostra che cosa dice N.I.N.A., che cosa si propone e perche';
-    «Usa questo banco» applica solo quello che e' riconosciuto, con gli stessi gesti delle tendine. Entro 0,01 gradi —
-    un chilometro — il sito del profilo e' quello che c'e', e resta col suo nome e il suo cielo. Sorvegliato da
-    tools/gate-banco-da-nina.js. */
+    «Usa questo banco» applica solo quello che e' riconosciuto, con gli stessi gesti delle tendine. Sorvegliato da
+    tools/gate-banco-da-nina.js.
+    LO STESSO SITO ENTRO 5 KM (1° novembre 2026, Alessandro: «5 km va bene»). Era entro 0,01 gradi, un chilometro: a Borno
+    le coordinate del profilo dell'RC8, casa, sono a 1,61 km dal sito del catalogo, e «Usa questo banco» ne faceva un
+    «Personalizzato» con l'SQM stimato 20,7 al posto dei 20,8 misurati — su NGC 7000 con l'RC8 e 20 h la strada passava da
+    SHO a HOO. La stima a quella scala non e' un dato: attorno a casa, a Borno, cambia fino a 0,21 mag in 1 km e 1,40 in 5.
+    Entro STESSO_SITO_KM il sito del profilo e' quello in uso: resta con le sue coordinate e il suo cielo, e prende
+    l'orizzonte del profilo (5 km spostano l'altezza al piu' di 0,05° e gli orari di 16 s); il nome resta, salvo per un
+    sito del catalogo con l'orizzonte, che diventa personalizzato per ricordarlo (in `applicaBancoNina`). Oltre, diventa
+    il sito del profilo con l'SQM stimato. Sorvegliato da tools/gate-banco-letto.js. */
 let BANCO_NINA=null;
-const STESSO_SITO_DEG=0.01;
+const STESSO_SITO_KM=5;
 /*  IL BANCO LETTO RESTA: la focale e il rapporto del profilo, col telescopio e il riduttore a cui valgono. */
 const bancoDiNinaSalvato=()=>{ try{ const v=JSON.parse(localStorage.getItem('ap_banco_nina')||'null'); return v&&typeof v==='object'?v:null; }catch(e){ return null; } };
 const salvaBancoDiNina=v=>{ try{ localStorage.setItem('ap_banco_nina',JSON.stringify(v)); }catch(e){} };
-const sitoDiverso=s=>!!s&&(!SITE||Math.abs(s.lat-SITE.lat)>STESSO_SITO_DEG||Math.abs(s.lon-SITE.lon)>STESSO_SITO_DEG);
+const distanzaDalSito=s=>s&&SITE?haversine(SITE.lat,SITE.lon,s.lat,s.lon):null;
+/* il sito scelto nell'elenco, come la tendina lo mostra; e se e' uno del catalogo, che un orizzonte suo non lo tiene */
+const nomeDelSitoInUso=()=>{ const s=$('site'), o=s&&s.selectedIndex>=0?s.options[s.selectedIndex]:null; return o?String(o.textContent).trim():''; };
+const sitoDelCatalogoInUso=()=>{ const v=$('site')&&$('site').value; return !!v&&v!=='__custom'&&!SITES.find(s=>s.id===v); };
+const sitoDiverso=s=>!!s&&(!SITE||distanzaDalSito(s)>STESSO_SITO_KM);
 const coord=x=>String(Math.round(x*1e4)/1e4).replace('.',',');
 async function leggiBancoNina(){
   const box=$('bancoNina'); const dillo=h=>{ if(box) box.innerHTML=h; };
@@ -19125,8 +19154,26 @@ async function leggiBancoNina(){
   dillo(htmlBancoNina(BANCO_NINA));
 }
 /* il banco porta il profilo da cui viene e i dati grezzi di N.I.N.A.: se «Usa questo banco» passa alla postazione del
-   profilo, la pagina riparte e il banco si rifa' da quelli, con le dichiarazioni di quella postazione */
-const bancoDaGrezzo=(g,dalPonte)=>Object.assign(bancoDalProfiloNina(g.P,g.H,g.A),{dalPonte,chi:profiloDelDato(g.P),grezzo:g});
+   profilo, la pagina riparte e il banco si rifa' da quelli, con le dichiarazioni di quella postazione.
+   LA TABELLA SCEGLIE COME «USA QUESTO BANCO» APPLICA (1° novembre 2026). Con la postazione di un altro profilo in uso, la
+   tabella sceglieva fra piu' candidati coi filtri dichiarati di quella, e «Usa questo banco», dopo la ripartenza, con
+   quelli della postazione del profilo: poteva dire un filtro e applicarne un altro. Adesso sceglie coi filtri e i nomi
+   della ruota della postazione del profilo letto, se c'e'; se non c'e', nascera' come copia di quella in uso, e si
+   sceglie con quelli in uso. Sorvegliato da tools/gate-banco-letto.js. */
+function dichiaratiDelProfilo(chi){
+  const v=POSTAZIONI_SPENTE?null:leggiPostazioni();
+  const sua=v&&chi&&v.uso!==chi.id&&v.voci[chi.id]?(v.voci[chi.id].chiavi||{}):null;
+  if(!sua) return {posseduti:OWNED.slice(),nomiRuota:loadNomiRuota(),postazione:null};
+  const j=k=>{ try{ return JSON.parse(sua[k]||'null'); }catch(e){ return null; } };
+  const f=j('ap_filters'), n=j('ap_nomiruota');
+  return {posseduti:Array.isArray(f)?f:(DB.default_filters||[]).slice(),
+    nomiRuota:n&&typeof n==='object'&&!Array.isArray(n)?n:{},postazione:v.voci[chi.id].nome};
+}
+const bancoDaGrezzo=(g,dalPonte)=>{ const chi=profiloDelDato(g.P), d=dichiaratiDelProfilo(chi);
+  return Object.assign(bancoDalProfiloNina(g.P,g.H,g.A,d),{dalPonte,chi,grezzo:g,dichiarati:d}); };
+/* un Id che e' un codice (un driver Alpaca, un GUID) non e' un nome: si dice codice. Sul profilo dell'RC8 interruttori e
+   sicurezza si mostravano «6f2b1c94-…» e «10A715AD-…» (1° novembre 2026) */
+const codiceDelDriver=x=>/^[0-9a-f-]{30,}$/i.test(String(x==null?'':x).trim());
 function htmlBancoNina(b){
   const nome=(elenco,id)=>{ const v=(elenco||[]).find(x=>x.id===id); return v?(v.name||v.id):id; };
   const simili=(elenco,ids)=>ids&&ids.length?' <span class="muted">— simili: '+ids.map(i=>esc(nome(elenco,i))).join(', ')+'</span>':'';
@@ -19137,7 +19184,9 @@ function htmlBancoNina(b){
   const righe=[];
   righe.push(riga('Sito',b.sito?`${coord(b.sito.lat)} · ${coord(b.sito.lon)}${b.sito.quota!=null?' · '+fmt(b.sito.quota,0)+' m':''}`:'—',
     b.sito?(sitoDiverso(b.sito)?'queste coordinate':'il sito di adesso'):'—',
-    b.sito?(sitoDiverso(b.sito)?'il sito diventa questo, e l\'SQM si stima dalle coordinate':'entro un chilometro è lo stesso sito: resta col suo nome e il suo cielo')
+    b.sito?(sitoDiverso(b.sito)?(SITE?`a ${fmt(distanzaDalSito(b.sito),1)} km da quello di adesso: `:'')+'il sito diventa questo, e l\'SQM si stima dalle coordinate'
+      :`a ${fmt(distanzaDalSito(b.sito),1)} km, entro ${STESSO_SITO_KM}: è lo stesso sito, e resta `+(sitoDelCatalogoInUso()&&b.orizzonte&&b.orizzonte.punti
+        ?'il suo cielo; con l\'orizzonte del profilo diventa «Personalizzato…», che si ricorda':'col suo nome e il suo cielo'))
       :'il profilo non ha un sito'));
   righe.push(riga('Telescopio',`«${esc(o.letto.nome||'—')}»${o.letto.focale_mm?' · '+fmt(o.letto.focale_mm,0)+' mm':''}${o.letto.rapporto?' · f/'+fmt(o.letto.rapporto,1):''}`,
     (o.voce?esc(nome(DB.telescopes,o.voce))+(o.daConfermare?' <span class="p-warn">da confermare</span>':''):no+simili(DB.telescopes,o.candidati))+
@@ -19153,7 +19202,7 @@ function htmlBancoNina(b){
     m.voce?esc(nome(DB.mounts,m.voce)):no+simili(DB.mounts,m.candidati)+(m.letto.nome?aggiungi('mnt'):''),
     m.voce?'dal nome della montatura nel profilo':m.letto.nome?'aggiungila dal profilo, o resta quella di adesso':'resta quella di adesso'));
   const L=c.letto;
-  const lettoCam=[L.driver?(/^[0-9a-f-]{30,}$/i.test(L.driver)?'un codice del driver, non il modello':'«'+esc(L.driver)+'»'):null,
+  const lettoCam=[L.driver?(codiceDelDriver(L.driver)?'un codice del driver, non il modello':'«'+esc(L.driver)+'»'):null,
     L.pixel_um?fmt(L.pixel_um,2)+' µm':null,
     L.geometriaDiSerie?'geometria di serie del Framing Assistant':(L.width_px&&L.height_px?L.width_px+'×'+L.height_px:null),
     L.matrice].filter(Boolean).join(' · ')||'—';
@@ -19173,17 +19222,23 @@ function htmlBancoNina(b){
   /* I FILTRI DELLA RUOTA, uno per riga (22 ottobre 2026): con «Usa questo banco» diventano i filtri della postazione, e la
      sequenza li chiama come la ruota. Quello che il nome non basta a riconoscere si sceglie qui, o resta fuori. */
   const nomeF=id=>{ const v=(DB.filters||[]).find(x=>x.id===id); return v?v.name:id; };
+  const nomiAltrove=(b.dichiarati&&b.dichiarati.nomiRuota)||{};
   if(!b.filtri.length) righe.push(riga('Filtri','—','—','il profilo non ha una ruota: i filtri restano quelli di adesso'));
   b.filtri.forEach((f,i)=>{
     const ids=[...new Set((f.candidati||[]).concat((DB.filters||[]).map(x=>x.id)))];
     const scelta=`<select onchange="filtroDellaRuota(${i},this.value)"><option value="">non riconosciuto: scegli…</option>${
       ids.map(id=>`<option value="${esc(id)}"${id===f.voce?' selected':''}>${esc(nomeF(id))}</option>`).join('')}</select>`;
-    righe.push(riga('Filtro '+(f.pos!=null?f.pos:i),'«'+esc(f.nome)+'»',f.voce&&f.via!=='a_mano'?esc(nomeF(f.voce)):scelta,
+    /* LA TENDINA SU OGNI RIGA CON PIU' CANDIDATI (1° novembre 2026): una proposta decisa dai dichiarati si corregge qui;
+       prima la riga era scritta, e un dichiarato sbagliato non si toglieva dalla tabella */
+    const scegli=!f.voce||f.via==='a_mano'||(f.candidati||[]).length>1;
+    righe.push(riga('Filtro '+(f.pos!=null?f.pos:i),'«'+esc(f.nome)+'»',scegli?scelta:esc(nomeF(f.voce)),
       f.via==='nome_esatto'?'il nome nella ruota è quello del catalogo':f.via==='nome'?'dal nome nella ruota':f.via==='banda'?'il nome dice la banda, e di quella banda il filtro è uno solo'
-      :/_e_dichiarato$/.test(f.via||'')?'il nome da solo non basta: è quello che avevi già dichiarato'
+      :/_e_dichiarato$/.test(f.via||'')?'il nome da solo non basta: è quello che avevi già dichiarato per questa ruota; se non è lui, sceglilo qui'
       :f.via==='a_mano'?'scelto qui'
       :f.dichiarati&&f.dichiarati.length?'il nome dice solo la banda: restano '+f.dichiarati.map(id=>esc(nomeF(id))).join(' e ')+
         ', che avevi dichiarato, e in N.I.N.A. si chiamano «'+esc(f.nome)+'»; scegli quale c\'è davvero, perché decide le ore'
+      :f.altraRuota&&f.altraRuota.length?'il nome non basta: '+f.altraRuota.map(id=>esc(nomeF(id))+(nomiAltrove[id]?', che in N.I.N.A. si chiama «'+esc(nomiAltrove[id])+'»,':'')).join(' e ')+
+        (f.altraRuota.length>1?' sono':' è')+' di un\'altra ruota; scegli quale c\'è davvero, perché decide le ore'
       :f.candidati&&f.candidati.length?'il nome non basta: scegli quale, o resta fuori dalla prescrizione'
       :'nessun filtro del catalogo ha questo nome: scegli quale, o resta fuori dalla prescrizione'));
   });
@@ -19191,15 +19246,17 @@ function htmlBancoNina(b){
   const pf=b.periferiche;
   if(pf){
     const nomeCap=k=>k==='temperatura'?'raffreddamento':(CAP_LBL[k]?CAP_LBL[k][0]:k);
-    for(const v of pf.voci) righe.push(riga(esc(nomeCap(v.chiave)),esc(v.letto),
+    for(const v of pf.voci) righe.push(riga(esc(nomeCap(v.chiave)),codiceDelDriver(v.letto)?'un codice del driver, non il nome':esc(v.letto),
       v.valore==null?'<span class="muted">resta com\'è</span>':v.chiave==='temperatura'?'questi valori':v.valore?'sì':'no',esc(v.perche)));
-    if(pf.altre.length) righe.push(riga('altre periferiche',pf.altre.map(x=>esc(x.nome)+' «'+esc(x.id)+'»').join(' · '),'—',
+    if(pf.altre.length) righe.push(riga('altre periferiche',pf.altre.map(x=>esc(x.nome)+(codiceDelDriver(x.id)?' (un codice del driver, non il nome)':' «'+esc(x.id)+'»')).join(' · '),'—',
       'la sequenza di AIS non le comanda'));
   }
   if(b.filtri.length){
     const ids=filtriDellaRuota(b.filtri).ids;
-    const tolti=OWNED.filter(id=>!ids.includes(id));
-    righe.push(riga('Filtri posseduti',OWNED.length+' adesso',ids.length?ids.length+' della ruota':'—',
+    /* «adesso» sono i posseduti della postazione dove il banco andra': quella del profilo, se c'e' */
+    const adesso=b.dichiarati&&Array.isArray(b.dichiarati.posseduti)?b.dichiarati.posseduti:OWNED;
+    const tolti=adesso.filter(id=>!ids.includes(id));
+    righe.push(riga('Filtri posseduti',adesso.length+' adesso'+(b.dichiarati&&b.dichiarati.postazione?' in «'+esc(b.dichiarati.postazione)+'»':''),ids.length?ids.length+' della ruota':'—',
       ids.length&&!b.camera.voce?'diventano quelli della ruota quando la camera è nel catalogo: quali filtri servono dipende da lei'
       :ids.length?'diventano quelli della ruota'+(tolti.length?'; si tolgono '+tolti.map(id=>esc(nomeF(id))).join(', '):'')+
         '. La sequenza chiama ogni filtro col suo nome in N.I.N.A.'
@@ -19361,7 +19418,12 @@ function applicaBancoNina(passata){
     $('site').value='__custom'; SITE_DEFAULT=false; autoSQM();
   }
   /* l'orizzonte del profilo diventa quello del sito: il campo dice il suo minimo, perche' `readSite` lo tenga; un sito
-     tuo lo conserva, uno del catalogo no */
+     tuo lo conserva, e il sito personalizzato si ricorda col suo (7c9156e).
+     UN SITO DEL CATALOGO NON TIENE UN ORIZZONTE SUO (1° novembre 2026). Entro 5 km il sito del catalogo resta, e alla
+     riapertura tornava il suo orizzonte: misurato a Borno, 360 punti applicati, 8 dopo. Come «Carica un orizzonte…»
+     (`usaOrizzonte`): il sito diventa personalizzato coi suoi campi — coordinate, cielo, seeing, notti serene — e si
+     ricorda. La riga del sito lo dice prima. Prima qui si diceva «vale finché non cambi sito», anche per il sito
+     personalizzato, che dal 28 ottobre l'orizzonte lo ricorda. */
   let notaOrizzonte='';
   if(b.orizzonte&&b.orizzonte.punti){
     const fonte={da:'nina',profilo:b.profilo||null,nome:b.orizzonte.file||null};
@@ -19369,9 +19431,20 @@ function applicaBancoNina(passata){
     const mio=SITES.find(s=>s.id===$('site').value);
     if(mio){ mio.orizzonte=b.orizzonte.punti; mio.horizonMin=b.orizzonte.min; mio.orizzonteFonte=fonte; persistSites();
       notaOrizzonte='; l\'orizzonte di N.I.N.A. resta nel sito «'+esc(mio.name)+'»'; }
-    else notaOrizzonte='; l\'orizzonte di N.I.N.A. vale finché non cambi sito: per tenerlo, «Salva sito…» in Condizioni';
+    else if($('site').value!=='__custom'){
+      const nome=nomeDelSitoInUso(); $('site').value='__custom';
+      notaOrizzonte='; l\'orizzonte di N.I.N.A. è nel sito, che diventa «Personalizzato…» col cielo di «'+esc(nome)+'» e si ricorda';
+    }
+    else notaOrizzonte='; l\'orizzonte di N.I.N.A. resta nel sito personalizzato, che si ricorda';
   }
   readSite(); refresh();
+  /* DOVE SI RICHIAMA (1° novembre 2026, Alessandro: «valuta se si può salvare un banco o più banchi dopo averli letti»).
+     C'e' gia', e si dice: il banco applicato e' la postazione del suo profilo, si richiama dal menu «Postazione» anche con
+     N.I.N.A. spento, e la copia dell'Archivio la porta su un altro browser. Un elenco di banchi a parte sarebbe una seconda
+     copia delle stesse dichiarazioni, e due copie divergono. */
+  const pz=POSTAZIONI_SPENTE?null:leggiPostazioni();
+  const richiamo=pz&&pz.uso&&pz.voci[pz.uso]?' Il banco resta salvato nella postazione «'+esc(pz.voci[pz.uso].nome)+
+    '»: lo richiami dal menu «Postazione», anche con N.I.N.A. spento.':'';
   const manca=mancaDelBanco(b);
   if(manca.length){
     /* mezzo banco: lo si dice, e la tabella resta coi tasti per aggiungere quello che manca */
@@ -19380,12 +19453,12 @@ function applicaBancoNina(passata){
       esc(manca.join(' e '))+(manca.length>1?' non sono':' non è')+' nel catalogo: restano '+
       esc([tel&&tel.name,cam&&cam.name].filter(Boolean).join(' + '))+', e le ore sono per quelli. Aggiungi quello che manca dal profilo, '+
       'coi tasti nella tabella: il banco si rilegge da solo.<br><span class="small muted">Applicato il resto'+doveE+notaOrizzonte+notaFiltri+notaPeriferiche+
-      (!b.camera.voce&&b.filtri.length?'; i filtri della ruota no, finché la camera non c\'è':'')+'.</span></div>'+htmlBancoNina(b);
+      (!b.camera.voce&&b.filtri.length?'; i filtri della ruota no, finché la camera non c\'è':'')+'.'+richiamo+'</span></div>'+htmlBancoNina(b);
     return;
   }
   $('bancoNina').innerHTML='<div class="small" style="margin-top:8px"><span class="pill p-ok">banco di N.I.N.A. applicato</span> '+
     '<span class="muted">quello che non era riconosciuto è rimasto com\'era'+doveE+(b.camera.daConfermare?'; la camera è proposta dalla geometria, controllala':'')+
-    (b.ottica.daConfermare?'; il telescopio è proposto da apertura e focale, controllalo':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.</span></div>';
+    (b.ottica.daConfermare?'; il telescopio è proposto da apertura e focale, controllalo':'')+notaOrizzonte+notaFiltri+notaPeriferiche+'.'+richiamo+'</span></div>';
   BANCO_NINA=null;
 }
 /* IL PONTE COME OSPITE (21 ottobre 2026). Nel pannello del Ponte, dentro N.I.N.A., AIS gira in un WebView2: c'e'
@@ -19600,8 +19673,8 @@ function rigaDellaPostazione(){
     <label class="f" style="max-width:340px"><span>Postazione</span>
       <select id="sceltaPostazione" onchange="passaAllaPostazione(this.value)">${opzioni}</select></label>
     <div class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:44px">${nina}</div>
-    <div class="small muted" style="flex-basis:100%">Una per profilo di N.I.N.A.: banco, sito, filtri e nomi per N.I.N.A.
-      AIS non cambia postazione da sola, perché puoi preparare una sessione per un altro banco.${altre.length?' Togli:'+
+    <div class="small muted" style="flex-basis:100%">Una per profilo di N.I.N.A.: il banco letto, sito, filtri e nomi per
+      N.I.N.A.; si richiama da qui anche con N.I.N.A. spento. AIS non cambia postazione da sola, perché puoi preparare una sessione per un altro banco.${altre.length?' Togli:'+
       altre.map(id=>` <button type="button" class="chip" onclick="togliPostazione(${jsAttr(id)})">«${esc(v.voci[id].nome)}» ✕</button>`).join(''):''}</div>
   </div>`;
 }
