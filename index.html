@@ -7407,22 +7407,40 @@ function campoDeiLight(st,dv){
 }
 /*  le ore gia' riprese che contano su questo campo: quelle, o niente */
 const oreSulCampo=(st,dv)=>st&&campoDeiLight(st,dv).valide?st:null;
+/*  R, G E B, UNO PER UNO (2 novembre 2026). Le ore gia' riprese hanno R, G e B ciascuno con la sua voce (la lettura dei
+    light, `chiaviDelFiltro`); la voce «RGB» resta per i light a colori e per quelli letti prima, senza i filtri. Le ore
+    del gruppo RGB sono la somma; un filtro ha le sue piu' la sua parte della voce «RGB» — un terzo, come la riprendeva il
+    piano, che il gruppo lo divideva in tre. Sorvegliato da tools/gate-rgb-uno-per-uno.js. */
+const PARTI_RGB=['R','G','B'];
+const oreDelCanale=(ore,b)=>{ const x=k=>Math.max(0,numeroFinito(ore&&ore[k])||0);
+  return b==='RGB'?x('RGB')+PARTI_RGB.reduce((a,q)=>a+x(q),0):x(b); };
+const oreDellaParte=(ore,q,n)=>Math.max(0,numeroFinito(ore&&ore[q])||0)+Math.max(0,numeroFinito(ore&&ore.RGB)||0)/n;
 function giaRipreseAlBuio(st,tg,dv,site,alloc,expo){
   if(!st) return null;
   const notti=Array.isArray(st.notti)?st.notti.filter(n=>n&&/^\d{4}-\d\d-\d\d$/.test(String(n.notte))&&n.ore):[];
   const out={};
   for(const g of (alloc||[]).filter(g=>!g.dropped&&g.hours>0)){
     const bande=String(g.id).split('+');
-    const posaDi=ore=>Math.min(...bande.map(b=>Math.max(0,numeroFinito(ore&&ore[b])||0)));
+    const posaDi=ore=>Math.min(...bande.map(b=>oreDelCanale(ore,b)));
+    /* il gruppo RGB su una camera monocromatica: anche R, G e B, uno per uno */
+    const parti=partiDelGruppo(g.id,dv&&dv.c);
+    const perParte=parti.length>1&&parti.every(q=>PARTI_RGB.includes(q))?Object.fromEntries(parti.map(q=>[q,{posa:0,alBuio:0}])):null;
     let posa=0,buio=0; const det=[];
     for(const n of notti){
       const p=posaDi(n.ore); if(!(p>0)) continue;
       const r=resaDellaNotte(tg,dv,site,g,n.notte,expo);
       posa+=p; buio+=p*r.resa; det.push(Object.assign({notte:n.notte,posa:p},r));
+      if(perParte) for(const q of parti){ const pq=oreDellaParte(n.ore,q,parti.length); perParte[q].posa+=pq; perParte[q].alBuio+=pq*r.resa; }
     }
     const resto=Math.max(0,posaDi(st.hours)-posa);
     const r0=resto>0?Math.min(1,mixPenalty([Object.assign({},g,{hours:1})],dv,tg,site,{dMagV:0},expo||null)):1;
     out[g.id]={posa:posa+resto,alBuio:buio+resto*r0,senzaNotte:resto,notti:det};
+    if(perParte){
+      /* le ore senza la loro notte, filtro per filtro, contano come quelle del gruppo */
+      for(const q of parti){ const rq=Math.max(0,oreDellaParte(st.hours,q,parti.length)-perParte[q].posa);
+        if(rq>0){ const rr=Math.min(1,mixPenalty([Object.assign({},g,{hours:1})],dv,tg,site,{dMagV:0},expo||null)); perParte[q].posa+=rq; perParte[q].alBuio+=rq*rr; } }
+      out[g.id].parti=perParte;
+    }
   }
   return out;
 }
@@ -7440,6 +7458,9 @@ function progettoDellePose(pl,expo,opts){
       const h=u.n*u.sec/3600, k=b&&b.h>0?b.projH/b.h:1;
       const o=out[id]||(out[id]={pose:0,posa:0,alBuio:0});
       o.pose+=u.n; o.posa+=h; o.alBuio+=h*k;
+      /* e filtro per filtro, quando il gruppo ne ha piu' d'uno: R, G e B (2 novembre 2026) */
+      if(u.band&&u.band!==id){ const pp=(o.parti||(o.parti={}))[u.band]||(o.parti[u.band]={pose:0,posa:0,alBuio:0});
+        pp.pose+=u.n; pp.posa+=h; pp.alBuio+=h*k; }
     }
   }
   return out;
@@ -7451,13 +7472,25 @@ function daRiprendere(pr,fatte,progetto){
     const f=fatte[g.id]||{posa:0,alBuio:0}, b=f.alBuio/P;
     /* il progetto per pannello: quello delle pose, se c'e' (`progettoDellePose`), o quello della prescrizione */
     const pp=progetto&&progetto[g.id], tot=pp?pp.alBuio/P:g.hours;
-    return {id:g.id,progetto:tot,progettoPose:pp?pp.pose:null,progettoPosa:pp?pp.posa:null,
+    const c={id:g.id,progetto:tot,progettoPose:pp?pp.pose:null,progettoPosa:pp?pp.posa:null,
             fatte:Math.min(b,tot),oltre:Math.max(0,b-tot),daFare:Math.max(0,tot-b),
             posa:f.posa,notti:f.notti||[],senzaNotte:f.senzaNotte||0};
+    /* R, G E B, UNO PER UNO (2 novembre 2026): ogni filtro ha il suo progetto e le sue gia' fatte, e al gruppo manca la
+       somma di quello che manca a ciascuno — il G in piu' non riempie l'R —; i pesi dicono la parte di ciascuno, e il
+       piano divide le pose del gruppo con quelli (`subPlan`) */
+    if(f.parti&&pp&&pp.parti){
+      const parti=Object.keys(f.parti).filter(q=>pp.parti[q]).map(q=>{ const tq=pp.parti[q].alBuio/P, bq=f.parti[q].alBuio/P;
+        return {id:q,progetto:tq,progettoPose:pp.parti[q].pose,fatte:Math.min(bq,tq),oltre:Math.max(0,bq-tq),daFare:Math.max(0,tq-bq),posa:f.parti[q].posa}; });
+      if(parti.length===Object.keys(pp.parti).length){
+        c.parti=parti; c.daFare=parti.reduce((a,x)=>a+x.daFare,0); c.fatte=parti.reduce((a,x)=>a+x.fatte,0); c.oltre=parti.reduce((a,x)=>a+x.oltre,0);
+        if(c.daFare>1e-9) c.pesi=Object.fromEntries(parti.map(x=>[x.id,x.daFare/c.daFare]));
+      }
+    }
+    return c;
   });
   if(!canali.some(c=>c.posa>1e-9)) return null;
   const per=Object.fromEntries(canali.map(c=>[c.id,c]));
-  const alloc=pr.alloc.map(g=>per[g.id]?Object.assign({},g,{hours:per[g.id].daFare,giaRiprese:per[g.id].fatte}):g);
+  const alloc=pr.alloc.map(g=>per[g.id]?Object.assign({},g,{hours:per[g.id].daFare,giaRiprese:per[g.id].fatte},per[g.id].pesi?{parti:per[g.id].pesi}:{}):g);
   const spent=alloc.reduce((a,g)=>a+(g.dropped?0:g.hours),0);
   return Object.assign({},pr,{alloc,spent,spentTotal:spent*P,
     giaRiprese:{canali,panels:P,completo:canali.every(c=>c.daFare<=1e-9)}});
@@ -7596,7 +7629,7 @@ function planNights(pr,e,dv,nights,opts){
       const ex=o.expo&&o.expo[b]&&o.expo[b].ex;
       cell+= ex ? minSubs*ex.sec/3600 : minFilt;
     }
-    return {id:g.id,bands:g.bands,critical:g.critical,filters:nf,minBlock:minFilt*nf,
+    return {id:g.id,bands:g.bands,critical:g.critical,filters:nf,minBlock:minFilt*nf,parti:g.parti||null,
             eff:1/(1+costOf(g)),          // quanto rende un'ora di orologio, per la posa scelta
             minCell:Math.min(cell,g.hours*panels/Math.max(1,N)*1.5),
             total:g.hours*panels,left:g.hours*panels,pen,spread:hi-lo,best:hi,worst:lo,fw};
@@ -7616,7 +7649,7 @@ function planNights(pr,e,dv,nights,opts){
     const ex=x.blocks.find(b=>b.id===it.id);
     if(ex){ ex.h+=h; ex.projH+=h*p; }
     else x.blocks.push({id:it.id,bands:it.bands,h,projH:h*p,
-      critical:it.critical,pen:p,fw:it.fw});
+      critical:it.critical,pen:p,fw:it.fw,...(it.parti?{parti:it.parti}:{})});
     x.room-=h; x.realH+=h; it.left-=h*p;
   };
   if(mode==='sessione'){
@@ -10787,8 +10820,11 @@ function subPlan(blocks,expo,opts){
   const out=[];
   for(const b of blocks){
     const parts=partiInPosa(b.id,expo);
-    const share=b.h/parts.length;
+    /* la parte di ogni filtro: uguale, o — con le ore gia' riprese di R, G e B — quello che manca a ciascuno (`b.parti`,
+       da `daRiprendere`, 2 novembre 2026) */
+    const quota=band=>b.parti&&b.parti[band]!=null?b.parti[band]:1/parts.length;
     for(const band of parts){
+      const share=b.h*quota(band);
       const e=(expo[band]||{}).ex; if(!e) continue;
       /* la serie corta si sottrae al blocco che la ospita: il totale non cambia. Per banda (22 settembre 2026): ogni
          canale ha i suoi secondi e le sue pose, e il suo perche'; e le sue ore sono quelle delle pose che la notte tiene */
@@ -10796,7 +10832,18 @@ function subPlan(blocks,expo,opts){
       const nCorte=hb?poseDellaSerieNellaNotte(hb,band,blocks,expo,o):0;
       const cut=nCorte*(hb?hb.sec:0)/3600;
       const useH=share-cut;
-      const n=useH>1e-9?Math.max(1,Math.round(useH*3600/e.sec)):0;
+      /* IL RESTO DA UNA NOTTE ALL'ALTRA, per i filtri con un peso (2 novembre 2026). Notte per notte i pesi di R, G e B si
+         perdevano nell'arrotondamento: su NGC 7635 col RC8, 6,38 pose di R e 5,92 di G diventavano 6 e 6 in ognuna delle
+         quattro notti, 24 e 24 invece di 26 e 24. Qui le pose della notte sono il cumulato arrotondato fino a lei meno
+         quello fino alla notte prima. Senza pesi, o senza il piano intero (`notti`), come sempre. */
+      const pesato=!!(b.parti&&Array.isArray(o.notti)&&o.night!=null);
+      const nPesato=()=>{ let prima=0, fin=null;
+        for(const x of o.notti){ const bx=(x.blocks||[]).find(y=>y.id===b.id);
+          const u=!bx?0:Math.max(0,bx.h*(bx.parti&&bx.parti[band]!=null?bx.parti[band]:1/parts.length)
+            -(hb?poseDellaSerieNellaNotte(hb,band,x.blocks,expo,Object.assign({},o,{night:x.n})):0)*(hb?hb.sec:0)/3600)*3600/e.sec;
+          if(x.n===o.night){ fin=prima+u; break; } prima+=u; }
+        return fin==null?Math.max(1,Math.round(useH*3600/e.sec)):Math.max(0,Math.round(fin)-Math.round(prima)); };
+      const n=useH>1e-9?(pesato?nPesato():Math.max(1,Math.round(useH*3600/e.sec))):0;
       if(nCorte>0) out.push({group:b.id,band,filter:band,hours:cut,sec:hb.sec,n:nCorte,
         realH:hb.sec*nCorte/3600, clockH:nCorte*(hb.sec+dl+settle/every)/3600,
         deltaMin:0, ex:e, critical:b.critical, hdr:true, hdrPerche:hb.why||hdr.why||''});
@@ -18153,19 +18200,24 @@ function giaRipreseHtml(t,prR,N,Nr,pl,expo){
   if(!prR) return scatola(dette+'. Nessuna è di un canale di questa tecnica: il piano qui sotto è il progetto intero.');
   const g=prR.giaRiprese, P=g.panels, minuto=1/120;
   /* nel piano: le pose che la sequenza riprendera', canale per canale (`poseDelCanale`, come le righe delle notti) */
-  const nelPiano={};
+  const nelPiano={}, perFiltro={};
   for(const [k,v] of Object.entries(pl&&pl.ok?MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET):{})){
-    const id=k.split('|')[0], x=nelPiano[id]||(nelPiano[id]={n:0,h:0}); x.n+=v.n; x.h+=v.h; }
+    const id=k.split('|')[0], x=nelPiano[id]||(nelPiano[id]={n:0,h:0}); x.n+=v.n; x.h+=v.h;
+    const band=k.split('|')[1]; if(band&&band!==id) perFiltro[band]=(perFiltro[band]||0)+v.n; }
   const pose=(n,ore)=>n+(n===1?' posa, ':' pose, ')+hm(ore);
+  /* R, G e B uno per uno, sotto la riga del gruppo (2 novembre 2026): le gia' riprese, quello che manca, le pose del piano */
+  const parti=(c,f)=>c.parti?'<div class="small muted">'+c.parti.map(x=>esc(x.id)+' '+f(x)).join(' · ')+'</div>':'';
   const righe=g.canali.map(c=>{ const buio=(c.fatte+c.oltre)*P, np=nelPiano[c.id];
     const progetto=c.progettoPose!=null?pose(c.progettoPose,c.progettoPosa)+(Math.abs(c.progettoPosa-c.progetto*P)>minuto?' → '+hm(c.progetto*P):''):hm(c.progetto*P);
-    return `<tr><td>${esc(c.id)}</td><td>${progetto}</td>
-      <td>${hm(c.posa)}${Math.abs(c.posa-buio)>minuto?' → '+hm(buio):''}</td>
-      <td>${c.daFare<=1e-9?'<span class="pill p-ok">fatto</span>'+(c.oltre>minuto?' oltre di '+hm(c.oltre*P):''):hm(c.daFare*P)}</td>
-      <td>${np&&np.n?pose(np.n,np.h):'—'}</td></tr>`; }).join('');
+    return `<tr><td>${esc(c.id)}</td><td>${progetto}${parti(c,x=>x.progettoPose+' pose')}</td>
+      <td>${hm(c.posa)}${Math.abs(c.posa-buio)>minuto?' → '+hm(buio):''}${parti(c,x=>hm(x.posa))}</td>
+      <td>${c.daFare<=1e-9?'<span class="pill p-ok">fatto</span>'+(c.oltre>minuto?' oltre di '+hm(c.oltre*P):''):hm(c.daFare*P)}${
+        c.daFare>1e-9?parti(c,x=>x.daFare<=1e-9?'fatto':hm(x.daFare*P)):''}</td>
+      <td>${np&&np.n?pose(np.n,np.h):'—'}${c.parti?parti(c,x=>(perFiltro[x.id]||0)+' pose'):''}</td></tr>`; }).join('');
   const perNotte={}; for(const c of g.canali) for(const n of c.notti) perNotte[n.notte]=n;
   const notti=Object.values(perNotte).sort((a,b)=>a.notte<b.notte?-1:1);
-  const bande=new Set(g.canali.flatMap(c=>String(c.id).split('+')));
+  /* R, G e B sono il gruppo RGB: non sono canali «che non entrano» (2 novembre 2026) */
+  const bande=new Set(g.canali.flatMap(c=>String(c.id).split('+')).flatMap(b=>b==='RGB'?[b,...PARTI_RGB]:[b]));
   const fuori=Object.entries(h).filter(([k,v])=>v>0&&!bande.has(k));
   const note=[
     notti.length?'Le notti dei light: '+notti.map(n=>giornoDetto(n.notte)+(n.valutata?', '+lunaDetta({luna:Math.round(n.luna*100)}):', non valutata: conta piena')).join(' · ')+'.':null,
@@ -20715,7 +20767,7 @@ function openSheet(i){
     if(v.useful<=0) return `<div class="chan">
         <div class="cn muted">${b}</div>
         <div style="flex:1" class="small muted">${v.note||'—'}</div></div>`;
-    const done=st.hours?(st.hours[b]||0):0;
+    const done=oreDelCanale(st.hours,b);
     const max=Math.max(v.saturates||v.useful*1.4, done);
     const col=b==='Ha'?'var(--ha)':b==='OIII'?'var(--oiii)':b==='SII'?'var(--sii)':
               b==='L'?'var(--lum)':'var(--rgb)';
@@ -21146,7 +21198,7 @@ function renderState(){
     const h=STATE[id].hours||{}, n=nottiDette(STATE[id]);
     return `<div class="chan"><div style="flex:1">
       <b>${esc(nomeDellOggetto(id))}</b>
-      <div class="small muted">${Object.entries(h).map(([k,v])=>`${k} ${fmt(v,1)}h`).join(' · ')}${n?' · '+esc(n):''}</div>
+      <div class="small muted">${oreDette(h)}${n?' · '+esc(n):''}</div>
       <div class="row" style="gap:8px;margin-top:4px">${tastiPrescriviDallArchivio(id)}<button class="chip" onclick="rileggiLight(${jsAttr(id)})">Rileggi dai light</button>
         <button class="chip" onclick="eliminaOre(${jsAttr(id)})">Elimina</button></div>
       <div id="oreDa_${esc(id)}"></div>
@@ -21245,7 +21297,7 @@ function renderProgetti(){
     'l\'oggetto, la prescrizione e la strumentazione con cui lo riprendi.</p>'; return; }
   box.innerHTML=v.map(p=>{ const c=p.contesto||{}, oid=p.oggetto.id, voce=STATE[oid], fatte=(voce||{}).hours||{}, ci=Object.keys(fatte).length>0;
     /* le ore gia' riprese dell'oggetto, dentro la scheda: si aggiornano dai light quando si vuole, si eliminano, si rimettono */
-    const ore=`<div class="small" style="margin-top:6px"><b>Ore già riprese</b>: ${ci?Object.entries(fatte).map(([k,x])=>esc(k)+' '+fmt(x,1)+' h').join(' · ')+
+    const ore=`<div class="small" style="margin-top:6px"><b>Ore già riprese</b>: ${ci?oreDette(fatte)+
         (nottiDette(voce)?' · '+esc(nottiDette(voce)):''):'nessuna'} <span class="muted">— valgono per l’oggetto, in tutti i suoi progetti</span></div>
       <div class="row" style="gap:8px;margin-top:4px"><button class="chip" onclick="rileggiLight(${jsAttr(oid)},${jsAttr(p.id)})">${ci?'Aggiorna dai light':'Aggiungi dai light'}</button>${
         ci?`<button class="chip" onclick="eliminaOre(${jsAttr(oid)})">Elimina le ore già riprese</button>`:''}${
@@ -21450,12 +21502,16 @@ async function intestazioneXisf(file){
   if(!carte.XPIXSZ&&prop('Instrument:Sensor:XPixelSize')) carte.XPIXSZ=prop('Instrument:Sensor:XPixelSize');
   return carte;
 }
-/* da un nome di filtro alle chiavi delle ore gia' riprese; colore: la posa viene da un sensore a colori */
-const CHIAVE_DELLA_BANDA={Ha:['Ha'],OIII:['OIII'],SII:['SII'],L:['L'],R:['RGB'],G:['RGB'],B:['RGB'],RGB:['RGB'],'Ha+OIII':['Ha','OIII']};
+/* da un nome di filtro alle chiavi delle ore gia' riprese; colore: la posa viene da un sensore a colori.
+   R, G E B, UNO PER UNO (2 novembre 2026, Alessandro: «si deve vedere cosa è stato ripreso con 0,4, ovvero se manca
+   magari R o G o B»). Erano tutti e tre la voce «RGB»: l'Archivio diceva «RGB 0,4 h», e il G in piu' compensava, nella
+   somma, l'R e il B in meno (light veri di NGC 7635 del minix: R 7 × 60 s, G 9, B 7). Sul monocromatico ognuno ha la sua
+   voce; a colori la posa e' il gruppo intero, e resta «RGB». Sorvegliato da tools/gate-rgb-uno-per-uno.js. */
+const CHIAVE_DELLA_BANDA={Ha:['Ha'],OIII:['OIII'],SII:['SII'],L:['L'],R:['R'],G:['G'],B:['B'],RGB:['RGB'],'Ha+OIII':['Ha','OIII']};
 function chiaviDelFiltro(nome,colore){
   const n=String(nome||'').trim(), uguale=x=>String(x||'').trim().toLowerCase()===n.toLowerCase();
   if(!n) return null;
-  const daCanale=c=>c==='L'&&colore?['RGB']:CHIAVE_DELLA_BANDA[c]||null;
+  const daCanale=c=>colore&&(c==='L'||PARTI_RGB.includes(c))?['RGB']:CHIAVE_DELLA_BANDA[c]||null;
   const seq=typeof nomiPerLaSequenza==='function'?nomiPerLaSequenza():{};
   for(const [c,v] of Object.entries(seq)) if(uguale(v)&&daCanale(c)) return daCanale(c);
   for(const [c,v] of Object.entries(NINA_FILTER)) if(uguale(v)&&!(c==='RGB'&&!colore)&&daCanale(c)) return daCanale(c);
