@@ -7265,6 +7265,16 @@ function bestStart(tg,dv,site,from,N,opts){
    filtro, sotto le quali non c'è niente da integrare — si spegne e la sua massa
    torna alle altre notti dello stesso canale. È così che un RGB da 1,4 h su
    quattordici notti compare in sei e non in quattordici da una posa. */
+/*  L'EFFICIENZA DELLA POSA NELLA RIGA (2 novembre 2026). `put` deposita ore × Luna × efficienza della posa scelta
+    (`eff`, 1/(1+cost) contro la posa di resa); qui la riga si convertiva e si chiudeva su ore × Luna. Dove la posa della
+    strategia rende meno — con Equilibrio, la strategia di serie — il piano a sessioni depositava meno della prescrizione,
+    con ore libere nelle notti: misurato su 312 piani (13 schede, quattro banchi, Borno, tre notti dal 1°, 8 e 20
+    novembre), cinque, fino all'SII di NGC 7635 con l'RC8 al 93,2 %; la politica sul progetto lo depositava (il suo
+    `put` scala `left` con lo stesso fattore). Adesso l'ultima passata chiude la riga sul deposito vero, Luna ×
+    efficienza; senza `eff` vale 1, come prima. La conversione iniziale della riga resta sulla sola Luna: con
+    l'efficienza anche li', sui piani misurati, nessuna colonna e nessun deposito cambiava. Sorvegliato da
+    tools/gate-consegna-del-piano.js. */
+const depositoDellOra=(it,c)=>Math.max(1e-3,it.pen[c])*Math.max(1e-3,it.eff!=null?it.eff:1);
 function balanceSessions(items,nights,opts){
   const o=opts||{}, tilt=o.tilt!=null?o.tilt:1;
   const R=items.length, C=nights.length;
@@ -7303,7 +7313,7 @@ function balanceSessions(items,nights,opts){
        media sarebbe esatta solo se la distribuzione fosse quella con cui la media
        è stata pesata, e non lo è, perché il trasporto la inclina. */
     for(let r=0;r<R;r++){ let s2=0;
-      for(let c=0;c<C;c++) s2+=X[r][c]*Math.max(1e-3,items[r].pen[c]);
+      for(let c=0;c<C;c++) s2+=X[r][c]*depositoDellOra(items[r],c);
       if(s2>0) for(let c=0;c<C;c++) X[r][c]*=items[r].total/s2; }
   };
   norm();
@@ -21101,6 +21111,29 @@ $('impIn').addEventListener('change',ev=>{
 /* le notti di una voce delle ore gia' riprese, dette */
 const nottiDette=v=>{ const n=((v&&v.notti)||[]).map(x=>x.notte); return !n.length?'':n.length===1?'la notte '+conGiorno('de',n[0])
   :n.length+' notti, '+conGiorno('da',n[0])+' '+conGiorno('a',n[n.length-1]); };
+/*  PRESCRIVI DALL'ARCHIVIO (2 novembre 2026, Alessandro: «anche in questo tab Archivio ci dovrebbe essere il tasto
+    prescrivi e prescrivi istantanea che rimanda direttamente nella pagina dei risultati con un numero di light che compensi
+    la differenza»). La compensazione c'e' dal 26 ottobre (`daRiprendere`): il piano riprende, canale per canale, quello che
+    manca al progetto, al buio. Misurato su NGC 7635 coi suoi numeri (OIII 3,5 h, SII 4,5, Hα 1,5, RGB 0,4 di posa, RC8,
+    4 notti dal 6 novembre): l'OIII, il canale piu' indietro, riceve 5,82 h delle 7,78 del progetto, l'SII 5,11 delle 8,70,
+    l'Hα 2,05 delle 3, l'RGB 1,23 delle 1,60; con la prescrizione istantanea delle 23:45 del 1° novembre anche, con la Luna
+    di quella notte. Mancava la strada: dall'Archivio ci si arrivava solo aprendo un progetto. Qui l'oggetto si prescrive
+    col banco, il sito e le date di adesso, e nella notte in corso anche da adesso; si va ai Risultati, dove il piano e la
+    tabella delle ore gia' riprese dicono quello che manca. Sorvegliato da tools/gate-prescrivi-dall-archivio.js. */
+function tastiPrescriviDallArchivio(id){
+  const t=bersaglioDaId(id); if(!t) return '';
+  const nome=t.names[0], notte=!!(NP_LISTA&&NP_LISTA.da!=null);
+  return `<button class="chip" onclick="prescriviDallArchivio(${jsAttr(id)},false)" data-tip="${esc('Prescrive '+nome+
+      ' col banco, il sito e le date di adesso, sulla notte intera. Il piano riprende solo quello che manca a ogni canale, contato al buio: il canale più indietro riceve più pose.')}">Prescrivi</button>`+
+    (notte?`<button class="chip" onclick="prescriviDallArchivio(${jsAttr(id)},true)" data-tip="${esc('Come «Prescrivi», ma la prima notte parte da adesso, alle '+
+      oraDellaNotte(new Date(NP_LISTA.da))+': le notti dopo restano intere.')}">Prescrizione istantanea</button>`:'');
+}
+function prescriviDallArchivio(id,adesso){
+  const t=bersaglioDaId(id); if(!t){ toast('Questo oggetto non è più fra quelli che AIS conosce: non si può prescrivere.'); return; }
+  if(adesso&&!(NP_LISTA&&NP_LISTA.da!=null)){ toast('La prescrizione istantanea c’è solo durante la notte in corso.'); return; }
+  ISTANTANEA=!!adesso;
+  rxPick(t.names[0]); go('risultati');
+}
 function renderState(){
   renderProgetti(); renderCopiaStato();
   const ids=Object.keys(STATE), tolte=Object.keys(ORE_TOLTE).filter(id=>!STATE[id]);
@@ -21114,7 +21147,7 @@ function renderState(){
     return `<div class="chan"><div style="flex:1">
       <b>${esc(nomeDellOggetto(id))}</b>
       <div class="small muted">${Object.entries(h).map(([k,v])=>`${k} ${fmt(v,1)}h`).join(' · ')}${n?' · '+esc(n):''}</div>
-      <div class="row" style="gap:8px;margin-top:4px"><button class="chip" onclick="rileggiLight(${jsAttr(id)})">Rileggi dai light</button>
+      <div class="row" style="gap:8px;margin-top:4px">${tastiPrescriviDallArchivio(id)}<button class="chip" onclick="rileggiLight(${jsAttr(id)})">Rileggi dai light</button>
         <button class="chip" onclick="eliminaOre(${jsAttr(id)})">Elimina</button></div>
       <div id="oreDa_${esc(id)}"></div>
     </div></div>`;
@@ -21223,7 +21256,7 @@ function renderProgetti(){
       <div class="small" style="margin-top:4px">${esc(contestoDetto(c))}</div>
       <div class="small muted">${(c.canali||[]).map(canaleDetto).join(' · ')} — ${hm(c.oreTotali||0)} in tutto</div>
       ${ore}
-      <div class="row"><button class="fn fn-exp" onclick="chiediDiAprireProgetto(${jsAttr(p.id)})">Apri</button>
+      <div class="row"><button class="fn fn-exp" onclick="chiediDiAprireProgetto(${jsAttr(p.id)})" data-tip="${esc('Rimette banco, filtri, sito e scelte del progetto e lo prescrive: il piano riprende solo quello che manca a ogni canale. Prima una finestra dice per quale contesto valgono le sue ore, e chiede da quando.')}">Apri e prescrivi</button>
         <button class="fn fn-bad" onclick="eliminaProgetto(${jsAttr(p.id)})">Elimina</button></div></div>`; }).join('');
 }
 function eliminaProgetto(id){
@@ -21253,7 +21286,10 @@ function chiediDiAprireProgetto(id){
       adesso (${esc(adesso)}), e rifà la prescrizione. Quelli di adesso si mettono da parte: «Torna a com'era» li rimette.</p>
     ${passate?'<p class="small muted">Le date del progetto sono passate: aprirlo con quelle serve a rivedere la prescrizione com\'era.</p>':''}
     <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button class="bt-progetto" onclick="apriProgetto(${jsAttr(p.id)},'stanotte')">Apri per stanotte</button>
+      <button class="bt-progetto" onclick="apriProgetto(${jsAttr(p.id)},'stanotte')">Apri per stanotte</button>${
+      /* nella notte in corso, anche da adesso: la prima notte della prescrizione parte dall'ora di adesso (2 novembre 2026) */
+      NP_LISTA&&NP_LISTA.da!=null?`<button class="bt-progetto" onclick="apriProgetto(${jsAttr(p.id)},'adesso')"
+        data-tip="${esc('Come «Apri per stanotte», con la prescrizione istantanea: la prima notte parte da adesso, alle '+oraDellaNotte(new Date(NP_LISTA.da))+'.')}">Apri da adesso</button>`:''}
       <button class="fn fn-exp" onclick="apriProgetto(${jsAttr(p.id)},'progetto')">Apri con le date del progetto</button>
       <button class="fn" onclick="document.getElementById('progSheet').classList.remove('on')">Annulla</button></div>`;
   $('progSheet').classList.add('on');
@@ -21305,6 +21341,8 @@ function progettoAllApertura(){
   if(!a||!a.id) return;
   const p=leggiProgetti().find(x=>x.id===a.id); if(!p){ chiudiProgettoAperto(); return; }
   PROGETTO_APERTO=p;
+  /* «Apri da adesso»: la prescrizione istantanea, se la notte e' ancora in corso (`istantaneaAttiva` lo ricontrolla) */
+  if(a.modo==='adesso'&&!ISTANTANEA){ ISTANTANEA=true; refresh(); }
   if(a.data&&!a.applicata){ a.applicata=true; try{ sessionStorage.setItem('ap_progetto_aperto',JSON.stringify(a)); }catch(e){} setRxDate(a.data); }
   else renderProgettoAperto();
   go('risultati');
