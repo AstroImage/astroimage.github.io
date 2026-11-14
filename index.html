@@ -16818,6 +16818,7 @@ const setRoad=(tgId,id)=>{
    guardando. E' poco, ma finora l'app non parlava con nessuno se non glielo
    chiedevi, e la differenza si dichiara invece di scoprirla. */
 const HIPS='https://alasky.cds.unistra.fr/hips-image-services/hips2fits';
+const MINIATURA_DI_RISERVA='https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl';
 let _pvKey=null;
 function renderPreview(t,dv){
   const box=$('rxPrev'); if(!box) return;
@@ -16845,7 +16846,7 @@ function renderPreview(t,dv){
       title="Apri la vista navigabile con il riquadro del sensore"
       aria-label="${esc('Apri la vista navigabile del campo di '+t.names[0])}">
       <img alt="${esc('Campo di '+t.names[0]+' come lo inquadra questa configurazione')}"
-        width="${W}" height="${H}" loading="lazy" decoding="async" src="${esc(u)}">
+        width="${W}" height="${H}" decoding="async" src="${esc(u)}">
       <span class="pv-cue" aria-hidden="true">apri la vista &rsaquo;</span></button>
     <figcaption>${fmt(dv.fovX/60,2)}° × ${fmt(dv.fovY/60,2)}° — il tuo campo &middot;
       DSS2 via <a href="https://cds.unistra.fr" target="_blank" rel="noopener">CDS</a></figcaption>`;
@@ -16861,14 +16862,30 @@ function renderPreview(t,dv){
      lo stesso — c'e' il verdetto sull'inquadratura, i pannelli, la rotazione. */
   const spento=()=>{ box.innerHTML=`<button type="button" class="pv-go pv-off">
       <span><b>Anteprima non disponibile.</b><br>
-      ${location.protocol==='file:' ? 'Arriva dal CDS e richiede la rete: stai usando la versione offline.'
-        : navigator.onLine===false ? 'Arriva dal CDS e richiede la rete, che adesso non c’è.'
+      ${navigator.onLine===false ? 'Arriva dal CDS e richiede la rete, che adesso non c’è.'
         : 'Arriva dal CDS, che adesso non risponde: non è la tua connessione. Riprova più tardi.'}<br>
       Apri comunque la vista del campo &rsaquo;</span></button>`;
     const g=box.querySelector('.pv-go'); if(g) g.onclick=()=>apriVista(t); };
-  const to=setTimeout(()=>{ if(!img.complete||!img.naturalWidth) spento(); },8000);
+  /*  LA COPIA DI RISERVA DELLA MINIATURA (14 novembre 2026, Alessandro: l'anteprima non torna da un mese). hips2fits sta
+      solo al CDS, che dal 5 novembre risponde 404. Fuori da Strasburgo un ritaglio in JPEG alla misura chiesta lo da'
+      SkyView, ma solo in DSS2 rosso (in colore: «no data»), misurato: 268×180 in 3 s, 23 kB, nord in alto ed est a
+      sinistra come hips2fits. Si prova dopo il CDS, e la didascalia lo dice senza nominare chi ospita la copia.
+      Senza loading="lazy": un'immagine pigra fuori dallo schermo non si chiede nemmeno, i tetti di tempo scadevano lo
+      stesso e il riquadro diceva «non disponibile» senza aver provato (misurato nel pannello nascosto, NGC 6888). */
+  const riserva=`${MINIATURA_DI_RISERVA}?Survey=${encodeURIComponent('DSS2 Red')}&Position=${t.ra_deg},${t.dec_deg}`+
+    `&Size=${perLaMacchina(fovDeg,4)},${perLaMacchina(fovDeg*H/W,4)}&Pixels=${W},${H}&Projection=Tan&Return=JPEG`;
+  let copia=false, to=null;
+  const tetto=ms=>{ clearTimeout(to); to=setTimeout(()=>{ if(!img.complete||!img.naturalWidth) fallito(); },ms); };
+  const fallito=()=>{ clearTimeout(to);
+    /* anche dallo standalone aperto come file: la rete c'e' e le immagini in https arrivano (14 novembre, Alessandro) */
+    if(copia||navigator.onLine===false) return spento();
+    copia=true; img.src=riserva; tetto(15000);
+    const fc=box.querySelector('figcaption');
+    if(fc){ fc.innerHTML=`${fmt(dv.fovX/60,2)}° × ${fmt(dv.fovY/60,2)}° — il tuo campo &middot; DSS2 rosso, dalla copia di riserva`;
+      fc.title='Il CDS non risponde: la miniatura arriva da una copia di riserva, che ha la DSS2 solo in rosso. Quando il CDS torna, torna anche il colore.'; } };
+  tetto(8000);
   img.onload=()=>clearTimeout(to);
-  img.onerror=()=>{ clearTimeout(to); spento(); };
+  img.onerror=fallito;
 }
 
 /* Dalla miniatura alla vista navigabile. `rxOpenSheet` apre la scheda completa e
@@ -17732,22 +17749,31 @@ const ALADIN_SRC='https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.
     l'hanno.
     Si chiede prima al CDS, come sempre; se in CINQUE secondi non risponde si va alla copia, e lo si dice. Una richiesta
     al CDS che resta appesa — il caso del 28 ottobre — non tiene ferma la vista: la prova si interrompe da sola. Niente si
-    scarica in locale. La miniatura viene da hips2fits, che sta solo al CDS: il suo riquadro dice che il CDS non risponde,
-    non che manca la rete. Sorvegliato da tools/gate-copia-di-riserva.js. */
+    scarica in locale. La miniatura viene da hips2fits, che sta solo al CDS: dal 14 novembre, se non arriva, la si chiede
+    in DSS2 rosso alla sua copia (MINIATURA_DI_RISERVA, in renderPreview); se non arriva nemmeno quella, il riquadro dice
+    che il CDS non risponde, non che manca la rete. Sorvegliato da tools/gate-copia-di-riserva.js. */
 const CDS_ATTESA=5000;
 const ALADIN_RISERVA=['https://cdn.jsdelivr.net/npm/aladin-lite@3.8.2/dist/aladin.js',
   'https://unpkg.com/aladin-lite@3.8.2/dist/aladin.js'];
 const IMMAGINI_DI_RISERVA={'P/DSS2/color':'https://skies.esac.esa.int/DSSColor/'};
 const CDS_PROVA={aladin:'https://aladin.cds.unistra.fr/', immagini:'https://alasky.cds.unistra.fr/DSS/DSSColor/properties'};
-/*  il CDS risponde? Basta una risposta qualunque, anche un errore HTTP: si guarda se il server c'e'. La risposta vale
-    cinque minuti, poi si richiede: quando il CDS torna, si torna da lui. */
+/*  il CDS risponde? La risposta vale cinque minuti, poi si richiede: quando il CDS torna, si torna da lui.
+    LE IMMAGINI VOGLIONO UNA RISPOSTA BUONA (14 novembre 2026, Alessandro: l'anteprima non torna «a distanza di un mese»).
+    Dal 5 novembre il CDS ha un incidente informatico e risponde di nuovo, ma con «404 Page unavailable» sulle immagini,
+    sulla libreria e su hips2fits: la prova di prima contava ogni risposta, anche un errore, e la vista restava al CDS su
+    «P/DSS2/color loading...», senza tessere e senza riga. Adesso per le immagini si legge lo stato (alasky manda
+    Access-Control-Allow-Origin anche sul 404): conta solo un 2xx. Per la libreria basta che il server ci sia: lo script
+    del CDS che risponde 404 fallisce subito, e si passa alla copia (lo script del CDS non manda quell'intestazione, e
+    leggerne lo stato la scarterebbe anche col CDS sano). */
+const CDS_LEGGI_LO_STATO={immagini:true};
 const _cds={};
 function cdsRisponde(chi){
   const c=_cds[chi]; if(c&&Date.now()-c.t<300000) return c.p;
   const ctl=typeof AbortController==='function'?new AbortController():null;
+  const leggi=!!CDS_LEGGI_LO_STATO[chi];
   const p=new Promise(res=>{ const to=setTimeout(()=>{ if(ctl) ctl.abort(); res(false); },CDS_ATTESA);
-    fetch(CDS_PROVA[chi],{method:'HEAD',mode:'no-cors',cache:'no-store',signal:ctl?ctl.signal:undefined})
-      .then(()=>{ clearTimeout(to); res(true); },()=>{ clearTimeout(to); res(false); }); });
+    fetch(CDS_PROVA[chi],{method:'HEAD',mode:leggi?'cors':'no-cors',cache:'no-store',signal:ctl?ctl.signal:undefined})
+      .then(r=>{ clearTimeout(to); res(leggi?!!r.ok:true); },()=>{ clearTimeout(to); res(false); }); });
   _cds[chi]={t:Date.now(),p}; return p;
 }
 /*  da dove arriva la libreria, e quali immagini usare: il CDS se risponde, la copia se no */
@@ -18020,7 +18046,10 @@ function drawField(t,dv,rot){
       fov:span, target:`${fc.ra} ${fc.dec}`, cooFrame:'ICRSd',
       showReticle:false, showShareControl:false, showSimbadPointerControl:false,
       showProjectionControl:false, showFullscreenControl:true, showGotoControl:false,
-      showLayersControl:true, projection:'TAN'});
+      showLayersControl:true, projection:'TAN',
+      /* senza il registro d'uso: di serie Aladin, partendo, manda al CDS l'indirizzo della pagina (tg.log «startup»),
+         e dal novembre 2026 quell'indirizzo, alasky.unistra.fr, non esiste piu': un «Uncaught (in promise)» in console */
+      log:false});
     _alInst=al;
     /* sotto il sensore i pannelli del mosaico, sopra l'oggetto: tre strati che si ridisegnano senza ricreare Aladin */
     const mo=A.graphicOverlay({color:'rgba(210,153,34,.85)',lineWidth:1});
@@ -18037,9 +18066,9 @@ function drawField(t,dv,rot){
     ridisegnaCampo();
   }).catch(err=>{
     if(fonte) fonte.hidden=true;
-    /* perche' non c'e': senza rete, o dal file sul disco, o col CDS e le sue copie che non rispondono — tre cose diverse */
-    const perche=location.protocol==='file:'?'arriva dai server del CDS e serve una connessione (stai usando la versione offline)'
-      :navigator.onLine===false?'arriva dai server del CDS e serve una connessione, che adesso non c’è'
+    /* perche' non c'e': senza rete, o col CDS e le sue copie che non rispondono — due cose diverse. Il file sul disco
+       non e' una ragione: dallo standalone la rete c'e' e la vista arriva (14 novembre 2026) */
+    const perche=navigator.onLine===false?'arriva dai server del CDS e serve una connessione, che adesso non c’è'
       :'arriva dai server del CDS, che adesso non rispondono, e nemmeno le loro copie';
     box.innerHTML=`<div class="small muted" style="padding:14px">
       <span class="pill p-dim">campo non disponibile</span>
