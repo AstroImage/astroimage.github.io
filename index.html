@@ -986,8 +986,23 @@ td.archcell{max-width:120px}
   border:1px solid var(--acc);background:transparent;color:var(--acc)}
 .bc-scheda:hover{background:rgba(var(--acc-rgb),.14)}
 .bc-scheda:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/*  «Da adesso» (16 novembre 2026): la prescrizione istantanea di un oggetto, accanto a «Prescrivi» e del suo colore, ma
+    vuoto, perche' e' una variante della stessa azione; pieno a meta' quando la prescrizione istantanea e' accesa. Fuori
+    dalla notte in corso e' spento solo nell'aspetto — aria-disabled, non disabled —: un tasto disabilitato non riceve il
+    clic, e premuto non direbbe perche' e' spento, che sul telefono e' l'unico modo di saperlo. Sorvegliato da
+    tools/gate-da-adesso.js. */
+.bc-daadesso{font:inherit;font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--go);background:transparent;color:var(--go)}
+/*  tre tasti in un riquadro largo come un telefono stretto (320 px) non stanno su una riga: va a capo la riga, non la
+    scritta dentro un tasto */
+.bc-tasti button{white-space:nowrap}
+.bc-daadesso:hover{background:rgba(var(--go-rgb),.14)}
+.bc-daadesso.on{background:rgba(var(--go-rgb),.24)}
+.bc-daadesso:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+.bc-daadesso.spento{opacity:.42;cursor:not-allowed}
+.bc-daadesso.spento:hover{background:transparent}
 .bc-azioni{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:3px}
-.bc-tasti{display:flex;gap:8px;margin-left:auto}
+.bc-tasti{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
 /* «Manda a N.I.N.A.» e «Esporta le sequenze» in fondo ai Risultati, staccati da quello che c'e' sopra (20 ottobre 2026) */
 .nina-in-fondo{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
 @media(prefers-reduced-motion:reduce){.bc-prescrivi{transition:none}}
@@ -16192,12 +16207,39 @@ function adessoNellaNotte(np,ora){
 const istantaneaAttiva=()=>!!(ISTANTANEA&&NP_LISTA&&NP_LISTA.da!=null);
 const daAdessoPerIlPiano=()=>istantaneaAttiva()?{daAdesso:NP_LISTA.da}:{};
 function prescrizioneIstantanea(v){ ISTANTANEA=!!v; refresh(); }
-setInterval(()=>{
-  if(!NP_LISTA||NP_LISTA.da==null) return;
+/*  «DA ADESSO» IN OGNI RIQUADRO (16 novembre 2026, Alessandro, dalla lista delle 19:45: il tasto in testa «nemmeno si
+    nota»; il suo posto e' nel riquadro, accanto a «Prescrivi», «sempre visibile, ma selezionabile solo nel corso della
+    notte», col suggerimento «sempre visibile anche di giorno»; poi «il tasto Prescrizione Istantanea lascialo dov'e'»).
+    Il tasto in testa resta com'era, e decide ore e ordine dei riquadri e la prescrizione; «Da adesso» lo accende e
+    prescrive l'oggetto del suo riquadro, in un clic. «Prescrivi» segue il tasto in testa e lo dice nel suggerimento:
+    spegnerlo a ogni clic avrebbe tolto una scelta fatta da chi riprende. Fuori dalla notte in corso il tasto si vede
+    spento, e il suggerimento dice che cosa fa e perche' e' spento: prima del buio, a che ora si accende — e si accende
+    da solo, al giro dei cinque minuti —; su un'altra notte, che vale solo per quella in corso. Premuto spento non
+    prescrive niente e lo dice, per il telefono, dove il suggerimento non si apre passando. Sorvegliato da
+    tools/gate-da-adesso.js. */
+function statoDaAdesso(np){
+  if(np&&np.da!=null) return {on:true};
+  const t0=np&&(np.astro.start||np.nautical.start);
+  if(!t0) return {on:false,perche:'In questa notte non c’è buio, né astronomico né nautico: non c’è un adesso da cui partire.'};
+  if($('date').value===dataDellaNotteInCorso(new Date(),SITE)) return {on:false,perche:'Si accende al buio, alle '+oraDellaNotte(t0)+'.'};
+  return {on:false,perche:'Vale solo per la notte in corso, e qui stai guardando la notte del '+
+    new Date($('date').value+'T12:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'long'})+'.'};
+}
+function prescriviDaAdesso(nome){
+  const s=statoDaAdesso(NP_LISTA);
+  if(!s.on){ toast('La prescrizione istantanea c’è solo nella notte in corso. '+s.perche); return; }
+  ISTANTANEA=true; rxPick(nome);
+}
+/*  ogni cinque minuti, se nessun campo e' in uso: nella notte in corso il segno dell'ora si sposta, e al buio la notte
+    della lista diventa quella in corso — «Da adesso» si accende senza ricaricare la pagina */
+function riguardaLAdesso(){
+  if(!NP_LISTA) return;
+  if(NP_LISTA.da==null&&!adessoNellaNotte(NP_LISTA,Date.now())) return;
   const a=document.activeElement;
   if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
   refresh();
-},5*60000);
+}
+setInterval(riguardaLAdesso,5*60000);
 /* la Luna della notte della lista, una volta per notte e sito (`trattiDellaLuna`), e detta nel suggerimento della barra:
    quando e' su, quanto e' piena, quanto e' lontana dall'oggetto */
 function lunaDellaListaNotte(np){
@@ -16265,6 +16307,13 @@ function riquadroHtml(x,c,basso){
       ? `<span data-tip="${esc(G.weeks)}">≈ ${wkTxt(e.weeks)}</span>`
       : `<span data-tip="Stanotte l’oggetto non ha quasi ore utili: le settimane, che si contano dalle ore di questa notte, qui non si dicono.">settimane —</span>`);
   const gia=e.progress!=null?` · già ripreso <b>${Math.round(e.progress*100)}%</b>`:'';
+  /* «Da adesso»: che cosa fa sempre, e poi le ore che restano o perche' e' spento */
+  const da=c.daAdesso||{on:false,perche:''};
+  const tipDa='La prescrizione istantanea di '+nome+': come «Prescrivi», ma la prima notte parte da adesso invece che dal buio; le notti dopo restano intere.'+
+    (da.on?' Sono le '+adesso+': '+(e.oreDaAdesso>0.3?'da qui all’alba '+fmt(e.oreDaAdesso,1)+' h utili.'
+      :'da qui all’alba non resta mezz’ora utile, e la prima notte resterà vuota.'):' '+da.perche);
+  const tipPrescrivi=c.ist?'Lo prescrivo qui sopra, sulla configurazione di adesso, con la prima notte da adesso: la prescrizione istantanea è accesa in testa alla lista.'
+    :'Lo prescrivo qui sopra, sulla notte e sulla configurazione di adesso.';
   return `<div class="bestcard${nome.toLowerCase()===c.scelto?' on':''}${basso?' basso':''}" role="button" tabindex="0"
      data-nome="${esc(nome)}" onclick="rxPick(${jsAttr(nome)})"
      onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();rxPick(${jsAttr(nome)})}">
@@ -16281,8 +16330,10 @@ function riquadroHtml(x,c,basso){
      <span class="bc-piede"><span class="bc-prog${acc('progetto')}">${prog}${gia}</span></span>
      <span class="bc-azioni">
        <span class="bc-resa${acc('resa')}" data-tip="La resa: l’ordine del motore, quello di partenza. Pesa ore utili, inquadratura, campionamento, fattibilità e montatura su questa configurazione e questa notte.">resa <b>${e.score}</b><span class="sbar"><i style="width:${e.score}%"></i></span></span>
-       <span class="bc-tasti"><button type="button" class="bc-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(nome)})"
-         data-tip="Lo prescrivo qui sopra, sulla notte e sulla configurazione di adesso.">Prescrivi</button>
+       <span class="bc-tasti"><button type="button" class="bc-daadesso${da.on?(c.ist?' on':''):' spento'}" aria-disabled="${da.on?'false':'true'}"
+         onclick="event.stopPropagation();prescriviDaAdesso(${jsAttr(nome)})" data-tip="${esc(tipDa)}">Da adesso</button>
+       <button type="button" class="bc-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(nome)})"
+         data-tip="${esc(tipPrescrivi)}">Prescrivi</button>
        <button type="button" class="bc-scheda" onclick="event.stopPropagation();openSheet(${i})"
          data-tip="La scheda dell'oggetto: le righe di emissione, le tecniche con pro e contro, le ore per canale.">Scheda</button></span>
      </span>
@@ -16295,7 +16346,8 @@ function bestNightHtml(){
     <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`:'';
   const primi=MOTORE.scelta.riquadriDiStanotte(ee), utili=MOTORE.scelta.riquadriDiStanotte(ee,Infinity);
   const conOre=new Set(utili.map(o=>o.i)), sotto=lista.filter((x,k)=>!conOre.has(k));
-  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase(), ist:istantaneaAttiva()};
+  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase(), ist:istantaneaAttiva(),
+    daAdesso:statoDaAdesso(NP_LISTA)};
   const griglia=(xs,basso)=>`<div class="bestgrid">${xs.map(x=>riquadroHtml(x,c,basso)).join('')}</div>`;
   const mostrati=(RIQ_TUTTI?utili:primi).map(o=>lista[o.i]);
   let h=mostrati.length?griglia(mostrati,false)
