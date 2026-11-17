@@ -1806,7 +1806,7 @@ td.archcell{max-width:120px}
             rel="noopener">VizieR J/ApJS/182/216</a>. Sono profili completi: qui si adotta il
             valore a un raggio di 1″ dal centro, perché i punti più interni sono deconvoluti
             dalla PSF di Hubble e nessun seeing terrestre li mostra.</li>
-          <li><b>Brillanza Hα di trentacinque nebulose</b> — <b>Finkbeiner 2003</b>, ApJS 146, 407, composito
+          <li><b>Brillanza Hα di trentaquattro nebulose</b> — <b>Finkbeiner 2003</b>, ApJS 146, 407, composito
             di <b>WHAM</b>, <b>VTSS</b> e <b>SHASSA</b>, da
             <a href="https://lambda.gsfc.nasa.gov/product/foreground/fg_halpha_get.html" target="_blank"
             rel="noopener">NASA LAMBDA</a>. È una misura in Rayleigh dell'Hα <i>osservato</i>, presa come eccesso sul
@@ -1829,10 +1829,15 @@ td.archcell{max-width:120px}
             dove l'anello che comincia a quel raggio deve avere il 90° percentile almeno doppio del fondo regionale.
             La brillanza della mappa è un minimo, perché il beam diluisce i filamenti: le ore che ne escono sono al
             più quelle.</li>
+          <li><b>La posizione di quattro oggetti</b>, corretta il 17 novembre 2026 sui cataloghi d'origine: Sh2-224
+            da <b>Green 2019</b>, J. Astrophys. Astr. 40, 36, il catalogo dei resti di supernova; Sh2-157 da
+            <b>Sharpless 1959</b>, ApJS 4, 257; vdB 152 da <b>van den Bergh 1966</b>, AJ 71, 990; M44 da
+            <b>Cantat-Gaudin et al. 2020</b>, A&amp;A 640, A1, coi membri misurati da Gaia.</li>
         </ul>
         <p class="small muted" style="max-width:74ch;margin-top:8px">
           Un ringraziamento al servizio <b>VizieR</b> del CDS di Strasburgo
-          (DOI 10.26093/cds/vizier), da cui provengono i dati di Acker e di Kormendy, e a
+          (DOI 10.26093/cds/vizier), da cui provengono i dati di Acker e di Kormendy e le posizioni
+          di Sharpless, van den Bergh, Green e Cantat-Gaudin, lette da una sua copia, e a
           <b>HyperLEDA</b> — <i>we acknowledge the usage of the HyperLeda database</i>
           (<a href="http://leda.univ-lyon1.fr" target="_blank" rel="noopener">leda.univ-lyon1.fr</a>).
         </p>
@@ -8683,7 +8688,7 @@ const RIGHE_CON_DATO={Ha:true,OIII:true};   // il SII non ha una fonte: resta al
 /*  DUE SORGENTI PER LA STESSA GRANDEZZA, E TRE STATI (20 settembre 2026).
     La brillanza Ha di un oggetto arriva da due posti, e non sono intercambiabili:
       `s0_ha`    Frew 2016, log10 erg cm^-2 s^-1 sr^-1, DEROSSATA — quattordici planetarie;
-      `s0_ha_R`  Finkbeiner 2003, Rayleigh, OSSERVATA — trentacinque nebulose, con uno STATO.
+      `s0_ha_R`  Finkbeiner 2003, Rayleigh, OSSERVATA — trentaquattro nebulose, con uno STATO.
     Lo stato non e' un'etichetta descrittiva: cambia che cosa significano le ore che ne escono.
       misura            il numero e' quello, e le ore sono una previsione;
       limite_inferiore  la brillanza e' ALMENO quella, quindi le ore sono un TETTO — l'oggetto puo' costare meno, mai
@@ -9129,8 +9134,8 @@ function righeDellaProfondita(dv,band,site,tg,arch,ore,tsub,modo,opts){
     tetto resta il suo; se una misura alza l'utile sopra di lui — la soglia, il limite del SII — non vale.
 
     RESTANO DI FAMIGLIA, e lo dicono: i canali senza misura (OIII e SII delle HII, Ha delle spirali); le nebulose dove il
-    fondo locale supera l'oggetto — li' l'eccesso e' una differenza piu' piccola di cio' da cui si sottrae, e su Sh2-224
-    un eccesso di 0,05 R farebbe una soglia di centinaia di migliaia di ore —; le planetarie, che aspettano il ritorno
+    fondo locale supera l'oggetto — li' l'eccesso e' una differenza piu' piccola di cio' da cui si sottrae, e un eccesso
+    di qualche centesimo di Rayleigh farebbe una soglia di centinaia di migliaia di ore —; le planetarie, che aspettano il ritorno
     sotto il cielo; la matrice, dove la forma del colore non e' decisa (la L non c'e') e il tasso di una brillanza
     (`tassoDiBrillanza`) e' quello del fotosito, non la media del mosaico. Sorvegliato da tools/gate-ore-fotometriche.js,
     che le rifa' dai dati del catalogo senza chiederle a questa funzione. */

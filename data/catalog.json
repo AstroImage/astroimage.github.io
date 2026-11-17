@@ -1795,8 +1795,8 @@
     "Beehive Cluster",
     "Praesepe"
    ],
-   "ra_deg": 130.025,
-   "dec_deg": 19.9833,
+   "ra_deg": 130.0542,
+   "dec_deg": 19.6211,
    "size_arcmin": [
     95,
     95
@@ -1804,6 +1804,13 @@
    "type": "open",
    "constellation": "Cancer",
    "archetype": "cluster_open",
+   "posizione": {
+    "fonte": "cantatgaudin2020",
+    "id_fonte": "NGC_2632",
+    "ra": "08 40 13.0",
+    "dec": "+19 37 16",
+    "nota": "corretta il 17 novembre 2026: prima 130,025° +19,983° (+19° 59′), senza fonte, a 21,8′ dal centro dei membri misurato da Gaia (r50 0,985°). Lo stesso +19° 59′ sta nel riquadro di una voce di Wikipedia che in testa dice +19° 41′."
+   },
    "physics": "Ammasso aperto vicino e molto esteso, quasi un grado e mezzo. Nessuna emissione: solo continuo stellare, quindi RGB e nient'altro. Il problema e' opposto a quello delle nebulose: le stelle sono cosi' brillanti da saturare in pochi secondi, quindi servono pose corte per il colore e un campo molto largo per contenerlo.",
    "physics_confidence": "media"
   },
@@ -8675,8 +8682,8 @@
     "LBN 552",
     "Caldwell 4 vicina"
    ],
-   "ra_deg": 333.5,
-   "dec_deg": 69.9333,
+   "ra_deg": 333.3522,
+   "dec_deg": 70.2514,
    "size_arcmin": [
     30,
     10
@@ -8684,6 +8691,13 @@
    "type": "reflection",
    "constellation": "Cepheus",
    "archetype": "reflection",
+   "posizione": {
+    "fonte": "vandenbergh1966",
+    "id_fonte": "VdB 152",
+    "ra": "22 13 24.5",
+    "dec": "+70 15 05",
+    "nota": "corretta il 17 novembre 2026: prima 333,5° +69,933°, senza fonte, a 19,3′ dalla stella che illumina la nebulosa nel catalogo di van den Bergh."
+   },
    "fotometria": {
     "ha_del_campo": {
      "raggio_deg": 0.5,
@@ -8824,6 +8838,11 @@
         }
        ]
       }
+     },
+     "misurata_a": {
+      "ra_deg": 333.5,
+      "dec_deg": 69.9333,
+      "nota": "presa nella posizione di prima, a 19′ da quella corretta il 17 novembre 2026: meno di mezzo fascio della mappa (60′). Resta finche' non si rifa' con la mappa nel punto giusto."
      }
     }
    }
@@ -9124,8 +9143,8 @@
     "Chela di Aragosta",
     "Lobster Claw Nebula"
    ],
-   "ra_deg": 349,
-   "dec_deg": 60.4667,
+   "ra_deg": 349.015,
+   "dec_deg": 60.0454,
    "size_arcmin": [
     60,
     40
@@ -9133,6 +9152,13 @@
    "type": "hii",
    "constellation": "Cassiopeia",
    "archetype": "hii_classic",
+   "posizione": {
+    "fonte": "sharpless1959",
+    "id_fonte": "Sh2 157",
+    "ra": "23 16 03.6",
+    "dec": "+60 02 43",
+    "nota": "corretta il 17 novembre 2026: prima 349,0° +60,467°, senza fonte, a 25,3′ dal centro di Sharpless (diametro 90′)."
+   },
    "fotometria": {
     "s0_ha_R": {
      "valore": 65,
@@ -9177,6 +9203,11 @@
        "sopra_il_fondo": false,
        "derivazione": "la media, 65 R, per il rapporto bordo / media mediano delle 8 regioni col bordo misurato, 0.112 (da 0.031 a 0.404): 7.3 R, sotto il fondo locale di 42.42 R: resta il fondo."
       }
+     },
+     "misurata_a": {
+      "ra_deg": 349,
+      "dec_deg": 60.4667,
+      "nota": "presa nella posizione di prima, a 25′ da quella corretta il 17 novembre 2026: meno di mezzo fascio della mappa (60′). Resta finche' non si rifa' con la mappa nel punto giusto."
      }
     }
    }
@@ -9461,34 +9492,28 @@
   },
   {
    "name": "Sh2-224",
-   "aliases": [],
-   "ra_deg": 76,
-   "dec_deg": 42.7,
+   "aliases": [
+    "VRO 42.05.01"
+   ],
+   "ra_deg": 81.625,
+   "dec_deg": 42.9333,
    "size_arcmin": [
-    45,
-    45
+    55,
+    35
    ],
    "type": "snr",
    "constellation": "Auriga",
    "archetype": "snr",
-   "fotometria": {
-    "s0_ha_R": {
-     "valore": 0.1,
-     "unita": "R",
-     "banda": "H-alpha 6563",
-     "grandezza": "brillanza superficiale media in H-alpha, OSSERVATA: il fotone che arriva, non dearrossato",
-     "confidenza": "misurata",
-     "stato": "misura",
-     "derivazione": "eccesso sul fondo locale (3.8 meno 3.7 R, mediana di un anello fra due e tre raggi) moltiplicato per la diluizione ×1.8, che vale (beam/diametro)² con beam 60′ e diametro efficace 45.0′.",
-     "fonte": "finkbeiner2003",
-     "id_fonte": "HEALPix 1024 pixel alla posizione dell'oggetto",
-     "survey": "WHAM+VTSS",
-     "beam_arcmin": 60,
-     "diluizione": 1.78,
-     "eccesso_R": 0.05,
-     "fondo_R": 3.73,
-     "diametro_efficace_arcmin": 45
-    }
+   "posizione": {
+    "fonte": "green2019",
+    "id_fonte": "G166.0+4.3",
+    "ra": "05 26 30",
+    "dec": "+42 56",
+    "misura_arcmin": [
+     55,
+     35
+    ],
+    "nota": "corretta il 17 novembre 2026: prima 76,0° +42,7°, senza fonte, a 248′ — l = 163,9°, b = +0,8°, contro il 166,0 +4,3 che il nome stesso del resto dichiara. La brillanza Hα di Finkbeiner era stata misurata in quel punto, ed è tolta: si rifà con la mappa."
    }
   },
   {
@@ -10003,6 +10028,26 @@
    "citazione": "AstroBin (astrobin.com), la pratica di chi riprende: immagini pubblicate, coi filtri e il campo risolto.",
    "dato": "la ricerca delle immagini (/api/v2/images/image-search/), letta in sola lettura dalla scheda del browser dove l'utente era gia' entrato; i conteggi per soggetto e per fascia di raggio del campo (`field_radius`), con la data. Il raggio del campo di AstroBin e' la mezza diagonale dell'immagine risolta: verificato su sei immagini di vdB 152, scala per mezza diagonale in pixel, entro il millesimo di grado.",
    "attenzione": "Tre. (1) La pratica dice che cosa si fa, non che cosa serve: va accanto ai numeri del motore, non al loro posto. (2) I filtri sono quelli dichiarati da chi pubblica: si contano solo le immagini con almeno un tipo di filtro, e un multibanda conta come Hα, perche' l'Hα lo fa passare. (3) Un soggetto e' quello che il risolutore riconosce nel campo: oltre qualche grado l'oggetto e' un pezzo di un panorama, ed e' per questo che la regola si ferma a 3.5°."
+  },
+  "green2019": {
+   "citazione": "Green D.A. 2019, J. Astrophys. Astr. 40, 36, «A revised catalogue of 294 Galactic supernova remnants»; il catalogo vive in rete, rivisto dopo l'articolo.",
+   "dato": "la pagina di ogni resto su www.mrao.cam.ac.uk/surveys/snrs/: ascensione retta e declinazione J2000 (al mezzo minuto e al primo d'arco), misura in primi d'arco, altri nomi. Letto il 17 novembre 2026, G166.0+4.3.",
+   "attenzione": "Due. (1) Il nome del resto e' la sua posizione galattica, l e b al decimo di grado: e' un controllo interno della posizione, e lo si fa. (2) La misura e' l'estensione massima e minima in primi, non un'ellisse con un angolo."
+  },
+  "cantatgaudin2020": {
+   "citazione": "Cantat-Gaudin T. et al. 2020, A&A 640, A1, «Painting a portrait of the Galactic disc with its stellar clusters»: i membri degli ammassi aperti da Gaia DR2.",
+   "dato": "VizieR J/A+A/640/A1, letto il 17 novembre 2026 dal mirror del CfA (vizier.cfa.harvard.edu) — il CDS era giu' dal 5 novembre —: RA e Dec J2000 del centro dei membri, e r50, il raggio che ne contiene la meta'.",
+   "attenzione": "Una. Il centro e' quello dei membri, non della luce: su un ammasso largo un grado e mezzo i due possono stare a qualche primo."
+  },
+  "sharpless1959": {
+   "citazione": "Sharpless S. 1959, ApJS 4, 257, «A Catalogue of H II Regions».",
+   "dato": "VizieR VII/20, letto il 17 novembre 2026 dal mirror del CfA: posizione B1900 al decimo di minuto, portata a J2000 da VizieR (_RAJ2000, _DEJ2000), coordinate galattiche, diametro in primi.",
+   "attenzione": "Due. (1) La posizione e' del 1900 e al decimo di minuto: vale qualche primo, non meglio. (2) Il diametro e' dell'intera regione sulle lastre rosse del POSS: spesso piu' grande della parte che si riprende."
+  },
+  "vandenbergh1966": {
+   "citazione": "van den Bergh S. 1966, AJ 71, 990, «A study of reflection nebulae».",
+   "dato": "VizieR VII/21, letto il 17 novembre 2026 dal mirror del CfA: la posizione e' quella della stella che illumina la nebulosa, portata a J2000 da VizieR.",
+   "attenzione": "Una. La posizione e' della stella, non del centro della nebulosa: per una riflessione allungata il centro della luce puo' stare a qualche primo."
   }
  }
 }
