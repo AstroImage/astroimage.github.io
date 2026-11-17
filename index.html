@@ -801,13 +801,22 @@ td.archcell{max-width:120px}
    HOME — il campo che apre la prescrizione, la notte, i migliori
    ===================================================================== */
 .hero{display:flex;flex-direction:column;gap:var(--s5)}
+/* «COSA VUOI RIPRENDERE» SPICCA (17 novembre 2026, Alessandro: «con colore vivo tipo giallo … che spicchi da tutto il
+   resto», «scritta più grande»): e' la prima cosa da fare, e senza un oggetto la Strategia non mostra fascia ne' tecniche.
+   Il giallo e' --giallo, lo stesso delle notti fuori misura: al buio e' la pesca chiara della tavolozza notturna. */
+/* La dimensione e' la piu' grande che resta su una riga («al limite di rientrare in una sola riga») e segue la larghezza
+   dell'etichetta, non dello schermo (cqi: la colonna della casella e' il contenitore). Dallo schermo non si puo': sul PC,
+   dove compare la colonna laterale, l'etichetta passa da 750 a 515 px, e una formula sulla larghezza dello schermo faceva
+   uscire la scritta a 900, 1180 e 1280 px. Misurato nello standalone, il massimo su una riga e' il 5,85 % circa della
+   larghezza dell'etichetta (15 px su 254, 30 su 515, 36 su 614); 5,6 % sta un 4 % sotto, e si ferma a 36 px: anche dal
+   PC deve spiccare («alza a 36»). */
 .hero-lab{
-  display:flex;align-items:center;gap:8px;
-  font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
-  color:var(--acc);margin-bottom:10px;cursor:pointer;border-bottom:none;
+  display:flex;align-items:center;gap:.6em;white-space:nowrap;
+  font-size:clamp(13px,5.6cqi,36px);letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  color:var(--giallo);margin-bottom:12px;cursor:pointer;border-bottom:none;
 }
-.hero-lab > svg{width:17px;height:17px;flex:none}
-.hero-lab .ico{border-color:var(--acc);color:var(--acc)}
+.hero-lab > svg{width:1.3em;height:1.3em;flex:none}
+.hero-lab .ico{border-color:var(--giallo);color:var(--giallo)}
 /* Non e' un campo fra i tanti: e' il punto in cui nasce la prescrizione, e si
    vede. Contrasto contro il fondo, bordo tinto, alone tenue, e abbastanza
    respiro perche' «NGC 6888 — Nebulosa Crescent» ci stia senza stringersi. */
@@ -843,7 +852,7 @@ td.archcell{max-width:120px}
    Nel riepilogo a destra sarebbe arrivata dopo la scelta, su telefono in fondo a
    tutta la pagina: inutile proprio dove serve. */
 .hero-top{display:flex;gap:var(--s5);align-items:flex-end;flex-wrap:wrap}
-.hero-top > .hero-field{flex:1 1 320px;min-width:0}
+.hero-top > .hero-field{flex:1 1 320px;min-width:0;container-type:inline-size}
 /* la fascia di ore della tecnica piena, nello spazio sopra la casella che la miniatura lascia vuoto */
 .hero-fascia{display:flex;flex-direction:column;gap:2px;margin-bottom:var(--s4)}
 .hero-fascia[hidden]{display:none}
