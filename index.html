@@ -32,6 +32,7 @@
   --luna:#efe3b4;   /* la Luna sopra la barra della notte: un chiaro di luna, ne' il verde-azzurro ne' l'ambra */
   --ok:#3fb950; --warn:#d29922; --bad:#f85149;
   --giallo:#e8c547;  /* le notti fuori misura: verde, giallo, rosso (Alessandro, 17 novembre 2026) */
+  --rgb-r:#e5534b; --rgb-g:#57ab5a; --rgb-b:#539bf5;  /* gli spicchi dell'RGB nell'icona delle tecniche */
   --acc:#3b82f6; --acc-rgb:59,130,246;
   --acc2:#38bdf8; --acc2-rgb:56,189,248;
   /* IL TASTO CHE AVVIA TUTTO HA UN COLORE SUO, e non e' l'accento.
@@ -69,6 +70,7 @@ html[data-night="1"]{
   --ha:#ff6b6b; --oiii:#c96b6b; --sii:#e08a5a; --lum:#ff9e9e; --rgb:#c07070; --luna:#ffc2b4;
   --ok:#c05a5a; --warn:#d07a4a; --bad:#ff5555; --acc:#ff7a6b; --acc-rgb:255,122,107;
   --giallo:#e8a070;  /* al buio niente giallo vero: una pesca chiara, distinta da --warn e da --bad */
+  --rgb-r:#ff6b6b; --rgb-g:#c05a5a; --rgb-b:#8a3a3a;  /* al buio gli spicchi dell'RGB sono tre rossi */
   --acc2:#ff9a80; --acc2-rgb:255,154,128;
   /* Di notte e' gia' tutto rosso, per non buttare via l'adattamento dell'occhio, e
      un rosso in piu' non distinguerebbe niente. Qui il tasto stacca per SATURAZIONE
@@ -481,12 +483,19 @@ label.f > input, label.f > select{text-transform:none;font-size:14px;letter-spac
 /* Quella che l'automatico ha preso si segnala con un bordo tenue, non con
    l'accento: acceso resta il riquadro che comanda, che li' e' «Sceglie il motore». */
 .roadcard.now{border-color:var(--dim2)}
-.rc-h{font-size:13px;overflow-wrap:anywhere}
+.rc-h{font-size:13px;overflow-wrap:anywhere;display:flex;align-items:center;gap:8px}
+/* l'icona della tecnica, a lato del nome: una ruota portafiltri coi colori dei canali che riprende (17 novembre 2026) */
+.rc-ico{width:22px;height:22px;flex:none}
+.roadcard.lack .rc-ico{opacity:.6}
+/* l'icona della strategia della posa, a lato del nome: quella che aveva il riquadro «Come riprendere» */
+.sc-nome{display:flex;align-items:center;gap:9px}
+.sc-ico{width:19px;height:19px;flex:none;color:var(--dim)}
+.stratcard.on .sc-ico{color:var(--acc)}
 /* LE PASTIGLIE STANNO SOTTO IL NOME, non accanto (Alessandro, 14 settembre 2026): a 800 px accanto a un
    nome lungo uscivano dalla carta, si tagliavano («racco…») e si sovrapponevano alla carta vicina, e la
    tendina del Ponte e' piu' stretta. Sotto vanno a capo fra loro e restano dentro. */
 .rc-p{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.rc-w{font-size:11px;color:var(--acc2,var(--dim));margin-top:3px;font-style:italic}
+.rc-w{font-size:11px;color:var(--dim);margin-top:4px;line-height:1.4}
 .rc-n{font-size:11.5px;color:var(--dim);margin-top:5px;font-variant-numeric:tabular-nums}
 /* Una tecnica che la ruota non copre resta premibile: e' una scelta, non un errore. */
 .roadcard.lack{opacity:.82}
@@ -863,30 +872,19 @@ td.archcell{max-width:120px}
 @media (hover:none){ .hero-prev .pv-cue{opacity:1} }
 @media (max-width:720px){ .hero-prev{flex:1 1 100%} }
 
-/* I TRE RIQUADRI DEL «COME RIPRENDERE».
-
-   Un segmentato basta per due opzioni che si spiegano da sole; qui ognuna porta un
-   compromesso che va letto prima di sceglierlo, e la descrizione sotto il nome e'
-   il motivo per cui i riquadri esistono. Sono <label> con un radio dentro: si
-   raggiungono col tab, rispondono a Invio e alle frecce come un radiogroup vero. */
-.goalbox{border:0;padding:0;margin:0;min-width:0}
-.goalbox > legend{padding:0;margin-bottom:8px}
-.goalgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
-.goalcard{margin:0;border-bottom:none;display:block;cursor:pointer}
-.goalcard input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.goalcard .gc{display:flex;flex-direction:column;gap:5px;height:100%;
-  background:var(--surface);border:1px solid var(--line);border-radius:12px;
-  padding:12px 14px;transition:border-color .15s,background .15s}
-.goalcard:hover .gc{border-color:var(--dim2)}
-.goalcard input:checked + .gc{border-color:var(--acc);background:rgba(var(--acc-rgb),.09)}
-.goalcard input:focus-visible + .gc{outline:2px solid var(--acc);outline-offset:2px}
-.gc-h{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--fg)}
-.gc-h svg{width:19px;height:19px;flex:none;color:var(--dim)}
-.goalcard input:checked + .gc .gc-h svg{color:var(--acc)}
-.gc-tick{margin-left:auto;font-size:13px;color:var(--acc);opacity:0;transition:opacity .15s}
-.goalcard input:checked + .gc .gc-tick{opacity:1}
-.gc-d{font-size:11.5px;line-height:1.5;color:var(--dim)}
-@media (max-width:560px){ .gc{padding:10px 12px} .gc-d{font-size:11px} }
+/* le tecniche di ripresa nella Strategia (17 novembre 2026): il riquadro di Risultati, spostato; vuoto senza oggetto */
+.hero-tecniche:empty{display:none}
+.hero-tecniche > .stratbox{margin:0}
+/* la fascia di ore di ogni tecnica, nella sua scheda: lo stesso formato della fascia sopra la casella */
+.rc-f{font-size:15px;color:var(--fg);font-variant-numeric:tabular-nums;margin-top:6px;line-height:1.2}
+/* nella Strategia piu' schede per riga, e il motivo delle tecniche che non si prendono in piccolo: la sezione si legge in un colpo */
+.hero-tecniche .roadgrid{grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.hero-tecniche .roadcard.lack .rc-n{font-size:10.5px;line-height:1.35}
+/* sul telefono due per riga: una per riga le tecniche erano alte quanto due schermi */
+@media (max-width:560px){ .hero-tecniche .roadgrid{grid-template-columns:repeat(2,minmax(0,1fr))} .hero-tecniche .roadcard{padding:9px 10px} }
+.rc-f b{font-weight:700}
+/* la nota della strategia della posa, sotto il nome, sulle schede di Risultati */
+.stratcard .sc-d{font-size:11.5px;line-height:1.45;color:var(--dim);margin:2px 0 4px}
 .hero-num{justify-content:center;max-width:150px}
 /* La copertura decide se il progetto e' il soggetto intero o una sua
    inquadratura: cambia il costo di tutto quello che si legge sotto, quindi sta
@@ -1401,56 +1399,14 @@ td.archcell{max-width:120px}
             </div>
             <figure class="hero-prev" id="rxPrev" hidden></figure>
           </div>
-          <!-- COME RIPRENDERE — tre riquadri, non un segmentato.
-
-               Non e' la stessa cosa scritta piu' grande: un segmentato va bene per
-               due opzioni che si spiegano da sole (soggetto intero / inquadratura
-               libera), qui invece ognuna porta un compromesso che va letto prima di
-               sceglierlo. La descrizione sotto il nome e' il motivo per cui i
-               riquadri esistono.
-
-               E il nome non e' piu' «Strategia di acquisizione»: quella e' gia' la
-               sezione che li contiene, e avere due cose con lo stesso nome a dodici
-               righe di distanza era un errore mio. -->
-          <fieldset class="goalbox">
-            <legend class="hc-k">Come riprendere</legend>
-            <div class="goalgrid" role="radiogroup" aria-label="Come riprendere">
-              <label class="goalcard">
-                <input type="radio" name="rxStrat" id="rxStratResa" value="resa">
-                <span class="gc">
-                  <span class="gc-h">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M4 19h16"/><path d="M6 16V9"/><path d="M11 16V5"/><path d="M16 16v-4"/></svg>
-                    <b>Resa</b><span class="gc-tick" aria-hidden="true">&check;</span></span>
-                  <span class="gc-d">La posa che rende di più per ora di notte: lunga quanto
-                    basta a battere il rumore di lettura, non tanto da perdere fotogrammi;
-                    meno tempo totale di acquisizione per raggiungere la stessa
-                    profondità.</span></span></label>
-              <label class="goalcard">
-                <input type="radio" name="rxStrat" id="rxStratEq" value="equilibrio" checked>
-                <span class="gc">
-                  <span class="gc-h">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 2 15h6Z"/><path d="M19 8l-3 7h6Z"/></svg>
-                    <b>Equilibrio</b><span class="gc-tick" aria-hidden="true">&check;</span></span>
-                  <span class="gc-d">Accorcia la posa fin dove conviene: un buon compromesso
-                    tra tempo di acquisizione e durata della singola posa.</span></span></label>
-              <label class="goalcard">
-                <input type="radio" name="rxStrat" id="rxStratDin" value="dinamica">
-                <span class="gc">
-                  <span class="gc-h">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></svg>
-                    <b>Dinamica</b><span class="gc-tick" aria-hidden="true">&check;</span></span>
-                  <span class="gc-d">Accorcia la posa per le alte luci, partendo da Equilibrio: sul
-                    colore fin dove le stelle non saturano, sulla luminanza e sulla banda stretta
-                    di un gradino, per lasciare margine nel pozzetto. Più fotogrammi, ma maggiore
-                    dinamica sulle alte luci.</span></span></label>
-            </div>
-          </fieldset>
+          <!-- LA TECNICA DI RIPRESA STA QUI (17 novembre 2026, Alessandro: «la strategia di ripresa deve passare dal tab
+               Risultati al tab Strategia al posto dei tasti di Come riprendere … si notera' immediatamente il cambio di
+               fascia oraria dedicata a quella strategia»). Le schede delle tecniche, con la loro fascia di ore, accanto
+               alla fascia della tecnica piena: scegliendone una la fascia e le notti cambiano subito. Resa, Equilibrio e
+               Dinamica restano in Risultati, perche' cambiano la singola posa e le ore di orologio, non la fascia ne' le
+               ore disponibili (misurato su NGC 7635 e NGC 1514, da 1 a 4 notti: uguali al centesimo). Il riquadro si
+               riempie con la prescrizione (`mostraTecniche`). -->
+          <div class="hero-tecniche" id="rxTecniche"></div>
           <div class="hero-row">
             <div id="rxCtx"></div>
             <div class="hero-cov">
@@ -10175,10 +10131,10 @@ function exposureStrategies(dv,site,band,opts){
 }
 /*  DUE TESTI PER MODO, E NON E' UNA RIPETIZIONE.
 
-    `nota` e' la frase che si legge SCEGLIENDO, prima che esista un numero: sta nel
-    riquadro «Come riprendere» e va letta in due secondi. `tip` e' quella che si
-    legge DOPO, sulla card del risultato, quando i secondi e il costo sono gia' li'
-    e uno vuole sapere da dove vengono — puo' permettersi di essere tecnica.
+    `nota` e' la frase che si legge SCEGLIENDO, in due secondi: sta sotto il nome, sulle tre
+    schede di Risultati. `tip` e' quella che si legge DOPO, nel suggerimento della scheda,
+    quando i secondi e il costo sono gia' li' e uno vuole sapere da dove vengono — puo'
+    permettersi di essere tecnica.
 
     CHI POSSIEDE IL TESTO, E CHI LO RISPECCHIA. La stessa frase compare in quattro
     posti, e non hanno lo stesso rango. Dirlo serve, perche' un'uguaglianza fra due
@@ -10190,13 +10146,11 @@ function exposureStrategies(dv,site,band,opts){
                             cambia qui, e da qui scende. E' dato, non impaginazione,
                             ed e' il dato a viaggiare verso un altro programma.
 
-      il markup del riquadro  SPECCHIO STATICO, non una seconda sorgente. Esiste per
-                            una ragione sola: il riquadro «Come riprendere» deve
-                            restare leggibile anche con lo script fermo — e lo
-                            script si e' gia' fermato davvero, per una zona morta
-                            temporale su `DB`. Dipingerlo da `nota` all'avvio
-                            toglierebbe l'unica cosa per cui e' statico. Quando i
-                            due divergono, e' lo specchio che ha torto.
+      le schede di Risultati  NON SONO UNA COPIA. Leggono `st.nota` dalla tabella mentre
+                            si disegnano. Fino al 17 novembre 2026 c'era anche uno
+                            specchio statico, il riquadro «Come riprendere» della
+                            Strategia, uguale parola per parola: e' uscito, al suo
+                            posto ci sono le tecniche di ripresa.
 
       `/v1/salute`          NON E' UNA COPIA. Legge `x.nota` a runtime: se la nota
                             cambia, cambia da sola, e non c'e' niente da sincronizzare.
@@ -10213,11 +10167,11 @@ function exposureStrategies(dv,site,band,opts){
                             il giorno in cui una delle due lingue avesse bisogno di
                             una sfumatura diversa, il ponte e' il posto giusto.
 
-    L'UNICA UGUAGLIANZA IMPOSTA e' quindi quella fra la sorgente e il suo specchio, e
-    la impone `gate-strategie`: diventa rosso se divergono, e stampa le due frasi
-    affiancate. E' gia' successo — sta scritto qui sopra, nel commento di EQUILIBRIO
-    — che un criterio cambiasse nel motore e la pagina continuasse a raccontare
-    quello vecchio per due revisioni.
+    UGUAGLIANZE DA IMPORRE non ne restano: senza lo specchio statico la frase sta in un posto
+    solo. `gate-strategie` prova che le schede la leggano dalla tabella, e che lo specchio non
+    torni. E' gia' successo — sta scritto qui sopra, nel commento di EQUILIBRIO — che un
+    criterio cambiasse nel motore e la pagina continuasse a raccontare quello vecchio per due
+    revisioni.
 
     `astroplan-standalone.html` non compare nell'elenco perche' non e' un posto: e'
     il prodotto di `build.js`, si rigenera a ogni costruzione, e non si sincronizza
@@ -14126,13 +14080,8 @@ function start(){
   $('rxGo').onclick=()=>{ persistRx(); refresh(); go('risultati'); };
   $('rxTarget').addEventListener('change',()=>{ persistRx(); refresh(); });
   $('rxHours').addEventListener('change',()=>{ persistRx(); refresh(); });
-  /* I tre radio della home e le tre schede in Risultati sono lo stesso stato:
-     `setStrat` aggiorna la variabile, la salva e ridisegna, e `syncStrat` riporta
-     i radio sul valore ricordato all'avvio. Nessuno dei due e' la fonte di
-     verita' — lo e' RXSTRAT. */
-  ['rxStratResa','rxStratEq','rxStratDin'].forEach(id=>{ const el=$(id); if(el)
-    el.addEventListener('change',()=>{ if(el.checked) setStrat(el.value); }); });
-  syncStrat();
+  /* La strategia della posa si sceglie dalle tre schede in Risultati (`setStrat`); lo stato e' RXSTRAT, ricordato.
+     I tre radio della Strategia sono usciti il 17 novembre 2026, al posto loro ci sono le tecniche di ripresa. */
   ['rxCovFull','rxCovFrame'].forEach(id=>{ const el=$(id); if(el)
     el.addEventListener('change',()=>{ persistRx(); refresh(); }); });
   $('rxNights').addEventListener('change',()=>{ persistRx(); refresh(); });
@@ -16715,7 +16664,7 @@ function showAvail(t,rn,n,pr){
      lunghezza della notte, sono le ore in cui QUESTO oggetto sta abbastanza in
      alto. Lasciare a schermo quelle del bersaglio precedente sarebbe la stessa
      bugia della barra che restava sulla notte vecchia. */
-  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;'; coloraLeNotti(null); mostraFascia(null);
+  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;'; coloraLeNotti(null); mostraFascia(null); mostraTecniche(null);
     nt.textContent='scegli un oggetto: le ore utili dipendono da quando sale'; return; }
   /* A schermo restano le ore di OROLOGIO: sono quelle che si programmano, quelle
      che si perdono quando arrivano le nuvole. Il confronto col fabbisogno invece
@@ -16725,7 +16674,7 @@ function showAvail(t,rn,n,pr){
   const cap=RXCAP>0?RXCAP:av;
   v.innerHTML=`${fmt(av,1)}<span class="u"> h</span>`;
   if(pr&&pr.disponibile===false){
-    v.className='ha-v short'; coloraLeNotti(null); mostraFascia(null);
+    v.className='ha-v short'; coloraLeNotti(null); mostraFascia(null); mostraTecniche(null);
     nt.innerHTML=`su ${n} nott${n===1?'e':'i'} &middot; con la ruota di adesso nessuna tecnica di questo oggetto si può riprendere`;
     return;
   }
@@ -16743,7 +16692,7 @@ function showAvail(t,rn,n,pr){
   const piena=tecnicaPiena(pr);
   const ideal=piena?piena.progetto.ideal:idealScelta;
   const corto=ideal>cap+1e-9;
-  mostraFascia(pr);
+  mostraFascia(pr); mostraTecniche(pr);
   /*  LA MISURA DELLE NOTTI, A COLORI (17 novembre 2026, Alessandro: il colore del tempo disponibile e delle notti cambi
       quando le notti superano il progetto intero, «arancione e infine rosso», poi «verde, giallo e rosso», quando la soglia e' superata
       abbondantemente; e lo stesso quando ne sono state messe meno di quelle che il progetto chiede).
@@ -16829,6 +16778,14 @@ function nottiCheBastano(ideal,stima,n,corto){
   while(k<=W.length&&!completa(k)) k++;
   return k<=W.length?k:null;
 }
+/* le ore di una fascia, scritte come le legge chi riprende: sotto le 10 h con un decimale, sopra in ore intere verso
+   l'esterno (il minimo per difetto, il pieno per eccesso). Le usano la fascia sopra la casella e le schede delle tecniche. */
+const oreDellaFascia=(x,giu)=>x<10?fmt(x,1):String(giu?Math.floor(x+1e-9):Math.ceil(x-1e-9));
+/* le schede delle tecniche nella Strategia, dalla prescrizione; senza oggetto il riquadro resta vuoto */
+function mostraTecniche(pr){
+  const b=$('rxTecniche'); if(!b) return;
+  b.innerHTML=pr&&pr.disponibile!==false?rxRoadHtml(pr):'';
+}
 /* LA FASCIA DI ORE (17 novembre 2026, Alessandro: «una sintetica indicazione di quante ore siano necessarie per ottenere
    un buon risultato … come fascia di ore, per esempio da 5 a 8 ore», nello spazio vuoto sopra la casella). Dalla somma
    delle soglie della tecnica piena, dove ogni canale smette di essere rumore, al suo costo pieno: i due numeri del
@@ -16838,7 +16795,7 @@ function mostraFascia(pr){
   const p=tecnicaPiena(pr);
   if(!p){ b.hidden=true; b.innerHTML=''; b.removeAttribute('data-tip'); return; }
   const lo=p.progetto.floor, hi=p.progetto.ideal;
-  const ore=(x,giu)=>x<10?fmt(x,1):String(giu?Math.floor(x+1e-9):Math.ceil(x-1e-9));
+  const ore=oreDellaFascia;
   const mosaico=pr.panels>1?', per tutti i '+pr.panels+' riquadri':'';
   b.hidden=false;
   b.dataset.tip=(lo!=null&&lo>0?'Da '+fmt(lo,1)+' h, dove ogni canale di «'+p.name+'» arriva alla sua soglia e l\'immagine smette di essere rumore, a '
@@ -16876,9 +16833,7 @@ function rxMoon(band,e){
 let RXSTRAT=(()=>{ try{ const v=localStorage.getItem('ap_strat');
   return (v&&STRATEGIES.some(x=>x.id===v))?v:'equilibrio'; }catch(e){ return 'equilibrio'; } })();
 const setStrat=id=>{ RXSTRAT=id; try{localStorage.setItem('ap_strat',id)}catch(e){}
-  syncStrat(); refresh(); };
-const syncStrat=()=>{ const m={resa:'rxStratResa',equilibrio:'rxStratEq',dinamica:'rxStratDin'};
-  const el=document.getElementById(m[RXSTRAT]); if(el) el.checked=true; };
+  refresh(); };
 
 /* LE CONFIGURAZIONI CHE POSSIEDI DAVVERO.
 
@@ -18947,7 +18902,8 @@ function rxPlanHtml(pr,e,dv,t){
      sequenze» e le impostazioni della sequenza (`nina`) per ultimi, in fondo alla pagina Risultati, dopo la
      diagnostica (`renderRx`). Si sposta, non si ridisegna. Sorvegliato da tools/gate-ordine-dei-risultati.js. */
   return {
-    strategia:rxStrategyHtml(expo,dv,pr,panels)+rxRoadHtml(pr)+rxExpoHtml(expo,dv,pr),
+    /* la tecnica di ripresa sta nella Strategia dal 17 novembre 2026 (`mostraTecniche`) */
+    strategia:rxStrategyHtml(expo,dv,pr,panels)+rxExpoHtml(expo,dv,pr),
     cuore:head+mosNote+advice+modeSel+rows,
     dettaglio:`<p class="small muted" style="margin:14px 0 8px">${modeNote}
       Le ore per canale <b>non cambiano</b> in nessuna delle due, né con il numero di notti:
@@ -18966,6 +18922,18 @@ function rxPlanHtml(pr,e,dv,t){
 
    Le ore per canale NON cambiano fra le tre. Cambia quante ore di orologio
    servono a depositarle, ed e' esattamente cio' che le schede mostrano. */
+/* LE ICONE DELLE TRE STRATEGIE (17 novembre 2026, Alessandro: le schede di Risultati con «le loro icone identificative
+   poste al lato dei riquadri», identiche a quelle del riquadro «Come riprendere» della Strategia, che e' uscito). I
+   tracciati sono quelli di quel riquadro, linea per linea. */
+/* Il tracciato prima e il modo dopo, e aria-hidden in testa all'icona: la pagina del Ponte ha le stesse icone in una mappa
+   col modo davanti, e scritto allo stesso modo il testo in comune cresceva oltre i tracciati che tools/lib/
+   eccezioni-testo-condiviso.js dichiara uno per uno (gate-testo-condiviso, 17 novembre 2026). Il disegno e' lo stesso. */
+const ICONE_DELLE_STRATEGIE=Object.fromEntries([
+  ['<path d="M4 19h16"/><path d="M6 16V9"/><path d="M11 16V5"/><path d="M16 16v-4"/>','resa'],
+  ['<path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 2 15h6Z"/><path d="M19 8l-3 7h6Z"/>','equilibrio'],
+  ['<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/>','dinamica']].map(([d,modo])=>[modo,d]));
+const iconaDellaStrategia=id=>ICONE_DELLE_STRATEGIE[id]?`<svg class="sc-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONE_DELLE_STRATEGIE[id]}</svg>`:'';
 function rxStrategyHtml(expo,dv,pr,panels){
   const carte=MOTORE.posa.costoDelleModalita(pr,expo,Object.assign({},OPSET,{panels}));
   if(!carte.length) return '';
@@ -18981,7 +18949,8 @@ function rxStrategyHtml(expo,dv,pr,panels){
     const lo=m.secMin, hi=m.secMax;
     return `<button class="stratcard${pick?' on':''}" onclick="setStrat('${st.id}')"
        aria-pressed="${pick?'true':'false'}" data-tip="${esc(st.tip)}">
-      <div class="sc-h"><b>${esc(st.label)}</b>${pick?'<span class="pill p-ok">in uso</span>':''}</div>
+      <div class="sc-h"><span class="sc-nome">${iconaDellaStrategia(st.id)}<b>${esc(st.label)}</b></span>${pick?'<span class="pill p-ok">in uso</span>':''}</div>
+      <div class="sc-d">${esc(st.nota)}</div>
       <div class="sc-n">${lo===hi?lo+' s':lo+'–'+hi+' s'}</div>
       <div class="sc-r"><span>${pose} pose</span><span>${fmt(sp.integH,1)} h di integrazione</span></div>
       <div class="sc-r"><span>${fmt(sp.clockH,1)} h di orologio</span><span class="${
@@ -19155,6 +19124,45 @@ function testoRaccomandataAssente(p,pr){
   return '';
 }
 
+/* L'ICONA DELLA TECNICA (17 novembre 2026, Alessandro: «piccole icone identificative al lato dei riquadri delle strategie
+   di ripresa, magari con i colori che identificano i filtri usati … hoo, sho»). Una ruota portafiltri: un anello e un
+   dischetto per canale, nei colori che la pagina da' ai canali (--ha, --oiii, --sii, --lum, --rgb). I canali si leggono
+   dal codice della tecnica (`tecnica`: SHO, HOO, HaRGB, LRGB, Ha…), lettera per lettera, e «stelle RGB» nel nome
+   aggiunge l'RGB delle stelle. Senza codice si legge il nome. */
+const COLORI_DEI_CANALI={SII:'--sii',Ha:'--ha',OIII:'--oiii',L:'--lum',RGB:'--rgb'};
+function canaliDellaTecnica(c){
+  const fonte=String((c&&(c.tecnica||c.name))||'');
+  const visti=[];
+  const metti=k=>{ if(k&&!visti.includes(k)) visti.push(k); };
+  for(const m of fonte.matchAll(/SII|OIII|H(?:a|α)|RGB|[SHOLRGB]/g)){
+    const t=m[0];
+    metti(t==='S'||t==='SII'?'SII':t==='O'||t==='OIII'?'OIII':/^H/.test(t)?'Ha':t==='L'?'L':'RGB');
+  }
+  if(/stelle RGB/i.test(String(c&&c.name||''))) metti('RGB');
+  return visti;
+}
+/* l'RGB e' un dischetto in tre spicchi, rosso, verde e blu (Alessandro: «gradevoli da vedere e subito identificabili»):
+   un punto viola da solo non si legge come RGB */
+const SPICCHI_RGB=['--rgb-r','--rgb-g','--rgb-b'];
+function dischettoDelCanale(x,cx,cy,d){
+  const n=v=>perLaMacchina(v,2);
+  if(x!=='RGB') return `<g data-canale="${x}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${d}" style="fill:var(${COLORI_DEI_CANALI[x]})"/></g>`;
+  const spicchio=(i)=>{ const a0=-Math.PI/2+i*2*Math.PI/3, a1=a0+2*Math.PI/3;
+    return `<path d="M${n(cx)},${n(cy)}L${n(cx+d*Math.cos(a0))},${n(cy+d*Math.sin(a0))}A${d},${d} 0 0 1 ${n(cx+d*Math.cos(a1))},${n(cy+d*Math.sin(a1))}Z" style="fill:var(${SPICCHI_RGB[i]})"/>`; };
+  return `<g data-canale="RGB">${[0,1,2].map(spicchio).join('')}</g>`;
+}
+function iconaDellaTecnica(c){
+  const k=canaliDellaTecnica(c);
+  if(!k.length) return '';
+  const r=k.length===1?0:5.4, d=k.length===1?5.6:k.length>3?2.9:3.4;
+  const punti=k.map((x,i)=>{ const a=-Math.PI/2+i*2*Math.PI/k.length;
+    return dischettoDelCanale(x,12+r*Math.cos(a),12+r*Math.sin(a),d); }).join('');
+  return `<svg class="rc-ico" viewBox="0 0 24 24" aria-hidden="true" data-canali="${k.join(' ')}">
+    <circle cx="12" cy="12" r="10.6" style="fill:var(--sunken);stroke:var(--dim2);stroke-width:1.2"/>${punti}</svg>`;
+}
+/* «Sceglie il motore» ha un'icona sua: la ruota senza filtri, con l'indice che sceglie */
+const ICONA_DEL_MOTORE=`<svg class="rc-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"
+  stroke-linecap="round" stroke-linejoin="round" style="color:var(--dim)"><circle cx="12" cy="12" r="10.6"/><path d="M12 12 16.5 7.5"/><circle cx="12" cy="12" r="1.6"/></svg>`;
 function rxRoadHtml(pr){
   const t=RXTG;                         // il bersaglio a cui la prescrizione si riferisce
   if(!pr||!t) return '';
@@ -19194,13 +19202,15 @@ function rxRoadHtml(pr){
     return `<button class="roadcard${on?' on':''}${presa?' now':''}"
        onclick="setRoad(${jsAttr(t.id)},${jsAttr(c.id)})" aria-pressed="${on?'true':'false'}"
        data-tip="${esc(c.when||'')}">
-      <div class="rc-h"><b>${esc(c.name)}</b></div>${(on||presa||c.raccomandata)?`<div class="rc-p">${
+      <div class="rc-h">${iconaDellaTecnica(c)}<b>${esc(c.name)}</b></div>${(on||presa||c.raccomandata)?`<div class="rc-p">${
         on?'<span class="pill p-ok">scelta tua</span>'
           :presa?'<span class="pill p-dim">la prende il motore</span>':''}${
         c.raccomandata?'<span class="pill p-dim">raccomandata</span>':''}</div>`:''}
-      <div class="rc-w">${esc(c.when||'')}</div>
+      ${/* l'ordine si legge come la fascia di sopra: il nome, la fascia, poi in piccolo quando conviene e il pieno */''}
+      ${c.ideal==null||!(c.progetto.floor>0)?'':`<div class="rc-f">da <b>${oreDellaFascia(c.progetto.floor,true)}</b> a <b>${oreDellaFascia(c.progetto.ideal,false)}</b> h</div>`}
       ${(c.limiti||[]).filter(l=>l.tipo==='passata_stelle_non_riprendibile').map(l=>
         `<div class="rc-n"><span class="p-warn">${testoStelleNonRiprendibili(l.perche)}</span></div>`).join('')}
+      <div class="rc-w">${esc(c.when||'')}</div>
       <div class="rc-n">${c.ideal==null
         ? '<span class="p-bad">costo non calcolabile</span>'
         : `${oreScala(c.progetto.ideal,pr.panels)} per farla piena`}</div>
@@ -19214,7 +19224,7 @@ function rxRoadHtml(pr){
     scala_del_soggetto_non_dichiarata:'la scheda non dichiara ancora quante ore servono alla banda larga quando porta il soggetto',
     scala_delle_stelle_non_dichiarata:'la scheda non dichiara ancora quante ore servono al colore delle stelle'};
   const nonPrezzabile=x=>`<div class="roadcard lack" aria-disabled="true">
-      <div class="rc-h"><b>${esc(x.name)}</b></div><div class="rc-p"><span class="pill p-dim">non disponibile</span></div>
+      <div class="rc-h">${iconaDellaTecnica(x)}<b>${esc(x.name)}</b></div><div class="rc-p"><span class="pill p-dim">non disponibile</span></div>
       <div class="rc-n"><span class="p-warn">${esc(MOTIVO_NON_PREZZABILE[x.motivo]||x.motivo)}</span></div>
     </div>`;
   const stessa=x=>{
@@ -19222,7 +19232,7 @@ function rxRoadHtml(pr){
     /* Due motivi, due colori: la luminanza su matrice e' una spiegazione (neutro); la passata sulle stelle che la
        ruota non puo' fare e' un limite dichiarato (giallo). */
     return `<div class="roadcard lack" aria-disabled="true">
-      <div class="rc-h"><b>${esc(x.name)}</b></div><div class="rc-p"><span class="pill p-dim">stessa ripresa</span></div>
+      <div class="rc-h">${iconaDellaTecnica(x)}<b>${esc(x.name)}</b></div><div class="rc-p"><span class="pill p-dim">stessa ripresa</span></div>
       <div class="rc-n">${x.motivo==='passata_stelle_non_riprendibile'
         ?`<span class="p-warn">${testoStelleNonRiprendibili(x.perche)}: la stessa ripresa la fa ${esc(con?con.name:x.con)}</span>`
         :`su una camera a colori la luminanza non è un canale: la stessa ripresa la fa ${esc(con?con.name:x.con)}`}</div>
@@ -19231,18 +19241,18 @@ function rxRoadHtml(pr){
   /* Il colore dice la natura della frase: la coppia del dual-band e' un limite della ruota (giallo), gli
      stessi canali sono una spiegazione (neutro). */
   const esclusa=x=>`<div class="roadcard lack" aria-disabled="true">
-      <div class="rc-h"><b>${esc(x.name||x.road)}</b></div><div class="rc-p"><span class="pill p-dim">${x.motivo==='stessi_canali'?'stessi canali':'esclusa'}</span></div>
+      <div class="rc-h">${iconaDellaTecnica({name:x.name||x.road})}<b>${esc(x.name||x.road)}</b></div><div class="rc-p"><span class="pill p-dim">${x.motivo==='stessi_canali'?'stessi canali':'esclusa'}</span></div>
       <div class="rc-n">${x.motivo==='spezzata_dalla_coppia'
         ?'<span class="p-warn">con il dual-band le due righe arrivano insieme: questa tecnica ne terrebbe una sola, e la ripresa è la stessa della tecnica accoppiata</span>'
         :`ha gli stessi canali di ${esc(x.nomeCon||x.con||'un\u2019altra voce')}: la ripresa è quella`}</div>
     </div>`;
   const chiusa=b=>`<div class="roadcard lack" aria-disabled="true">
-      <div class="rc-h"><b>${esc(b.name||b.road)}</b></div><div class="rc-p"><span class="pill p-dim">non disponibile</span></div>
+      <div class="rc-h">${iconaDellaTecnica({tecnica:b.tecnica,name:b.name||b.road})}<b>${esc(b.name||b.road)}</b></div><div class="rc-p"><span class="pill p-dim">non disponibile</span></div>
       <div class="rc-n"><span class="p-warn">${(b.perche||[]).map(testoDelMotivo).join(' · ')}</span></div>
     </div>`;
   /* Fuori campo e' una spiegazione (neutro): il banco non sbaglia niente, l'emissione sta oltre il bordo. */
   const fuori=x=>`<div class="roadcard lack" aria-disabled="true">
-      <div class="rc-h"><b>${esc(x.name||x.road)}</b></div><div class="rc-p"><span class="pill p-dim">campo stretto</span></div>
+      <div class="rc-h">${iconaDellaTecnica({name:x.name||x.road})}<b>${esc(x.name||x.road)}</b></div><div class="rc-p"><span class="pill p-dim">campo stretto</span></div>
       <div class="rc-n">${testoDelCampoStretto(x)}</div>
     </div>`;
   const auto=pr.roadChoices.find(c=>c.id===pr.roadAuto);
@@ -19259,7 +19269,7 @@ function rxRoadHtml(pr){
         onclick="setRoad(${jsAttr(t.id)},'auto')" aria-pressed="${pr.roadPicked?'false':'true'}"
         data-tip="${esc('Il motore prende la tecnica piu\u2019 ricca che riesci a completare con le ore che hai. '+
           'E\u2019 un consiglio, non un verdetto: se ne vuoi un\u2019altra, prendila.')}">
-        <div class="rc-h"><b>Sceglie il motore</b></div>${pr.roadPicked?'':'<div class="rc-p"><span class="pill p-ok">in uso</span></div>'}
+        <div class="rc-h">${ICONA_DEL_MOTORE}<b>Sceglie il motore</b></div>${pr.roadPicked?'':'<div class="rc-p"><span class="pill p-ok">in uso</span></div>'}
         <div class="rc-w">la più ricca che le ore permettono</div>
         <div class="rc-n">ora sarebbe <b>${esc(auto?auto.name:pr.roadAuto)}</b></div>
       </button>
