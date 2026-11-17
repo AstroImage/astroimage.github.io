@@ -31,6 +31,7 @@
   --ha:#e05252; --oiii:#3fb9c9; --sii:#e0a13f; --lum:#c9d1d9; --rgb:#8b7fd4;
   --luna:#efe3b4;   /* la Luna sopra la barra della notte: un chiaro di luna, ne' il verde-azzurro ne' l'ambra */
   --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+  --giallo:#e8c547;  /* le notti fuori misura: verde, giallo, rosso (Alessandro, 17 novembre 2026) */
   --acc:#3b82f6; --acc-rgb:59,130,246;
   --acc2:#38bdf8; --acc2-rgb:56,189,248;
   /* IL TASTO CHE AVVIA TUTTO HA UN COLORE SUO, e non e' l'accento.
@@ -67,6 +68,7 @@ html[data-night="1"]{
   --fg:#ff8a80; --dim:#a83c3c; --dim2:#7a2c2c;
   --ha:#ff6b6b; --oiii:#c96b6b; --sii:#e08a5a; --lum:#ff9e9e; --rgb:#c07070; --luna:#ffc2b4;
   --ok:#c05a5a; --warn:#d07a4a; --bad:#ff5555; --acc:#ff7a6b; --acc-rgb:255,122,107;
+  --giallo:#e8a070;  /* al buio niente giallo vero: una pesca chiara, distinta da --warn e da --bad */
   --acc2:#ff9a80; --acc2-rgb:255,154,128;
   /* Di notte e' gia' tutto rosso, per non buttare via l'adattamento dell'occhio, e
      un rosso in piu' non distinguerebbe niente. Qui il tasto stacca per SATURAZIONE
@@ -907,7 +909,12 @@ td.archcell{max-width:120px}
 .ha-v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;
   color:var(--fn-plan)}
 .ha-v .u{font-size:12px;font-weight:500;color:var(--dim)}
-.ha-v.short{color:var(--warn)}
+.ha-v.short,.ha-v.troppe{color:var(--giallo)}
+.ha-v.molto{color:var(--bad)}
+.ha-v.giusto{color:var(--ok)}
+.hero-num input.notti-ok{border-color:var(--ok);color:var(--ok)}
+.hero-num input.notti-warn{border-color:var(--giallo);color:var(--giallo)}
+.hero-num input.notti-bad{border-color:var(--bad);color:var(--bad)}
 .ha-n{font-size:11.5px;color:var(--dim);line-height:1.45}
 .hero-num input{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 .hero-go{font-size:16px;font-weight:700;padding:0 var(--s6);align-self:stretch;min-height:56px;
@@ -7120,9 +7127,24 @@ function resolveNight(tg,site,wanted,opts){
       notte porta: la prima scartata se la notte si e' spostata o non c'e', la notte stessa se no. Sorvegliato da
       tools/gate-strumenti.js §4. */
   const alCulmine=x=>x&&isFinite(x.floor)?x.floor:null;
-  if(!w.nights.length)
+  if(!w.nights.length){
+    /*  NASCOSTO DALL'ORIZZONTE (17 novembre 2026, Alessandro, da Milano col profilo del balcone a nord: NGC 1514, che
+        culmina a 75°, dava 0 h e «mai utilizzabile», e niente diceva che era il profilo, chiuso a 90° da 69° a 269°:
+        «bisognerebbe specificare che si tratta dell'orizzonte locale»). Col profilo per azimut si rifa' la stessa
+        scansione con la sola soglia piatta del sito, il campo «Orizzonte min»: se li' una notte c'e', l'oggetto c'e', e a
+        nasconderlo e' il profilo. Senza profilo non si rifa' niente: la soglia piatta e' gia' quella usata. Costa una
+        seconda scansione solo sugli oggetti che non hanno nessuna notte, e sta nella cache come ogni altra. */
+    let senzaProfilo=null;
+    if(firmaOrizzonte(site)!=='piatto'){
+      const piatto=Object.assign({},site,{orizzonte:null});
+      const wp=nightWindows(tg,piatto,w0,1,o);
+      if(wp.nights.length){ const n0=wp.nights[0];
+        senzaProfilo={date:day(n0.date),availH:n0.availH,maxAlt:n0.maxAlt,soglia:Math.max(LIMITE_OPERATIVO(),orizzonteDi(piatto)(0))}; }
+    }
     return {...base,usable:false,skipped:w.skipped,scanned:w.scanned,
-            floor:w.floor,sogliaAlCulmine:alCulmine(w.skipped[0]),minNight:w.minNight,critBand:w.critBand};
+            floor:w.floor,sogliaAlCulmine:alCulmine(w.skipped[0]),minNight:w.minNight,critBand:w.critBand,
+            perOrizzonte:!!senzaProfilo,senzaProfilo};
+  }
   const first=day(w.nights[0].date);
   const shift=Math.round((first-w0)/86400000);
   return {wanted:w0,date:first,shift,past,
@@ -16085,6 +16107,20 @@ const dayLabel=d=>d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',mo
    della strumentazione, che vive nella sua sezione e nel riepilogo laterale.
    Il calcolo e' quello di prima, riga per riga: la Luna si legge sulla notte
    VERA, quella risolta, non su quella chiesta. */
+/* Perche' l'orizzonte del sito nasconde l'oggetto, coi numeri del motore: l'altezza al culmine della notte chiesta, la
+   quota del profilo li', da dove viene il profilo, e quando l'oggetto ci sarebbe con la sola soglia piatta. */
+function dettoNascosto(rn){
+  const sp=rn.senzaProfilo||{}, k=rn.skipped&&rn.skipped[0], fz=SITE&&SITE.orizzonteFonte;
+  const profilo=fz&&fz.da==='file'&&fz.nome?'il profilo dell\'orizzonte caricato dal file «'+fz.nome+'»'
+    :fz&&fz.da==='nina'?'il profilo dell\'orizzonte preso da N.I.N.A.'+(fz.nome?' (file «'+fz.nome+'»)':'')
+    :'il profilo dell\'orizzonte del sito';
+  const culmine=k&&isFinite(k.maxAlt)&&rn.sogliaAlCulmine!=null&&rn.sogliaAlCulmine>k.maxAlt
+    ?' Al culmine sale a '+fmt(k.maxAlt,0)+'°, e in quella direzione il profilo è a '+fmt(rn.sogliaAlCulmine,0)+'°.':'';
+  return 'Lo nasconde l\'orizzonte del sito: '+profilo+'. Nelle prossime '+(rn.scanned||180)+' notti l\'oggetto non sta sopra il profilo per almeno '+
+    fmt(rn.minNight||1,1)+' h.'+culmine+
+    (sp.date?' Con la sola soglia piatta di '+fmt(sp.soglia,0)+'° ci sarebbe dal '+dayLabel(sp.date)+', con '+fmt(sp.availH,1)+' h.':'')+
+    ' Se il profilo è giusto, da qui questo oggetto non si riprende; se non lo è, si cambia o si toglie in Condizioni.';
+}
 function rxContext(){
   const rn=RXNIGHT;
   const chiesta=$('date').value;
@@ -16113,7 +16149,9 @@ function rxContext(){
     (rn.skipped&&rn.skipped.length?' Prima: '+rn.skipped.slice(0,3).map(k=>
       dayLabel(k.date)+' — '+k.why).join(' · ')+(rn.skipped.length>3?' …':''):''))
     }">spostata di ${rn.shift} g</span>`;
-  if(rn&&rn.usable===false) nota+=` · <span class="off p-bad" data-tip="${esc(
+  if(rn&&rn.usable===false&&rn.perOrizzonte) nota+=` · <span class="off p-bad" data-tip="${esc(dettoNascosto(rn))
+    }">nascosto dall'orizzonte</span>`;
+  else if(rn&&rn.usable===false) nota+=` · <span class="off p-bad" data-tip="${esc(
     'Nelle prossime '+(rn.scanned||180)+' notti l\'oggetto non supera mai '+
     soglia+' per almeno '+fmt(rn.minNight||1,1)+
     ' h da questo sito. Non è una questione di ore: da qui, in questa stagione, non c\'è.')
@@ -16634,7 +16672,7 @@ function showAvail(t,rn,n,pr){
      lunghezza della notte, sono le ore in cui QUESTO oggetto sta abbastanza in
      alto. Lasciare a schermo quelle del bersaglio precedente sarebbe la stessa
      bugia della barra che restava sulla notte vecchia. */
-  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;';
+  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;'; coloraLeNotti(null);
     nt.textContent='scegli un oggetto: le ore utili dipendono da quando sale'; return; }
   /* A schermo restano le ore di OROLOGIO: sono quelle che si programmano, quelle
      che si perdono quando arrivano le nuvole. Il confronto col fabbisogno invece
@@ -16644,7 +16682,7 @@ function showAvail(t,rn,n,pr){
   const cap=RXCAP>0?RXCAP:av;
   v.innerHTML=`${fmt(av,1)}<span class="u"> h</span>`;
   if(pr&&pr.disponibile===false){
-    v.className='ha-v short';
+    v.className='ha-v short'; coloraLeNotti(null);
     nt.innerHTML=`su ${n} nott${n===1?'e':'i'} &middot; con la ruota di adesso nessuna tecnica di questo oggetto si può riprendere`;
     return;
   }
@@ -16654,8 +16692,31 @@ function showAvail(t,rn,n,pr){
   const ideal=pr&&pr.roadTotalsProject?pr.roadTotalsProject.ideal
             :(pr&&pr.roadTotals?pr.roadTotals.ideal:0);
   const corto=ideal>cap+1e-9;
-  v.className='ha-v'+(corto?' short':'');
-  const min=corto?nightsForHours(t,rn&&rn.date?rn.date:rxDate(),ideal,pr):null;
+  /*  LA MISURA DELLE NOTTI, A COLORI (17 novembre 2026, Alessandro: il colore del tempo disponibile e delle notti cambi
+      quando le notti superano il progetto intero, «arancione e infine rosso», poi «verde, giallo e rosso», quando la soglia e' superata
+      abbondantemente; e lo stesso quando ne sono state messe meno di quelle che il progetto chiede).
+      Il progetto e' quello della prescrizione di queste notti: con piu' ore il motore puo' scegliere una strada piu'
+      ricca (NGC 1514 da Borno col banco di serie: 4,5 h con una notte, 17,6 h da due in su), e le notti che bastano si
+      contano per quella. Verde le notti che bastano. Giallo piu' notti del necessario, o meno purche' depositino
+      almeno meta' del progetto. Rosso fuori di molto, e i due versi sono simmetrici: meno di meta' del progetto, o piu'
+      del doppio delle notti che bastano; e rosso anche oltre il massimo del piano (nightsBounds, il consiglio «troppe»),
+      le ore del progetto divise per la sessione minima, dove una notte e' quasi tutta preparazione. */
+  /* le notti che bastano dal verdetto della prescrizione, che le conta con la stessa capacita' del numero qui sopra (la
+     Luna e la posa di resa); `nightsForHours` pesa la sola Luna. Sui casi provati i due conti danno lo stesso numero, e
+     la guardia non li distingue: e' una scelta di coerenza, non una correzione misurata. `nightsForHours` resta per le
+     ore dichiarate, dove il verdetto non conta le notti. */
+  const vd=pr&&pr.verdetto;
+  const min=!(ideal>0)?null:vd&&vd.perIlPieno!=null?vd.perIlPieno:nightsForHours(t,rn&&rn.date?rn.date:rxDate(),ideal,pr);
+  const sessioneMinima=OPSET&&+OPSET.minSession>0?+OPSET.minSession:1;
+  const massimo=ideal>0?Math.max(1,Math.floor(ideal/sessioneMinima+1e-9)):null;
+  const troppe=!corto&&min!=null&&n>min;
+  const sessioniCorte=troppe&&n>massimo, piuDelDoppio=troppe&&n>2*min;
+  const molto=corto?cap<ideal/2-1e-9:sessioniCorte||piuDelDoppio;
+  /* il verde esplicito (Alessandro: «verde ok, arancione ancora ok ma gia' fuori budget, rosso alert»): le notti che
+     bastano, e non il colore di serie del numero, che non diceva niente */
+  const giusto=ideal>0&&!corto&&!troppe;
+  v.className='ha-v'+(corto?' short':troppe?' troppe':giusto?' giusto':'')+(molto?' molto':'');
+  coloraLeNotti(molto?'bad':corto||troppe?'warn':giusto?'ok':null);
   // la Luna vale la pena di nominarla solo quando toglie qualcosa di leggibile
   const luna=av-cap>0.15
     ? ` &middot; con questa Luna ne depositano <b>${fmt(cap,1)}</b>` : '';
@@ -16665,14 +16726,27 @@ function showAvail(t,rn,n,pr){
      dove serve di più — è lì che il numero a schermo NON è il soggetto intero. */
   const tp=RXCOV?RXCOV.targetPanels:(pr?pr.targetPanels||1:1);
   const framed=!!(RXCOV&&RXCOV.limited);
-  nt.innerHTML=`su ${n} nott${n===1?'e':'i'} da ${esc(dayLabel(rn&&rn.date?rn.date:rxDate()))}`+
+  /* zero ore perche' l'oggetto non c'e' in nessuna notte: lo si dice qui, dove si legge lo zero (17 novembre 2026) */
+  const assente=rn&&rn.usable===false
+    ?(rn.perOrizzonte?` &middot; <span class="p-bad" data-tip="${esc(dettoNascosto(rn))}">l’orizzonte del sito lo nasconde</span>`
+                     :' &middot; <span class="p-bad">da qui non sale abbastanza</span>'):'';
+  nt.innerHTML=`su ${n} nott${n===1?'e':'i'} da ${esc(dayLabel(rn&&rn.date?rn.date:rxDate()))}`+assente+
     (framed?` &middot; un riquadro solo: <b>1</b> campo dei <b>${tp}</b> del soggetto intero`
            :(pr&&pr.panels>1?` &middot; mosaico da <b>${pr.panels}</b> riquadri`:''))+
     luna+
     (corto
       ? ` &middot; ${framed?'l’inquadratura':'il progetto intero'} ne chiede <b>${fmt(ideal,1)}</b>`+
         (min?`: servono <b>${min}</b> nott${min===1?'e':'i'}`:'')
-      : ` &middot; bastano per ${framed?'l’inquadratura scelta':'il progetto intero'}`);
+      : ` &middot; bastano per ${framed?'l’inquadratura scelta':'il progetto intero'}`+
+        (troppe?` già in <b>${min}</b> nott${min===1?'e':'i'}`+(piuDelDoppio?`: ${n} sono più del doppio`:'')+
+          (sessioniCorte?`; su ${n} le sessioni sono di <b>${Math.round(ideal/n*60)}</b> minuti, `+
+          `sotto la sessione minima di ${fmt(sessioneMinima,1)} h`:''):''));
+}
+/* il campo «In quante notti» prende il colore del tempo disponibile: 'ok', 'warn', 'bad' o niente */
+function coloraLeNotti(stato){
+  const i=$('rxNights'); if(!i) return;
+  i.classList.toggle('notti-ok',stato==='ok');
+  i.classList.toggle('notti-warn',stato==='warn'); i.classList.toggle('notti-bad',stato==='bad');
 }
 
 /* Penalizzazione lunare per la banda di un gruppo, con la larghezza del filtro
@@ -20090,12 +20164,21 @@ function confrontoSetup(m,prof,opz){
   if(num(m.ottica.pixel_um,C.PixelSize,0.01))
     d.push({che:'passo del pixel',qui:m.ottica.pixel_um+' µm',la:C.PixelSize+' µm',
       perche:'Non è la stessa camera, oppure il profilo non è aggiornato.'});
-  const bayer=String(C.BayerPattern||'None');
-  const nMatrice=bayer!=='None'&&bayer!=='';
-  if(m.ottica.matrice!==nMatrice)
+  /*  LA MATRICE COME LA LEGGE IL BANCO (17 novembre 2026). «None» e' mono, un ordine dei quattro colori e' a matrice;
+      «Auto», o niente, il profilo non lo dice: N.I.N.A. lo legge dalla camera quando si collega. Prima ogni valore
+      diverso da «None» contava come matrice, anche «Auto», e un profilo mono con «Auto» dava una differenza falsa.
+      FERMA L'INVIO (Alessandro, dalla sua finestra: AIS col banco mono, N.I.N.A. col profilo della ASI 2600MC: «se non
+      c'e' compatibilita' addirittura di matrice tra AIS e N.I.N.A. non si deve poter lo stesso mandare la sequenza, sarebbe
+      inutile»). Ferma solo quando il profilo letto e' quello con cui la sequenza girera'; preparata per un'altra
+      postazione, il confronto e' col profilo attivo adesso e resta un'informazione: AIS e' anche un planner. */
+  const bayer=String(C.BayerPattern==null?'':C.BayerPattern);
+  const nMatrice=/^none$/i.test(bayer)?false:/^(rggb|bggr|grbg|gbrg)$/i.test(bayer)?true:null;
+  const perUnAltro=!!(opz&&opz.altroProfilo);
+  if(nMatrice!==null&&!!m.ottica.matrice!==nMatrice)
     d.push({che:'tipo di sensore',qui:m.ottica.matrice?'a matrice':'monocromatico',
-      la:nMatrice?'a matrice ('+bayer+')':'monocromatico',
-      perche:'È la differenza che decide se i canali larghi sono una ripresa sola o tre.'});
+      la:nMatrice?'a matrice ('+bayer.toUpperCase()+')':'monocromatico',blocca:!perUnAltro,
+      perche:perUnAltro?'Conta il profilo con cui la eseguirai, «'+opz.nome+'»: se ha la camera di AIS, va bene.'
+        :'È la differenza che decide se i canali larghi sono una ripresa sola o tre.'});
   if(m.sito&&(num(m.sito.lat,A.Latitude,0.05)||num(m.sito.lon,A.Longitude,0.05)))
     d.push({che:'sito',qui:fmt(+m.sito.lat,2)+'° '+fmt(+m.sito.lon,2)+'°',
       la:fmt(+A.Latitude,2)+'° '+fmt(+A.Longitude,2)+'°',
@@ -20187,8 +20270,9 @@ async function mandaANina(notte){
   /* la voce di partenza: l'ultima delle due «come sequenza nuova», se il contorno c'e' ancora; di serie la standard */
   const contorno=!dalPonte?contornoInUso():null;
   const doveIniziale=(()=>{ try{ return contorno&&localStorage.getItem(DOVE_KEY)==='contorno'?'contorno':'nuova'; }catch(e){ return 'nuova'; } })();
+  const blocco=diff.find(x=>x.blocca)||null;
   NINAINVIO={root,modello,dalPonte,notte:nt.n,nome:(t.names&&t.names[0])||t.id,bersaglio:modello.bersaglio,versione:v.dato,
-    bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:doveIniziale};
+    bersagli,letti:st.ok?null:st.motivo,differenze:diff.length,dove:doveIniziale,bloccato:blocco?'matrice':null};
 
   const riga=(k,a,b)=>`<div class="cfr"><div class="cfr-k">${k}</div>
     <div>${esc(a)}</div><div class="muted">${esc(b)}</div></div>`;
@@ -20210,19 +20294,49 @@ async function mandaANina(notte){
     const ch=(modello.ottica&&modello.ottica.matrice&&(bl.canali||[]).every(x=>BB_BANDS.includes(x)))?'RGB':(bl.canali||[])[0];
     if(ch&&!mancanti.some(x=>x.ch===ch)) mancanti.push({ch,nome:bl.filtro});
   }
-  const sceltaDallaRuota=mancanti.length?`<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">${mancanti.map(m=>
+  const sceltaDallaRuota=mancanti.length&&!blocco?`<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">${mancanti.map(m=>
     `<label class="f" style="max-width:240px"><span>${esc(m.ch)}: «${esc(m.nome)}» → nella ruota è</span>
       <select onchange="nomeDallaRuota(${jsAttr(m.ch)},this.value,${nt.n})"><option value="">scegli…</option>${
         ruotaCheConta.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select></label>`).join('')}</div>`:'';
-  const avvisi=diff.length?`<div class="warnbox" style="margin-top:8px">
-      <b>${diff.length===1?'Una differenza':diff.length+' differenze'} fra il tuo setup e il profilo ${altro?'attivo adesso in':'di'} N.I.N.A.</b>
-      ${diff.map(x=>`<div style="margin-top:6px">${x.grave?'<b class="p-warn">⚠</b> ':''}
+  /*  COME SI RISOLVE (17 novembre 2026, Alessandro: coi filtri diversi «dare comunque la possibilita' di inviare la
+      sequenza, ma con la notifica che i filtri o anche solo un filtro non e' simmetrico, dando il suggerimento su come
+      procedere»). Le due strade sono le stesse che AIS sa fare: la tendina, o i nomi cambiati in N.I.N.A. e il banco
+      riletto. */
+  const comeSiRisolve=mancanti.length&&!blocco?`<div class="small" style="margin-top:8px"><b>Come si risolve.</b>
+      Per ${mancanti.length===1?'il filtro':'ogni filtro'} qui sopra scegli nella tendina quello della ruota di N.I.N.A. che gli
+      corrisponde: AIS se lo ricorda e rifà la sequenza coi nomi della ruota. Oppure in N.I.N.A. dai ai filtri della ruota i
+      nomi di AIS, e rileggi il banco con «Leggi il banco da N.I.N.A.». Se la mandi così, N.I.N.A. mette il primo filtro
+      della ruota al posto di ogni filtro che non trova.</div>`
+    :'<div class="small muted" style="margin-top:8px">AIS non corregge niente, né qui né là: decidi tu.</div>';
+  const altre=diff.filter(x=>!x.blocca);
+  /*  LA MATRICE DIVERSA FERMA L'INVIO, e dice le due strade: il profilo in N.I.N.A., o il banco in AIS. Le altre differenze
+      si elencano sotto, senza tendine: coi filtri di un'altra camera non c'e' niente da far corrispondere. */
+  const camQui=modello.ottica.matrice?'a matrice':'monocromatica', camLa=blocco&&blocco.la==='monocromatico'?'monocromatica':blocco?blocco.la:'';
+  /* il nome del profilo anche senza Id: e' quello che chi riprende vede in N.I.N.A. */
+  const nomeProfilo=attivo?attivo.nome:P&&P.Name?String(P.Name):null;
+  const bloccoDetto=blocco?`<div class="warnbox ninablocco" style="margin-top:8px">
+      <b class="p-bad">La matrice non è compatibile: questa sequenza non si manda.</b>
+      <div style="margin-top:6px">AIS l'ha preparata per una camera <b>${camQui}</b>${modello.ottica.camera?' ('+esc(modello.ottica.camera)+')':''};
+        il profilo ${nomeProfilo?'<b>«'+esc(nomeProfilo)+'»</b>':'attivo'} di N.I.N.A. ha una camera <b>${esc(camLa)}</b>.
+        ${modello.ottica.matrice?'Con la camera a matrice AIS riprende i canali larghi in una posa sola, e la sequenza non ha i filtri di una camera monocromatica.'
+          :'Con la camera monocromatica AIS riprende un filtro per canale: con una camera a matrice quelle pose non servono.'}</div>
+      <div style="margin-top:6px"><b>Per mandarla, rendi uguale il banco da una parte o dall'altra:</b></div>
+      <ul style="margin:4px 0 0 18px;padding:0">
+        <li><b>in N.I.N.A.</b> carica il profilo con la camera ${camQui}, poi premi «Rileggi il profilo di N.I.N.A.»;</li>
+        <li><b>in AIS</b> passa alla camera ${esc(camLa.replace(/ \(.*\)$/,''))} del profilo di N.I.N.A., con «Leggi il banco da N.I.N.A.»
+          in Strumentazione, e prescrivi di nuovo: canali e ore cambiano.</li></ul>
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="chip" id="ninaRileggi" onclick="mandaANina(${nt.n})">Rileggi il profilo di N.I.N.A.</button>
+        <button class="chip" onclick="ninaAnnulla();go('strumentazione');leggiBancoNina()">Leggi il banco da N.I.N.A.</button></div>
+    </div>`:'';
+  const avvisi=bloccoDetto+(altre.length?`<div class="warnbox" style="margin-top:8px">
+      <b>${blocco?(altre.length===1?'Un\'altra differenza':'Altre '+altre.length+' differenze'):altre.length===1?'Una differenza':altre.length+' differenze'} fra il tuo setup e il profilo ${altro?'attivo adesso in':'di'} N.I.N.A.</b>
+      ${altre.map(x=>`<div style="margin-top:6px">${x.grave?'<b class="p-warn">⚠</b> ':''}
         <b>${esc(x.che)}</b>: <b>${esc(x.qui)}</b> qui, <b>${esc(x.la)}</b> in N.I.N.A.
         <br><span class="small muted">${esc(x.perche)}</span></div>`).join('')}
       ${sceltaDallaRuota}
-      <div class="small muted" style="margin-top:8px">Strategy non corregge niente, né qui né là:
-        decidi tu.</div></div>`
-    :'<div class="small" style="margin-top:8px"><span class="pill p-ok">setup coerente</span> '+
+      ${blocco?'':comeSiRisolve}</div>`:'')
+    ||'<div class="small" style="margin-top:8px"><span class="pill p-ok">setup coerente</span> '+
      '<span class="muted">niente da segnalare fra la prescrizione e il profilo.</span></div>';
 
   const scelta=pl.nights.length>1?`<label class="f" style="max-width:120px;margin-right:10px">
@@ -20249,12 +20363,12 @@ async function mandaANina(notte){
       ${sp.subs.length} blocchi · ${fmt(JSON.stringify(root).length/1024,1)} kB</div>
     ${testaConfronto}${avvisi}
     <div class="row" style="gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap">
-      ${scelta}${dove}
+      ${scelta}${blocco?'':dove+`
       <button class="fn hero-go confbt" id="ninaManda"
-        onclick="ninaInviaDavvero()">${testoDelTasto(doveIniziale,diff.length)}</button>
+        onclick="ninaInviaDavvero()">${testoDelTasto(doveIniziale,diff.length)}</button>`}
       <button class="fn confbt" onclick="ninaAnnulla()">Annulla</button>
     </div>
-    <div class="small muted" id="ninaDoveNota" style="margin-top:8px">${notaDove(doveIniziale)}</div>
+    ${blocco?'':`<div class="small muted" id="ninaDoveNota" style="margin-top:8px">${notaDove(doveIniziale)}</div>`}
   </div>`);
 }
 
@@ -20475,7 +20589,7 @@ async function consegnaDalPonte(){
 }
 
 async function ninaInviaDavvero(){
-  if(!NINAINVIO) return;
+  if(!NINAINVIO||NINAINVIO.bloccato) return;
   if(NINAINVIO.dalPonte) return consegnaDalPonte();
   if(NINAINVIO.dove!=='nuova'&&NINAINVIO.dove!=='contorno') return ninaAggiornaBersaglio(+NINAINVIO.dove);
   const box=document.getElementById('ninaInvio');
@@ -22404,7 +22518,7 @@ function renderSummary(){
     h+=sumBlock('Notte risolta',
       `<b>${sumDay(rn.date)}</b>`,
       moved?`Spostata di ${rn.shift} nott${rn.shift===1?'e':'i'} rispetto alla data chiesta.`
-           :(rn.usable===false?'L\'oggetto non sale abbastanza da qui.':'Coincide con la data chiesta.'));
+           :(rn.usable===false?(rn.perOrizzonte?'L\'orizzonte del sito lo nasconde.':'L\'oggetto non sale abbastanza da qui.'):'Coincide con la data chiesta.'));
   }else{
     h+=sumBlock('Notte risolta',SUM_DASH);
   }
