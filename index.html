@@ -835,6 +835,13 @@ td.archcell{max-width:120px}
    tutta la pagina: inutile proprio dove serve. */
 .hero-top{display:flex;gap:var(--s5);align-items:flex-end;flex-wrap:wrap}
 .hero-top > .hero-field{flex:1 1 320px;min-width:0}
+/* la fascia di ore della tecnica piena, nello spazio sopra la casella che la miniatura lascia vuoto */
+.hero-fascia{display:flex;flex-direction:column;gap:2px;margin-bottom:var(--s4)}
+.hero-fascia[hidden]{display:none}
+.hf-k{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2)}
+.hf-v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;color:var(--fg)}
+.hf-v .u{font-size:13px;font-weight:500;color:var(--dim)}
+.hf-n{font-size:11.5px;color:var(--dim);line-height:1.45}
 .hero-prev{flex:0 0 268px;margin:0;position:relative;border-radius:var(--radius-lg);
   overflow:hidden;border:1px solid var(--line);background:var(--sunken)}
 .hero-prev img{display:block;width:100%;height:auto;background:var(--bg3)}
@@ -961,6 +968,10 @@ td.archcell{max-width:120px}
 .nb-v input[type=date]:focus{outline:none;border-bottom-color:var(--acc)}
 .nb-shift{font-size:13px;color:var(--fn-plan);font-weight:600}
 .nb-n{font-size:12px;color:var(--dim)}
+/* la fase della Luna della notte di riferimento (17 novembre 2026): a destra, nel riquadro */
+.nightbox.con-luna{position:relative;padding-right:76px}
+.nb-luna{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;
+  filter:drop-shadow(0 0 7px rgba(239,227,180,.22))}
 
 /* I migliori della notte. Riquadri veri, non pastiglie: e' la funzione da cui
    parte la serata, e occupa lo spazio grande. */
@@ -1371,6 +1382,7 @@ td.archcell{max-width:120px}
                campo lasciava vuoto. -->
           <div class="hero-top">
           <div class="hero-field">
+            <div class="hero-fascia" id="rxFascia" hidden></div>
             <label class="hero-lab" for="rxTarget"
               data-tip="Scrivi un oggetto e le ore che hai, e ti dico con quale tecnica riprenderlo, quante ore per canale, in che ordine e cosa aspettarti. Se le ore non bastano te lo dico, invece di darti una ripartizione che non sta in piedi. Lascialo vuoto e ti dico cosa conviene riprendere stanotte con questa configurazione.">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -16162,11 +16174,42 @@ function rxContext(){
       ?'La prima notte del piano comincia adesso, alle '+oraDellaNotte(new Date(NP_LISTA.da))+', non dal buio: le ore e la sequenza per N.I.N.A. sono quelle che restano. Le notti dopo restano intere. Un clic la toglie.'
       :'Sono le '+oraDellaNotte(new Date(NP_LISTA.da))+': la prescrizione conta la notte intera, dal buio. Con la prescrizione istantanea la prima notte comincia adesso.')}">Prescrizione istantanea${
       ISTANTANEA?': da adesso, alle '+oraDellaNotte(new Date(NP_LISTA.da)):''}</button>`;
-  return `<div class="nightbox">
+  return `<div class="nightbox con-luna">${lunaDisegnata(ln,SITE.lat,d)}
     <div class="nb-k">${tip('Notte di riferimento','moon')}</div>
     <div class="nb-v"><input type="date" id="rxDate" value="${esc(chiesta)}">${
       rn&&rn.shift>0?`<span class="nb-shift">→ ${esc(dayLabel(rn.date))}</span>`:''}</div>
     <div class="nb-n">${luna}${nota}</div></div>`;
+}
+
+/*  LA FASE DISEGNATA (17 novembre 2026, Alessandro: «una bella fase lunare in questo spazio che rappresenti la data di
+    riferimento», «un'icona, un'immagine della luna»). Dalla Luna della notte (`lunaDellaNotte`): la parte illuminata e'
+    il mezzo disco dalla parte del Sole piu' la mezza ellisse del terminatore, larga |1 − 2k| — la sua area e' proprio la
+    frazione illuminata k. Da nord la Luna crescente e' illuminata a destra e la calante a sinistra; da sud al contrario.
+    Il lato in ombra resta appena visibile, come la luce cinerea. */
+const NOMI_DELLE_FASI={nuova:'Luna nuova',falce_crescente:'falce crescente',primo_quarto:'primo quarto',gibbosa_crescente:'gibbosa crescente',
+  piena:'Luna piena',gibbosa_calante:'gibbosa calante',ultimo_quarto:'ultimo quarto',falce_calante:'falce calante'};
+function lunaDisegnata(ln,lat,giorno){
+  if(!ln||!isFinite(ln.fase)) return '';
+  const k=Math.max(0,Math.min(1,ln.fase)), rx=Math.abs(1-2*k), giro=k>0.5?1:0;
+  const luce=k<0.005?'':`M0,-1A1,1 0 0 1 0,1A${perLaMacchina(rx,4)},1 0 0 ${giro} 0,-1Z`;
+  const specchio=!!ln.crescente===(lat<0);
+  const nome=NOMI_DELLE_FASI[ln.faseLunare]||'Luna';
+  /* i quarti non dicono se cresce o cala: lo si aggiunge */
+  const verso=/crescente|calante|nuova|piena/.test(nome)?'':(ln.crescente?', crescente':', calante');
+  const detto=nome+verso+', illuminata al '+ln.fasePercento+'%'+
+    (giorno?' la notte del '+new Date(giorno+'T12:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'long'}):'')+
+    (lat<0?', vista dall\'emisfero australe':'');
+  return `<svg class="nb-luna" viewBox="-1.12 -1.12 2.24 2.24" role="img" aria-label="${esc(detto)}" data-tip="${esc(detto.charAt(0).toUpperCase()+detto.slice(1)+'.')}"
+      data-fase="${ln.fasePercento}" data-crescente="${ln.crescente?1:0}">
+    <defs><radialGradient id="nbLunaLuce" cx="-0.35" cy="-0.4" r="1.6" gradientUnits="userSpaceOnUse">
+      <stop offset="0" style="stop-color:var(--luna)"/><stop offset="1" style="stop-color:var(--luna);stop-opacity:.72"/></radialGradient>
+      <clipPath id="nbLunaDisco"><circle r="1"/></clipPath></defs>
+    <circle r="1" style="fill:var(--luna);fill-opacity:.1;stroke:var(--luna);stroke-opacity:.28;stroke-width:.04"/>
+    <path class="nb-luce" d="${luce}"${specchio?' transform="scale(-1,1)"':''} style="fill:url(#nbLunaLuce)"/>
+    <g clip-path="url(#nbLunaDisco)" style="fill:#000;fill-opacity:.09">
+      <ellipse cx="-0.28" cy="-0.3" rx="0.3" ry="0.22"/><ellipse cx="0.22" cy="-0.12" rx="0.2" ry="0.26"/>
+      <ellipse cx="-0.05" cy="0.38" rx="0.24" ry="0.15"/><circle cx="0.35" cy="0.45" r="0.09"/></g>
+  </svg>`;
 }
 
 /* La CONFIGURAZIONE ATTIVA. Stessi cinque riquadri di prima, spostati dalla home
@@ -16672,7 +16715,7 @@ function showAvail(t,rn,n,pr){
      lunghezza della notte, sono le ore in cui QUESTO oggetto sta abbastanza in
      alto. Lasciare a schermo quelle del bersaglio precedente sarebbe la stessa
      bugia della barra che restava sulla notte vecchia. */
-  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;'; coloraLeNotti(null);
+  if(!t){ v.className='ha-v'; v.innerHTML='&mdash;'; coloraLeNotti(null); mostraFascia(null);
     nt.textContent='scegli un oggetto: le ore utili dipendono da quando sale'; return; }
   /* A schermo restano le ore di OROLOGIO: sono quelle che si programmano, quelle
      che si perdono quando arrivano le nuvole. Il confronto col fabbisogno invece
@@ -16682,16 +16725,25 @@ function showAvail(t,rn,n,pr){
   const cap=RXCAP>0?RXCAP:av;
   v.innerHTML=`${fmt(av,1)}<span class="u"> h</span>`;
   if(pr&&pr.disponibile===false){
-    v.className='ha-v short'; coloraLeNotti(null);
+    v.className='ha-v short'; coloraLeNotti(null); mostraFascia(null);
     nt.innerHTML=`su ${n} nott${n===1?'e':'i'} &middot; con la ruota di adesso nessuna tecnica di questo oggetto si può riprendere`;
     return;
   }
   /* Il fabbisogno da mostrare è quello del SOGGETTO INTERO. Su un mosaico il
      costo di un campo direbbe che quattro ore bastano per una cosa che ne chiede
      centoquindici: roadTotalsProject porta già dentro i riquadri. */
-  const ideal=pr&&pr.roadTotalsProject?pr.roadTotalsProject.ideal
+  const idealScelta=pr&&pr.roadTotalsProject?pr.roadTotalsProject.ideal
             :(pr&&pr.roadTotals?pr.roadTotals.ideal:0);
+  /*  LA TECNICA PIENA (17 novembre 2026, Alessandro: su NGC 1514 tre notti verdi dopo due gialle, «e' come se fosse
+      scappato il colore»). Non era scappato: il motore prende la strada piu' ricca che le notti scelte completano, e il
+      progetto cambiava sotto il colore. Col banco di serie, a Borno, HOO + stelle RGB da 4,5 h con una notte, SHO + stelle
+      RGB da 17,6 h da due in su: con due notti si giudicava la HOO, gia' completa in una, e il giallo diceva «gia' in 1
+      notte». Il colore si misura adesso sulla tecnica piena (tecnicaPiena), quella che l'automatico prende quando il
+      tempo non manca, o quella scelta a mano: con le notti che non la completano il progetto e' corto, e lo si dice. */
+  const piena=tecnicaPiena(pr);
+  const ideal=piena?piena.progetto.ideal:idealScelta;
   const corto=ideal>cap+1e-9;
+  mostraFascia(pr);
   /*  LA MISURA DELLE NOTTI, A COLORI (17 novembre 2026, Alessandro: il colore del tempo disponibile e delle notti cambi
       quando le notti superano il progetto intero, «arancione e infine rosso», poi «verde, giallo e rosso», quando la soglia e' superata
       abbondantemente; e lo stesso quando ne sono state messe meno di quelle che il progetto chiede).
@@ -16701,12 +16753,12 @@ function showAvail(t,rn,n,pr){
       almeno meta' del progetto. Rosso fuori di molto, e i due versi sono simmetrici: meno di meta' del progetto, o piu'
       del doppio delle notti che bastano; e rosso anche oltre il massimo del piano (nightsBounds, il consiglio «troppe»),
       le ore del progetto divise per la sessione minima, dove una notte e' quasi tutta preparazione. */
-  /* le notti che bastano dal verdetto della prescrizione, che le conta con la stessa capacita' del numero qui sopra (la
-     Luna e la posa di resa); `nightsForHours` pesa la sola Luna. Sui casi provati i due conti danno lo stesso numero, e
-     la guardia non li distingue: e' una scelta di coerenza, non una correzione misurata. `nightsForHours` resta per le
-     ore dichiarate, dove il verdetto non conta le notti. */
+  /* le notti che bastano, chieste al motore (`nottiCheBastano`): il verdetto e `nightsForHours` sono solo il punto da
+     cui si comincia a cercare */
   const vd=pr&&pr.verdetto;
-  const min=!(ideal>0)?null:vd&&vd.perIlPieno!=null?vd.perIlPieno:nightsForHours(t,rn&&rn.date?rn.date:rxDate(),ideal,pr);
+  const stessa=Math.abs(ideal-idealScelta)<1e-6;
+  const stima=!(ideal>0)?null:stessa&&vd&&vd.perIlPieno!=null?vd.perIlPieno:nightsForHours(t,rn&&rn.date?rn.date:rxDate(),ideal,pr);
+  const min=!(ideal>0)?null:nottiCheBastano(ideal,stima,n,corto);
   const sessioneMinima=OPSET&&+OPSET.minSession>0?+OPSET.minSession:1;
   const massimo=ideal>0?Math.max(1,Math.floor(ideal/sessioneMinima+1e-9)):null;
   const troppe=!corto&&min!=null&&n>min;
@@ -16735,12 +16787,67 @@ function showAvail(t,rn,n,pr){
            :(pr&&pr.panels>1?` &middot; mosaico da <b>${pr.panels}</b> riquadri`:''))+
     luna+
     (corto
-      ? ` &middot; ${framed?'l’inquadratura':'il progetto intero'} ne chiede <b>${fmt(ideal,1)}</b>`+
+      ? ` &middot; ${!stessa&&piena?'«'+esc(piena.name)+'»':framed?'l’inquadratura':'il progetto intero'} ne chiede <b>${fmt(ideal,1)}</b>`+
         (min?`: servono <b>${min}</b> nott${min===1?'e':'i'}`:'')
       : ` &middot; bastano per ${framed?'l’inquadratura scelta':'il progetto intero'}`+
         (troppe?` già in <b>${min}</b> nott${min===1?'e':'i'}`+(piuDelDoppio?`: ${n} sono più del doppio`:'')+
           (sessioniCorte?`; su ${n} le sessioni sono di <b>${Math.round(ideal/n*60)}</b> minuti, `+
           `sotto la sessione minima di ${fmt(sessioneMinima,1)} h`:''):''));
+}
+/* LA TECNICA PIENA: fra le strade percorribili con questa ruota, quella scelta a mano, se c'e'; se no quella che
+   l'automatico prende quando le ore non mancano — la piu' ricca fra le strade della scheda, o fra tutte se la scheda non
+   ne ha (prescribe: «la piu' ricca che completi», e a pari costo la prima). */
+function tecnicaPiena(pr){
+  const ch=pr&&Array.isArray(pr.roadChoices)?pr.roadChoices.filter(c=>c&&c.progetto&&c.progetto.ideal>0):[];
+  if(!ch.length) return null;
+  if(pr.roadPicked){ const p=ch.find(c=>c.id===pr.roadRequested); if(p) return p; }
+  const scheda=ch.filter(c=>!c.generata), fra=scheda.length?scheda:ch;
+  return fra.reduce((a,b)=>b.progetto.ideal>a.progetto.ideal+1e-9?b:a);
+}
+/* LE NOTTI CHE BASTANO, CHIESTE AL MOTORE (17 novembre 2026). Il primo numero di notti per cui la prescrizione completa
+   la tecnica piena: la stessa prescrizione della pagina (`prescriviSuCapacita`, con le finestre e le opzioni di
+   `RXARGS`), rifatta su quel numero, e lo stesso confronto che per il numero scelto da' «bastano». Prima si diceva una
+   stima, e la stima non e' la prescrizione: col banco di serie a Borno, su 112 oggetti che una notte completa, in 187
+   righe «servono N notti» diceva un altro numero — M27 14 o 15, e ne bastano 12 —, e su M95 «gia' in 7 notti» dove a 7
+   la prescrizione deposita 13,416 h contro 13,42 e resta sulla strada economica: il verde non usciva mai. La stima del
+   verdetto, o di `nightsForHours`, resta come punto di partenza; da li' si scende finche' la notte prima completa ancora,
+   e si sale finche' non completa. Il numero scelto non si rifa': il suo esito e' gia' `corto`. */
+function nottiCheBastano(ideal,stima,n,corto){
+  const a=RXARGS; if(!a||!(ideal>0)) return stima;
+  /* se la stima dice che in sessanta notti non si arriva, non si rifanno sessanta prescrizioni per confermarlo */
+  if(stima==null&&corto) return null;
+  const W=nightWindows(a.t,SITE,a.data,NOTTI_DEL_VERDETTO_MAX,a.wopts).nights;
+  const visti=new Map([[n,!corto]]);
+  const completa=k=>{
+    if(k<1||k>W.length) return false;
+    if(!visti.has(k)){ const r=MOTORE.scelta.prescriviSuCapacita(a.e,a.dv,SITE,W.slice(0,k),a.opts);
+      visti.set(k,!!(r&&r.pr&&r.pr.disponibile!==false&&!(ideal>r.capacita+1e-9))); }
+    return visti.get(k);
+  };
+  let k=Math.max(1,Math.min(stima||n,W.length));
+  while(k>1&&completa(k-1)) k--;
+  while(k<=W.length&&!completa(k)) k++;
+  return k<=W.length?k:null;
+}
+/* LA FASCIA DI ORE (17 novembre 2026, Alessandro: «una sintetica indicazione di quante ore siano necessarie per ottenere
+   un buon risultato … come fascia di ore, per esempio da 5 a 8 ore», nello spazio vuoto sopra la casella). Dalla somma
+   delle soglie della tecnica piena, dove ogni canale smette di essere rumore, al suo costo pieno: i due numeri del
+   motore, per il soggetto intero. Sotto le 10 h con un decimale, sopra in ore intere, verso l'esterno. */
+function mostraFascia(pr){
+  const b=$('rxFascia'); if(!b) return;
+  const p=tecnicaPiena(pr);
+  if(!p){ b.hidden=true; b.innerHTML=''; b.removeAttribute('data-tip'); return; }
+  const lo=p.progetto.floor, hi=p.progetto.ideal;
+  const ore=(x,giu)=>x<10?fmt(x,1):String(giu?Math.floor(x+1e-9):Math.ceil(x-1e-9));
+  const mosaico=pr.panels>1?', per tutti i '+pr.panels+' riquadri':'';
+  b.hidden=false;
+  b.dataset.tip=(lo!=null&&lo>0?'Da '+fmt(lo,1)+' h, dove ogni canale di «'+p.name+'» arriva alla sua soglia e l\'immagine smette di essere rumore, a '
+      :'Fino a ')+fmt(hi,1)+' h, l\'immagine piena'+mosaico+'. '+
+    (pr.roadPicked?'È la tecnica che hai scelto tu.':'È la tecnica che il motore sceglie quando il tempo non manca; con meno ore ne prende una più economica.')+
+    ' Il colore del tempo disponibile e delle notti si misura su di lei.';
+  b.innerHTML=`<div class="hf-k">Per un buon risultato</div>
+    <div class="hf-v">${lo!=null&&lo>0?'da '+ore(lo,true)+' a ':''}${ore(hi,false)}<span class="u"> h</span></div>
+    <div class="hf-n">${esc(p.name)}${pr.roadPicked?' · scelta da te':''}</div>`;
 }
 /* il campo «In quante notti» prende il colore del tempo disponibile: 'ok', 'warn', 'bad' o niente */
 function coloraLeNotti(stato){
@@ -17103,6 +17210,7 @@ function resetBande(){
 let RXCOV=null;                   // l'ultima copertura risolta: soggetto e progetto
 let RXNIGHT=null;                 // la notte risolta: la usano barra, scheda e piano
 let RXPR=null, RXDV=null;         // ultima prescrizione e ultima catena derivata.
+let RXARGS=null;                  // gli ingressi dell'ultima prescrizione, per contare le notti che bastano
 let RXTG=null;                    // il bersaglio a cui si riferiscono: serve a chi
                                   // deve offrire una scelta che vale solo per lui.
                                   // Esistono perche' il riepilogo laterale LEGGA i
@@ -17375,10 +17483,12 @@ function renderRx(np){
       E le ore di orologio non si passano piu': le somma la porta dalle notti. Qui si
       passava `rxHours()`, che e' `RXCAP` della passata PRECEDENTE, mentre il commento
       sopra pretendeva le ore di orologio. Erano due cose diverse.                   */
-  const rxd=MOTORE.scelta.prescriviSuCapacita(e,dv,SITE,WA.nights.slice(0,NN),
-    {road:scelta,pannelli:ppRx.panels,copertura:covIntent(),rotazione:rotFor(t),posa:OPSET,
+  const opzRx={road:scelta,pannelli:ppRx.panels,copertura:covIntent(),rotazione:rotFor(t),posa:OPSET,
      /* il verdetto conta le ore gia' riprese, al buio (26 ottobre 2026), se sono di un campo simile (28 ottobre) */
-     giaRiprese:togliGiaRiprese()?MOTORE.piano.oreSulCampo(STATE[t.id]||null,dv):null});
+     giaRiprese:togliGiaRiprese()?MOTORE.piano.oreSulCampo(STATE[t.id]||null,dv):null};
+  /* gli stessi ingressi, perche' `nottiCheBastano` possa rifare questa prescrizione su un altro numero di notti */
+  RXARGS={e,dv,t,data:RN.date,wopts:Object.assign({},OPSET,daAdessoPerIlPiano(),{suMatrice:!!((DB.cameras.find(c=>c.id===CFG.cam)||{}).cfa_penalty)}),opts:opzRx};
+  const rxd=MOTORE.scelta.prescriviSuCapacita(e,dv,SITE,WA.nights.slice(0,NN),opzRx);
   RXCAP=rxd.capacita>0?rxd.capacita:RXAVAIL;
   const pr=rxd.pr;
   RXCOV=ppRx;
