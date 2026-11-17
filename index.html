@@ -17033,6 +17033,8 @@ const setRoad=(tgId,id)=>{
    chiedevi, e la differenza si dichiara invece di scoprirla. */
 const HIPS='https://alasky.cds.unistra.fr/hips-image-services/hips2fits';
 const MINIATURA_DI_RISERVA='https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl';
+const TERZA_COPIA_DELLA_MINIATURA='https://archive.stsci.edu/cgi-bin/dss_search';
+const LATO_DELLA_TERZA_COPIA=60;   // primi d'arco: oltre, la GIF a risoluzione piena supera i 6,5 MB
 let _pvKey=null;
 function renderPreview(t,dv){
   const box=$('rxPrev'); if(!box) return;
@@ -17088,12 +17090,23 @@ function renderPreview(t,dv){
       stesso e il riquadro diceva «non disponibile» senza aver provato (misurato nel pannello nascosto, NGC 6888). */
   const riserva=`${MINIATURA_DI_RISERVA}?Survey=${encodeURIComponent('DSS2 Red')}&Position=${t.ra_deg},${t.dec_deg}`+
     `&Size=${perLaMacchina(fovDeg,4)},${perLaMacchina(fovDeg*H/W,4)}&Pixels=${W},${H}&Projection=Tan&Return=JPEG`;
-  let copia=false, to=null;
+  /*  LA TERZA COPIA (17 novembre 2026, Alessandro: «ancora anteprima non disponibile», «aggiungi 3 copia»). Quel giorno il
+      CDS rispondeva ancora 404 e SkyView, sovraccarico, rispondeva «Too Many Processes»: 537 byte di HTML con stato 200,
+      a volte dopo 11 s. Il ritaglio della DSS2 rossa dello STScI rispondeva, con Access-Control-Allow-Origin, ma alla
+      risoluzione piena e senza una misura d'uscita: GIF di 2,8 MB per 50′, 6,5 MB per 60′, 27 MB per 120′, rifiutato oltre.
+      Si chiede solo dopo le altre due, e solo se il campo sta entro 60′ per lato: oltre sarebbe troppo pesante, e il
+      riquadro resta «non disponibile». Nord in alto ed est a sinistra, come le altre due; la didascalia e' la stessa. */
+  const lato=fovDeg*60, alto=fovDeg*H/W*60;
+  const terza=lato<=LATO_DELLA_TERZA_COPIA&&alto<=LATO_DELLA_TERZA_COPIA
+    ?`${TERZA_COPIA_DELLA_MINIATURA}?v=poss2ukstu_red&r=${t.ra_deg}&d=${t.dec_deg}&e=J2000&h=${perLaMacchina(alto,2)}&w=${perLaMacchina(lato,2)}&f=gif`:null;
+  let passo=0, to=null;
   const tetto=ms=>{ clearTimeout(to); to=setTimeout(()=>{ if(!img.complete||!img.naturalWidth) fallito(); },ms); };
   const fallito=()=>{ clearTimeout(to);
     /* anche dallo standalone aperto come file: la rete c'e' e le immagini in https arrivano (14 novembre, Alessandro) */
-    if(copia||navigator.onLine===false) return spento();
-    copia=true; img.src=riserva; tetto(15000);
+    if(navigator.onLine===false) return spento();
+    if(passo===0){ passo=1; img.src=riserva; tetto(15000); }
+    else if(passo===1&&terza){ passo=2; img.src=terza; tetto(30000); }
+    else return spento();
     const fc=box.querySelector('figcaption');
     if(fc){ fc.innerHTML=`${fmt(dv.fovX/60,2)}° × ${fmt(dv.fovY/60,2)}° — il tuo campo &middot; DSS2 rosso, dalla copia di riserva`;
       fc.title='Il CDS non risponde: la miniatura arriva da una copia di riserva, che ha la DSS2 solo in rosso. Quando il CDS torna, torna anche il colore.'; } };
