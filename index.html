@@ -18063,6 +18063,109 @@ function centraSullOggetto(){
   const t=SHEET_T; if(!t) return;
   if(ALADIN_DELLA_SCHEDA&&ALADIN_DELLA_SCHEDA.al&&ALADIN_DELLA_SCHEDA.al.gotoRaDec){ ALADIN_DELLA_SCHEDA.al.gotoRaDec(t.ra_deg,t.dec_deg); ridisegnaCampo(); }
 }
+/*  «MOSTRA IN STELLARIUM» (17 novembre 2026, Alessandro: collegare «un oggetto che viene visualizzato nelle schede da
+    Aladin con lo stesso oggetto su Stellarium»; poi «partirei da stellarium installato, il mio è già configurato.
+    Lascerei il web solo per il telefono»).
+    Sul computer AIS manda uno script al plugin Remote Control di Stellarium (porta 8090, quella di serie, la stessa che
+    usa N.I.N.A.): l'ora, l'oggetto e il campo della vista di Aladin. Misurato su Stellarium 26.3, msi.station:
+    - IL NOME DA SOLO NON BASTA. «Abell 21», «Abell 31» e «Abell 33» in Stellarium sono ammassi di galassie a 98°-133°
+      dalle planetarie (che li' si chiamano PK 205+14.1, PK 219+31.1, PK 238+34.1). Sui 186 oggetti di catalog e targets,
+      18 trovati col nome a piu' di 15′ dalle coordinate di AIS. Lo script, dentro Stellarium, prova i nomi della scheda
+      e prende il primo entro 15′, o entro meta' della misura dell'oggetto; se nessuno, centra le coordinate di AIS senza
+      selezionare niente. Le coordinate sono le stesse della vista di Aladin: l'oggetto e' lo stesso per costruzione.
+    - LA RISPOSTA NON SI LEGGE: Stellarium manda Access-Control-Allow-Origin a un'origine sola, quella scritta nelle sue
+      impostazioni, che servono ad altri e non si toccano. La richiesta parte «no-cors»: arriva lo
+      stesso, e il fetch dice solo se sulla porta qualcuno ascolta. Per questo la verifica sta nello script, non qui.
+    - IL CORPO DELLA RICHIESTA, mandato da fetch, Stellarium non lo legge («need parameter: code»); da curl si'. Lo
+      script va nell'indirizzo (provato fino a 6 000 caratteri).
+    - Dallo standalone aperto come file la richiesta arriva; dal sito pubblico Edge chiede il permesso di parlare coi
+      programmi del computer (Local Network Access), e finche' non c'e' il fetch fallisce come con Stellarium spento.
+    Il luogo di Stellarium non si tocca: e' una sua impostazione. Se e' a piu' di 5 km dalla postazione, lo script lo
+    scrive sullo schermo di Stellarium. Accanto, anche sul computer («anche il collegamento al web sarebbe bello»),
+    Stellarium Web, con un indirizzo: nome, ora, luogo e campo, e altezza e azimut, che contano se il nome non lo trova
+    (quali nomi Stellarium Web riconosca non e' misurato). Sul telefono c'e' solo lui: Stellarium sul telefono non
+    risponde a una pagina.                                                                                             */
+const PORTA_DI_STELLARIUM=()=>{ try{ const p=+localStorage.getItem('__portaDiStellarium'); if(p>0) return p; }catch(e){} return 8090; };
+const suTelefono=()=>!!((navigator.userAgentData&&navigator.userAgentData.mobile)||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||''));
+/* l'ora: nella notte in corso adesso; se no quella in cui l'oggetto e' piu' alto, nel buio della notte della lista */
+function momentoPerStellarium(t){
+  const np=NP_LISTA, ora=Date.now();
+  if(!np||!SITE||adessoNellaNotte(np,ora)) return {quando:null,ms:ora};
+  const t0=np.astro.start||np.nautical.start, t1=np.astro.end||np.nautical.end;
+  if(!t0||!t1) return {quando:null,ms:ora};
+  let best=t0.getTime(), hmax=-91;
+  for(let m=t0.getTime();m<=t1.getTime();m+=5*60000){
+    const h=altaz(t.ra_deg,t.dec_deg,SITE.lat,lstDeg(toJD(new Date(m)),SITE.lon)).alt;
+    if(h>hmax){ hmax=h; best=m; } }
+  return {quando:best,ms:best};
+}
+/* il campo: quello della vista di Aladin nella scheda (drawField) */
+function campoPerStellarium(t){
+  const dv=derive(cfgMotore());
+  return Math.max(dv.fovX/60,dv.fovY/60,Math.max(t.size_arcmin[0],t.size_arcmin[1])/60)*1.7;
+}
+function quandoPerStellarium(m){
+  if(m.quando==null) return 'adesso';
+  const d=new Date(m.quando);
+  return `alle ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} del ${d.toLocaleDateString('it-IT',{day:'numeric',month:'long'})}, quando è più alto nella notte`;
+}
+/* lo script che gira dentro Stellarium: la verifica del nome sta qui, perche' la risposta AIS non la puo' leggere */
+function scriptPerStellarium(t,m,campo){
+  const A={nomi:(t.names||[]).filter(Boolean),ra:t.ra_deg,dec:t.dec_deg,
+    raggio:Math.max(15,Math.max(t.size_arcmin[0],t.size_arcmin[1])/2),fov:perLaMacchina(campo,3),
+    jd:m.quando==null?null:toJD(new Date(m.quando)),lat:SITE.lat,lon:SITE.lon,
+    sito:nomeDelSitoInUso()||'la postazione di AIS'};
+  return `var A=${JSON.stringify(A)};
+var D=Math.PI/180;
+function arco(r1,d1,r2,d2){ var c=Math.sin(d1*D)*Math.sin(d2*D)+Math.cos(d1*D)*Math.cos(d2*D)*Math.cos((r1-r2)*D); return Math.acos(Math.min(1,Math.max(-1,c)))/D; }
+if(A.jd===null) core.setDate("now"); else core.setJDay(A.jd);
+var preso="";
+for(var i=0;i<A.nomi.length&&!preso;i++){ var o=core.getObjectInfo(A.nomi[i]); if(o&&o["found"]&&arco(o["raJ2000"],o["decJ2000"],A.ra,A.dec)*60<=A.raggio) preso=A.nomi[i]; }
+if(preso){ core.selectObjectByName(preso,true); StelMovementMgr.setFlagTracking(true); }
+else { core.selectObjectByName("",false); core.moveToRaDecJ2000(String(A.ra),String(A.dec),1); }
+StelMovementMgr.zoomTo(A.fov,1);
+var L=core.getObserverLocationInfo();
+var km=arco(0,L["latitude"],L["longitude"]-A.lon,A.lat)*D*6371;
+if(km>5) LabelMgr.labelScreen("AIS: Stellarium guarda da "+L["location"]+", a "+Math.round(km)+" km da "+A.sito+": altezze e orari possono essere diversi",40,40,true,16,"#ffcc66",true,10000);`;
+}
+function indirizzoStellariumWeb(t,m,campo){
+  const d=new Date(m.ms), h=altaz(t.ra_deg,t.dec_deg,SITE.lat,lstDeg(toJD(d),SITE.lon));
+  const q=new URLSearchParams({date:d.toISOString(),lat:perLaMacchina(SITE.lat,4),lng:perLaMacchina(SITE.lon,4),
+    fov:perLaMacchina(campo,2),az:perLaMacchina(h.az,2),alt:perLaMacchina(h.alt,2)});
+  return 'https://stellarium-web.org/skysource/'+encodeURIComponent(t.names[0])+'?'+q;
+}
+function dettoStellariumWeb(t){
+  const m=momentoPerStellarium(t), campo=campoPerStellarium(t);
+  return `Apre ${t.names[0]} su Stellarium Web, in una scheda nuova, ${quandoPerStellarium(m)}, dal luogo della postazione e col campo di questa vista (${fmt(campo,1)}°). Serve la rete. Se Stellarium Web non conosce quel nome, guarda nella direzione dell'oggetto senza selezionarlo.`;
+}
+function apriStellariumWeb(t){
+  if(!t||!SITE) return;
+  const m=momentoPerStellarium(t);
+  window.open(indirizzoStellariumWeb(t,m,campoPerStellarium(t)),'_blank','noopener');
+}
+function dettoStellarium(t){
+  const m=momentoPerStellarium(t), campo=campoPerStellarium(t), n=t.names[0];
+  return `Gira il tuo Stellarium, aperto su questo computer, su ${n}, ${quandoPerStellarium(m)}, col campo di questa vista (${fmt(campo,1)}°). `+
+    `Serve il plugin Remote Control acceso, sulla porta ${PORTA_DI_STELLARIUM()}. Il luogo resta quello di Stellarium: se è lontano dalla postazione, Stellarium lo scrive sul suo schermo. `+
+    `Se Stellarium chiama con quel nome un altro oggetto, guarda le coordinate di AIS senza selezionarlo.`;
+}
+async function mostraInStellarium(t){
+  if(!t||!SITE) return;
+  const m=momentoPerStellarium(t), campo=campoPerStellarium(t);
+  const porta=PORTA_DI_STELLARIUM();
+  try{
+    await fetch(`http://127.0.0.1:${porta}/api/scripts/direct?`+new URLSearchParams({code:scriptPerStellarium(t,m,campo)}),
+      {method:'POST',mode:'no-cors',cache:'no-store'});
+    toast(`Mandato a Stellarium: ${t.names[0]}, ${quandoPerStellarium(m)}.`);
+  }catch(e){
+    let negato=false;
+    try{ negato=(await navigator.permissions.query({name:'local-network-access'})).state==='denied'; }catch(e2){}
+    toast(negato
+      ?'Il browser non lascia ad AIS parlare coi programmi del computer: si consente dal lucchetto accanto all’indirizzo, alla voce della rete locale.'
+      :`Stellarium non risponde sulla porta ${porta}: aprilo, con il plugin Remote Control acceso (Configurazione › Plugin).`+
+       (location.protocol==='https:'?' Se il browser chiede il permesso di parlare coi programmi del computer, serve un sì.':''));
+  }
+}
 function wireRotation(t,dv){
   SHEET_T=t; SHEET_DV=dv; ALADIN_DELLA_SCHEDA=null;
   SHEET_ROT=rot360(rotFor(t));      // l'angolo scelto sopravvive alla chiusura della scheda
@@ -18076,6 +18179,8 @@ function wireRotation(t,dv){
   SHEET_OFF=offFor(t);
   if($('offReset')) $('offReset').onclick=centraSullOggetto;
   if($('frameUse')) $('frameUse').onclick=usaInquadratura;
+  if($('aStellarium')) $('aStellarium').onclick=()=>mostraInStellarium(t);
+  if($('aStellariumWeb')) $('aStellariumWeb').onclick=()=>apriStellariumWeb(t);
   rotLines(t,dv,SHEET_ROT);
   aggiornaInquadratura();
 }
@@ -20935,6 +21040,11 @@ function openSheet(i){
       <div id="rotAdvice" class="small" style="margin-top:6px"></div>
       <div id="aladin"></div>
       <div id="alFonte" class="small muted" style="margin-top:4px" hidden></div>
+      <div class="row" id="planetario" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+        <span class="small muted">Lo stesso oggetto in un planetario:</span>
+        ${suTelefono()?'':`<button class="fn fn-frame" id="aStellarium" data-tip="${esc(dettoStellarium(t))}">Mostra in Stellarium</button>`}
+        <button class="fn fn-frame" id="aStellariumWeb" data-tip="${esc(dettoStellariumWeb(t))}">Stellarium Web</button>
+      </div>
       <p class="small muted" style="margin-top:6px">Il riquadro azzurro è il tuo sensore a
         questa focale${(()=>{const m=mosaicPanels(t,dvS);return m.cols*m.rows>1?', quelli gialli i pannelli del mosaico':'';})()}.
         Immagini <a href="https://aladin.cds.unistra.fr/" target="_blank" rel="noopener">Aladin Lite</a> / CDS Strasbourg.</p>
