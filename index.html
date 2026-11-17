@@ -16790,6 +16790,13 @@ function nottiCheBastano(ideal,stima,n,corto){
 /* le ore di una fascia, scritte come le legge chi riprende: sotto le 10 h con un decimale, sopra in ore intere verso
    l'esterno (il minimo per difetto, il pieno per eccesso). Le usano la fascia sopra la casella e le schede delle tecniche. */
 const oreDellaFascia=(x,giu)=>x<10?fmt(x,1):String(giu?Math.floor(x+1e-9):Math.ceil(x-1e-9));
+/* SOGLIA E PIENO CHE COINCIDONO (17 novembre 2026, Alessandro, su M31: «da 214 a 215 h»). Dove l'Hα si aggiunge a una
+   LRGB nelle classi della pratica la tecnica e' piena quando l'aggiunta arriva alla sua soglia (POSIZIONE_DELL_AGGIUNTA =
+   0): soglia e pieno sono lo stesso numero, 214,6 h su M31 a mosaico intero, e arrotondati verso l'esterno facevano un
+   intervallo che non c'e'. Entro l'1 % si scrive un numero solo, arrotondato al piu' vicino. */
+const fasciaUnica=(lo,hi)=>lo>0&&hi>0&&Math.abs(hi-lo)<=0.01*hi;
+const fasciaDetta=(lo,hi)=>fasciaUnica(lo,hi)?`<b>${hi<10?fmt(hi,1):fmt(hi,0)}</b>`
+  :`da <b>${oreDellaFascia(lo,true)}</b> a <b>${oreDellaFascia(hi,false)}</b>`;
 /* le schede delle tecniche nella Strategia, dalla prescrizione; senza oggetto il riquadro resta vuoto */
 function mostraTecniche(pr){
   const b=$('rxTecniche'); if(!b) return;
@@ -16807,12 +16814,14 @@ function mostraFascia(pr){
   const ore=oreDellaFascia;
   const mosaico=pr.panels>1?', per tutti i '+pr.panels+' riquadri':'';
   b.hidden=false;
-  b.dataset.tip=(lo!=null&&lo>0?'Da '+fmt(lo,1)+' h, dove ogni canale di «'+p.name+'» arriva alla sua soglia e l\'immagine smette di essere rumore, a '
-      :'Fino a ')+fmt(hi,1)+' h, l\'immagine piena'+mosaico+'. '+
+  b.dataset.tip=(fasciaUnica(lo,hi)
+      ?'Per «'+p.name+'» la soglia e il pieno coincidono, '+fmt(hi,1)+' h'+mosaico+': la tecnica è piena quando luminanza e colore sono ai loro tetti e l\'aggiunta arriva alla sua soglia, e non c\'è un intervallo. '
+      :(lo!=null&&lo>0?'Da '+fmt(lo,1)+' h, dove ogni canale di «'+p.name+'» arriva alla sua soglia e l\'immagine smette di essere rumore, a '
+      :'Fino a ')+fmt(hi,1)+' h, l\'immagine piena'+mosaico+'. ')+
     (pr.roadPicked?'È la tecnica che hai scelto tu.':'È la tecnica che il motore sceglie quando il tempo non manca; con meno ore ne prende una più economica.')+
     ' Il colore del tempo disponibile e delle notti si misura su di lei.';
   b.innerHTML=`<div class="hf-k">Per un buon risultato</div>
-    <div class="hf-v">${lo!=null&&lo>0?'da '+ore(lo,true)+' a ':''}${ore(hi,false)}<span class="u"> h</span></div>
+    <div class="hf-v">${lo!=null&&lo>0?fasciaDetta(lo,hi).replace(/<\/?b>/g,''):ore(hi,false)}<span class="u"> h</span></div>
     <div class="hf-n">${esc(p.name)}${pr.roadPicked?' · scelta da te':''}</div>`;
 }
 /* il campo «In quante notti» prende il colore del tempo disponibile: 'ok', 'warn', 'bad' o niente */
@@ -19216,7 +19225,7 @@ function rxRoadHtml(pr){
           :presa?'<span class="pill p-dim">la prende il motore</span>':''}${
         c.raccomandata?'<span class="pill p-dim">raccomandata</span>':''}</div>`:''}
       ${/* l'ordine si legge come la fascia di sopra: il nome, la fascia, poi in piccolo quando conviene e il pieno */''}
-      ${c.ideal==null||!(c.progetto.floor>0)?'':`<div class="rc-f">da <b>${oreDellaFascia(c.progetto.floor,true)}</b> a <b>${oreDellaFascia(c.progetto.ideal,false)}</b> h</div>`}
+      ${c.ideal==null||!(c.progetto.floor>0)?'':`<div class="rc-f">${fasciaDetta(c.progetto.floor,c.progetto.ideal)} h</div>`}
       ${(c.limiti||[]).filter(l=>l.tipo==='passata_stelle_non_riprendibile').map(l=>
         `<div class="rc-n"><span class="p-warn">${testoStelleNonRiprendibili(l.perche)}</span></div>`).join('')}
       <div class="rc-w">${esc(c.when||'')}</div>
