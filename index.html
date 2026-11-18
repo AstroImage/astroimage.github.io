@@ -852,7 +852,16 @@ td.archcell{max-width:120px}
    Nel riepilogo a destra sarebbe arrivata dopo la scelta, su telefono in fondo a
    tutta la pagina: inutile proprio dove serve. */
 .hero-top{display:flex;gap:var(--s5);align-items:flex-end;flex-wrap:wrap}
-.hero-top > .hero-field{flex:1 1 320px;min-width:0;container-type:inline-size}
+/* La colonna della casella e' una griglia: in alto la fascia e accanto le impostazioni che decidono le ore, sotto
+   l'etichetta e la casella su tutta la larghezza. Misurata con NGC 1514 la colonna va da 254 px (schermo di 320) a 810
+   (1920), e la fascia ne prende 140: da 480 px di colonna le impostazioni stanno accanto alla fascia, sotto i 480 sotto di
+   lei. I riquadri vanno due per due, quattro su una riga da 600 px di striscia: mai uno da solo. */
+.hero-top > .hero-field{flex:1 1 320px;min-width:0;container-type:inline-size;
+  display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--s5);align-items:start}
+.hero-field > .hero-fascia{grid-column:1;grid-row:1}
+.hero-field > .hero-imp{grid-column:1/-1;grid-row:2}
+.hero-field > .hero-lab,.hero-field > .hero-input{grid-column:1/-1}
+@container (min-width:480px){ .hero-field > .hero-imp{grid-column:2;grid-row:1} }
 /* la fascia di ore della tecnica piena, nello spazio sopra la casella che la miniatura lascia vuoto */
 .hero-fascia{display:flex;flex-direction:column;gap:2px;margin-bottom:var(--s4)}
 .hero-fascia[hidden]{display:none}
@@ -860,6 +869,36 @@ td.archcell{max-width:120px}
 .hf-v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;color:var(--fg)}
 .hf-v .u{font-size:13px;font-weight:500;color:var(--dim)}
 .hf-n{font-size:11.5px;color:var(--dim);line-height:1.45}
+/* LE IMPOSTAZIONI CHE DECIDONO LE ORE (18 novembre 2026): un riquadro per cosa, con l'etichetta, il numero e una nota,
+   come la fascia. Il cielo e la camera si scrivono qui (il numero e' il campo); l'ottica e i filtri portano alla loro
+   sezione. In giallo quello che gonfia le ore senza che si veda: un cielo predefinito, una camera calda. */
+.hero-imp{margin-bottom:var(--s4);min-width:0;container-type:inline-size}
+.hero-imp[hidden]{display:none}
+.imp-griglia{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+@container (min-width:600px){ .imp-griglia{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.hero-imp .imp{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;
+  margin:0;padding:6px 10px 7px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-2);
+  color:var(--fg);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s}
+.hero-imp .imp:hover{border-color:var(--dim2)}
+.hero-imp .imp:focus-visible,.hero-imp .imp:focus-within{border-color:var(--acc);outline:none}
+.imp-k{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2)}
+.hero-imp .imp.vai .imp-k::after{content:" \203A";letter-spacing:0}
+/* 16 px e non meno: su iPhone un campo piu' piccolo fa ingrandire la pagina quando lo si tocca */
+.imp-v{display:flex;align-items:baseline;gap:4px;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;
+  line-height:1.3;white-space:nowrap}
+/* il bersaglio da toccare e' il riquadro intero, gia' piu' alto di 44 px: il campo dentro non segue la regola dei 44 */
+.hero-imp .imp-v input[type=number]{width:3.2em;min-height:0;padding:0 1px;margin:0;font:inherit;color:inherit;background:transparent;
+  border:0;border-bottom:1px dashed var(--dim2);border-radius:0;text-align:right;-moz-appearance:textfield;appearance:textfield}
+/* dove il browser lo sa fare, il campo e' largo quanto il numero: niente buco fra «24» e «°C» */
+@supports (field-sizing:content){ .hero-imp .imp-v input[type=number]{width:auto;min-width:1em;field-sizing:content;text-align:left} }
+.hero-imp .imp-v input[type=number]::-webkit-inner-spin-button,
+.hero-imp .imp-v input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.hero-imp .imp-v input[type=number]:focus{border-bottom:1px solid var(--acc)}
+.hero-imp .imp-v input[type=checkbox]{margin:0;padding:0;width:14px;height:14px;align-self:center}
+/* la nota va a capo e non si tronca: su un telefono da 320 px «a −10 °C: da 10 a 18 h» e' proprio quello da leggere */
+.imp-n{align-self:stretch;font-size:11px;color:var(--dim);line-height:1.35;overflow-wrap:anywhere}
+.hero-imp .imp.avviso{border-color:var(--giallo)}
+.hero-imp .imp.avviso .imp-k,.hero-imp .imp.avviso .imp-v,.hero-imp .imp.avviso .imp-n{color:var(--giallo)}
 .hero-prev{flex:0 0 268px;margin:0;position:relative;border-radius:var(--radius-lg);
   overflow:hidden;border:1px solid var(--line);background:var(--sunken)}
 .hero-prev img{display:block;width:100%;height:auto;background:var(--bg3)}
@@ -1405,6 +1444,10 @@ td.archcell{max-width:120px}
               <button type="button" id="rxClear" class="fn fn-cfg clr" hidden
                 data-tip="Svuota il campo e torna all'elenco di cosa conviene riprendere stanotte. Anche con Esc.">Pulisci</button>
             </div>
+            <!-- LE IMPOSTAZIONI CHE DECIDONO LE ORE (18 novembre 2026): accanto alla fascia sullo schermo largo, sotto di lei
+                 sul telefono (la griglia di .hero-field). Stanno dopo la casella perche' la fascia resti subito sopra
+                 l'etichetta; le riempie `mostraLeImpostazioni`. -->
+            <div class="hero-imp" id="rxImpostazioni" role="group" aria-label="Le impostazioni che decidono queste ore" hidden></div>
             </div>
             <figure class="hero-prev" id="rxPrev" hidden></figure>
           </div>
@@ -16809,7 +16852,8 @@ function mostraTecniche(pr){
 function mostraFascia(pr){
   const b=$('rxFascia'); if(!b) return;
   const p=tecnicaPiena(pr);
-  if(!p){ b.hidden=true; b.innerHTML=''; b.removeAttribute('data-tip'); return; }
+  if(!p){ b.hidden=true; b.innerHTML=''; b.removeAttribute('data-tip'); mostraLeImpostazioni(null); return; }
+  mostraLeImpostazioni(p);
   const lo=p.progetto.floor, hi=p.progetto.ideal;
   const ore=oreDellaFascia;
   const mosaico=pr.panels>1?', per tutti i '+pr.panels+' riquadri':'';
@@ -16823,6 +16867,136 @@ function mostraFascia(pr){
   b.innerHTML=`<div class="hf-k">Per un buon risultato</div>
     <div class="hf-v">${lo!=null&&lo>0?fasciaDetta(lo,hi).replace(/<\/?b>/g,''):ore(hi,false)}<span class="u"> h</span></div>
     <div class="hf-n">${esc(p.name)}${pr.roadPicked?' · scelta da te':''}</div>`;
+}
+/* LE IMPOSTAZIONI CHE DECIDONO LE ORE, ACCANTO ALLA FASCIA (18 novembre 2026, Alessandro: «metterei accanto alla fascia
+   tutte quelle che sono i numeri delle impostazioni che possono cambiare le ore, tipo SQM di riferimento … da vederlo a
+   colpo d'occhio in fase di strategia e prescrizione», e poi «dovrebbero essere tasti operativi cliccabili e
+   modificabili»). Misurato su NGC 1514 a Borno col banco di serie, una cosa alla volta (la fascia della tecnica piena):
+     - il cielo: SQM 20,8 da 10 a 17,6 h, SQM 19 da 20 a 41, SQM 18 da 38 a 82;
+     - la camera: a −10 °C da 10 a 17,6 h, a 0 °C da 11,4 a 20,6, a +10 °C da 16,4 a 31,1, a +24 °C da 49,9 a 101,8, non
+       raffreddata (20 °C assunti) da 33,9 a 68;
+     - l'ottica: col riduttore 0,8× da 7,9 a 13,7 h;
+     - i filtri: a 3 nm da 10 a 17,6 h, a 7 nm da 12,2 a 23, a 12 nm da 16 a 31,5.
+   Non le cambiano il seeing, il binning, la data, le notti utili e la Luna di riferimento: non ci sono. I riquadri seguono
+   la luce, dal cielo al sensore. Ognuno e' una seconda porta sullo stesso campo, non una copia: il cielo scrive nel campo
+   SQM delle Condizioni (con lo stesso evento, quindi con le stesse conseguenze), la camera in «Raffredda a» del setup per
+   N.I.N.A. (`setCap`); l'ottica e i filtri portano alla loro sezione, perche' cambiarli trascina altro: campo, matrice,
+   ruota. In giallo quello che gonfia le ore senza farsi vedere: il cielo predefinito, che non e' il tuo, e la camera che
+   sta sopra lo zero quando il suo buio pesa sulle ore (`RXFREDDO`). Niente si corregge da solo: magari e' voluto.
+   Sorvegliato da tools/gate-impostazioni-delle-ore.js. */
+const BUIO_CHE_SI_DICE=1.1;           // la camera e' in giallo se le ore crescono almeno di un decimo rispetto al freddo di serie
+const NOMI_DELLE_BANDE_STRETTE={Ha:'Hα',OIII:'OIII',SII:'SII'};
+const temperaturaDetta=t=>(t>0?'+':t<0?'−':'')+fmt(Math.abs(t),0)+' °C';
+const nmDetti=x=>fmt(x,Math.abs(x-Math.round(x))>1e-9?1:0);
+function mostraLeImpostazioni(p){
+  const b=$('rxImpostazioni'); if(!b) return;
+  /* chi sta scrivendo in un riquadro non perde il campo: quando conferma, la sua modifica rifa' tutto */
+  const a=document.activeElement;
+  if(a&&a.tagName==='INPUT'&&b.contains(a)) return;
+  let dv=null; try{ dv=p?derive(cfgMotore()):null; }catch(e){ dv=null; }
+  if(!p||!dv||!SITE){ b.hidden=true; b.innerHTML=''; return; }
+  const r=[];
+  /* il cielo */
+  { const sel=$('site'), o=sel&&sel.selectedOptions&&sel.selectedOptions[0];
+    const sito=o&&sel.value!=='__custom'?o.textContent:'sito personalizzato';
+    const aMano=$('sqm').dataset.src==='manuale', bo=bortleFor(SITE.sqm);
+    const tip=(SITE_DEFAULT?'Nessun sito scelto: questo è il cielo del primo sito dell\'elenco, non il tuo, e le ore valgono per un altro posto. ':'')+
+      'Il cielo del sito allo zenit, in una notte buona e senza Luna (Bortle '+bo.n+'): è il numero che sposta di più le ore. '+
+      (aMano?'L\'hai scritto tu. ':'È stimato dalle coordinate: se hai una misura vera, scrivila. ')+
+      'Scrivilo qui o nelle Condizioni: è lo stesso campo, e le ore si rifanno subito.';
+    r.push(`<label class="imp${SITE_DEFAULT?' avviso':''}" data-imp="cielo" data-tip="${esc(tip)}">
+      <span class="imp-k">Cielo</span>
+      <span class="imp-v">SQM <input type="number" step="0.1" value="${perLaMacchina(SITE.sqm,2)}" aria-label="SQM del cielo allo zenit"
+        onchange="impostaIlCielo(this.value,this)"></span>
+      <span class="imp-n">${SITE_DEFAULT?'cielo predefinito, non il tuo':esc(sito)+' · '+(aMano?'scritto da te':'stimato')}</span></label>`); }
+  /* l'ottica */
+  { const tel=(DB.telescopes||[]).find(x=>x.id===CFG.tel), rid=+CFG.red;
+    const nome=(tel?tel.name:String(CFG.tel))+(rid>0&&Math.abs(rid-1)>1e-6?' · riduttore '+fmt(rid,2)+'×':'');
+    const tip='Il rapporto focale decide quanta luce di un oggetto esteso cade su ogni pixel: più è aperto, meno ore. '+
+      nome+', '+fmt(dv.F,0)+' mm, f/'+fmt(dv.fRatio,2)+'. Telescopio, riduttore e camera si cambiano in Strumentazione: premi qui per andarci.';
+    r.push(`<button type="button" class="imp vai" data-imp="ottica" data-tip="${esc(tip)}" onclick="go('strumentazione')">
+      <span class="imp-k">Ottica</span><span class="imp-v">f/${fmt(dv.fRatio,2)}</span><span class="imp-n">${esc(nome)}</span></button>`); }
+  /* i filtri della tecnica: di quelli a banda stretta la larghezza decide quanto cielo passa; una tecnica tutta a banda
+     larga lo dice, e il riquadro porta ai filtri lo stesso */
+  { const canali=canaliDellaTecnica(p);
+    const f=canali.filter(c=>NOMI_DELLE_BANDE_STRETTE[c]).map(c=>({c,f:filterFor(c,dv.c)})).filter(x=>x.f&&x.f.fwhm_nm>0);
+    const larghe=canali.filter(c=>!NOMI_DELLE_BANDE_STRETTE[c]);
+    if(f.length){
+      const w=f.map(x=>+x.f.fwhm_nm), lo=Math.min(...w), hi=Math.max(...w);
+      const tip='La larghezza dei filtri a banda stretta di «'+p.name+'»: '+f.map(x=>x.f.name||x.f.id).join(', ')+
+        '. Un filtro più largo lascia passare più cielo, e le ore crescono. I filtri si cambiano nella sezione Filtri: premi qui per andarci.';
+      r.push(`<button type="button" class="imp vai" data-imp="filtri" data-tip="${esc(tip)}" onclick="go('filtri')">
+        <span class="imp-k">Filtri</span><span class="imp-v">${nmDetti(lo)}${hi>lo?'–'+nmDetti(hi):''} nm</span>
+        <span class="imp-n">${esc(f.map(x=>NOMI_DELLE_BANDE_STRETTE[x.c]+(hi>lo?' '+nmDetti(+x.f.fwhm_nm):'')).join(' · '))}</span></button>`);
+    } else if(larghe.length){
+      const tip='«'+p.name+'» si riprende coi filtri a banda larga ('+larghe.join(', ')+'): passa tutto il cielo, e conta più che mai quanto è buio. I filtri si cambiano nella sezione Filtri: premi qui per andarci.';
+      r.push(`<button type="button" class="imp vai" data-imp="filtri" data-tip="${esc(tip)}" onclick="go('filtri')">
+        <span class="imp-k">Filtri</span><span class="imp-v">banda larga</span><span class="imp-n">${esc(larghe.join(' · '))}</span></button>`);
+    } }
+  /* la camera: la temperatura del sensore decide il buio */
+  if(dv.buio&&dv.buio.temperatura){
+    const tt=dv.buio.temperatura, raffredda=NINACAP.raffredda!==false;
+    const cam=(DB.cameras||[]).find(x=>x.id===CFG.cam), nomeCam=cam?cam.name:String(CFG.cam);
+    const fr=RXFREDDO&&RXTG&&RXFREDDO.tg===RXTG.id&&RXFREDDO.road===p.id?RXFREDDO:null;
+    const avviso=!!(fr&&fr.fattore>=BUIO_CHE_SI_DICE);
+    const diSerie=fr?fasciaDetta(fr.floor,fr.ideal).replace(/<\/?b>/g,'')+' h':'';
+    const profilo=NINACAP.tempCDa?String(NINACAP.tempCDa):'';
+    let tip=raffredda
+      ? 'La temperatura a cui la sequenza raffredda il sensore: decide il buio, e il buio si somma al cielo. '
+      : 'La sequenza non raffredda la camera: si assume il sensore a '+temperaturaDetta(tt.valore)+'. ';
+    if(avviso) tip+='A '+temperaturaDetta(tt.valore)+' il buio'+(fr.buioDiSerie>0?' è '+fmt(fr.buio/fr.buioDiSerie,0)+' volte quello a '+temperaturaDetta(fr.aC)+';':'')+
+      ' su queste ore pesa: sono circa '+fmt(fr.fattore,1)+' volte quelle che servirebbero a '+temperaturaDetta(fr.aC)+', la temperatura di serie, cioè '+diSerie+'. ';
+    tip+=raffredda
+      ? (profilo?'Viene dal profilo di N.I.N.A. «'+profilo+'»: puoi correggerla lì, nel pannello Camera, e rileggere il banco, oppure scriverla qui. '
+          :avviso?'Se la camera raffredda davvero a '+temperaturaDetta(tt.valore)+' va bene così; se no scrivi qui la temperatura vera. ':'')+
+        'È lo stesso campo di «Raffredda a» nel setup per N.I.N.A., e va anche nelle sequenze che mandi.'
+      : 'Spunta la casella se la camera si raffredda: la temperatura è quella di «Raffredda a» nel setup per N.I.N.A.';
+    const nota=avviso?'a '+temperaturaDetta(fr.aC)+': '+diSerie:raffredda?esc(nomeCam):'si assumono '+temperaturaDetta(tt.valore);
+    r.push(raffredda
+      ? `<label class="imp${avviso?' avviso':''}" data-imp="camera" data-tip="${esc(tip)}"><span class="imp-k">Camera</span>
+          <span class="imp-v"><input type="number" step="1" value="${perLaMacchina(tt.valore,1)}" aria-label="temperatura a cui la sequenza raffredda la camera, in gradi"
+            onchange="impostaIlFreddo(this.value,this)">°C</span><span class="imp-n">${nota}</span></label>`
+      : `<div class="imp${avviso?' avviso':''}" data-imp="camera" data-tip="${esc(tip)}"><span class="imp-k">Camera</span>
+          <span class="imp-v"><input type="checkbox" aria-label="la sequenza raffredda la camera" onchange="setCap('raffredda',this.checked)">non raffreddata</span>
+          <span class="imp-n">${nota}</span></div>`);
+  }
+  b.innerHTML=`<div class="imp-griglia">${r.join('')}</div>`;
+  b.hidden=false;
+}
+/* le due porte: lo stesso campo delle Condizioni, con lo stesso evento, e la stessa `setCap` del setup per N.I.N.A.
+   Confermato il numero (Invio, o uscendo dal campo) il campo lascia il fuoco: chi scrive e' protetto finche' scrive, non
+   dopo. Con Invio il fuoco restava, e i riquadri non si ridisegnavano: la fascia diceva +24 °C e la camera non era gialla. */
+function impostaIlCielo(v,campo){
+  if(campo) campo.blur();
+  const x=parseFloat(String(v).replace(',','.')), i=$('sqm');
+  if(!i||!isFinite(x)){ mostraLeImpostazioni(tecnicaPiena(RXPR)); return; }
+  i.value=String(x); i.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function impostaIlFreddo(v,campo){
+  if(campo) campo.blur();
+  const x=parseFloat(String(v).replace(',','.'));
+  if(!isFinite(x)){ mostraLeImpostazioni(tecnicaPiena(RXPR)); return; }
+  setCap('tempC',x);
+}
+/* LE ORE COL FREDDO DI SERIE (18 novembre 2026). Una camera che la sequenza tiene sopra lo zero ha un buio che puo' pesare
+   piu' del cielo: sul banco di Alessandro, col profilo di N.I.N.A. a +24 °C, NGC 1514 chiedeva da 50 a 103 h, e a −10 °C
+   ne chiede da 10 a 18. Il motore faceva il conto giusto e non lo diceva. Qui si rifa' la stessa prescrizione con la camera
+   alla temperatura di serie (`CAP_DEF.tempC`), solo quando la temperatura del sensore e' sopra lo zero (anche perche' la
+   sequenza non raffredda): il riquadro della camera la confronta con la fascia. */
+function oreAlFreddoDiSerie(t,dv,np,notti,opz,pr){
+  const tt=dv&&dv.buio&&dv.buio.temperatura;
+  if(!tt||!(tt.valore>0)) return null;
+  const p=tecnicaPiena(pr); if(!p||!(p.progetto&&p.progetto.ideal>0)) return null;
+  try{
+    const cfg=cfgMotore(); cfg.raffreddamento={raffredda:true,tempC:CAP_DEF.tempC};
+    const dvF=derive(cfg);
+    const eF=MOTORE.scelta.evaluate(t,dvF,SITE,np,STATE,covIntent());
+    const r=MOTORE.scelta.prescriviSuCapacita(eF,dvF,SITE,notti,opz);
+    const q=r&&r.pr&&(r.pr.roadChoices||[]).find(c=>c.id===p.id);
+    if(!q||!(q.progetto&&q.progetto.ideal>0)) return null;
+    return {tg:t.id,road:p.id,daC:tt.valore,aC:CAP_DEF.tempC,floor:q.progetto.floor,ideal:q.progetto.ideal,
+      fattore:p.progetto.ideal/q.progetto.ideal,buio:dv.buio.e_pixel_s,buioDiSerie:dvF.buio?dvF.buio.e_pixel_s:null};
+  }catch(e){ return null; }
 }
 /* il campo «In quante notti» prende il colore del tempo disponibile: 'ok', 'warn', 'bad' o niente */
 function coloraLeNotti(stato){
@@ -17197,6 +17371,7 @@ let RXCOV=null;                   // l'ultima copertura risolta: soggetto e prog
 let RXNIGHT=null;                 // la notte risolta: la usano barra, scheda e piano
 let RXPR=null, RXDV=null;         // ultima prescrizione e ultima catena derivata.
 let RXARGS=null;                  // gli ingressi dell'ultima prescrizione, per contare le notti che bastano
+let RXFREDDO=null;                // le ore della stessa tecnica col freddo di serie, se la camera sta sopra lo zero
 let RXTG=null;                    // il bersaglio a cui si riferiscono: serve a chi
                                   // deve offrire una scelta che vale solo per lui.
                                   // Esistono perche' il riepilogo laterale LEGGA i
@@ -17477,6 +17652,8 @@ function renderRx(np){
   const rxd=MOTORE.scelta.prescriviSuCapacita(e,dv,SITE,WA.nights.slice(0,NN),opzRx);
   RXCAP=rxd.capacita>0?rxd.capacita:RXAVAIL;
   const pr=rxd.pr;
+  /* la stessa prescrizione col freddo di serie, se il sensore sta sopra lo zero: la legge il riquadro della camera */
+  RXFREDDO=oreAlFreddoDiSerie(t,dv,npRx,WA.nights.slice(0,NN),opzRx,pr);
   RXCOV=ppRx;
   RXPR=pr; RXTG=t;
   renderPreview(t,dv);            // il campo che questa configurazione inquadra
@@ -19919,6 +20096,8 @@ function applicaBancoNina(passata){
   let notaPeriferiche='';
   if(b.periferiche&&Object.keys(b.periferiche.capacita).length){
     NINACAP=Object.assign({},NINACAP,b.periferiche.capacita);
+    /* da quale profilo viene la temperatura: la dice il riquadro della camera accanto alla fascia (18 novembre 2026) */
+    if(b.periferiche.capacita.tempC!=null) NINACAP.tempCDa=b.profilo||'N.I.N.A.';
     try{ localStorage.setItem('ap_ninacap',JSON.stringify(NINACAP)); }catch(e){}
     notaPeriferiche='; le periferiche sono quelle del profilo';
   }
@@ -20864,6 +21043,8 @@ let NINACAP=loadCap();
 function setCap(k,v){
   NINACAP[k]=(typeof CAP_DEF[k]==='boolean')?!!v
     :(v===''||v==null||!isFinite(+v))?CAP_DEF[k]:+v;
+  /* una temperatura scritta a mano non e' piu' quella del profilo di N.I.N.A. */
+  if(k==='tempC') delete NINACAP.tempCDa;
   try{localStorage.setItem('ap_ninacap',JSON.stringify(NINACAP));}catch(e){}
   refresh();
 }
