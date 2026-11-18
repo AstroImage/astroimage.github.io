@@ -746,6 +746,18 @@ html[data-night="1"] .modesel button.on{color:#1a0000}
 .pnprov>b{display:block;color:var(--fg);margin-bottom:4px}
 .pnprovr{margin:2px 0}
 .pnprovr b{color:var(--fg)}
+/* la sequenza per N.I.N.A. nella testa dei Risultati: una riga per Smart Exposure, le celle come nel Sequencer */
+.ninaseq{margin:10px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;line-height:1.5}
+.ninaseq>b{color:var(--fg)}
+.nsq-r{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:6px 0;border-top:1px solid var(--line)}
+.ninaseq>.nsq-r:first-of-type{margin-top:6px}
+.nsq-n{color:var(--fn-exp);font-weight:600;min-width:8.5em}
+.nsq-c{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+.nsq-c i{font-style:normal;color:var(--muted)}
+.nsq-c b{font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums;padding:0 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg2)}
+.nsq-piede{margin-top:6px}
+/* in fila anche sul telefono: misurata da 320 a 1600 px, la fila non e' mai piu' alta di due celle per riga (158 contro
+   182 px a 320) e non sovrappone niente; la griglia a due colonne nel riquadro di 180 px sovrapponeva le celle */
 /* lo stato della brillanza: qualifica le ore, quindi sta con loro e non nel pannello delle fonti */
 .pnstato{padding-top:3px;line-height:1.45}
 
@@ -4892,8 +4904,11 @@ function expectFor(tg,refHours){
    - una tecnica i cui numeri la scheda non dichiara non si prezza inventandoli: esce NON
      DISPONIBILE con il motivo. La banda larga su una nebulosa a emissione e' il caso di oggi:
      l'RGB della scheda e' dimensionato per le stelle, e la scala del soggetto arriva col passo 6;
-   - un canale che la scheda mette apposta in nessuna strada (`road: []`) non lo usa nemmeno la
-     generazione, e uno che la scheda non usa (`useful` 0) nemmeno;
+   - una riga che la scheda mette apposta in nessuna strada (`road: []`, il SII sconsigliato di
+     Sh2-155) non la usa nemmeno la generazione, e un canale che la scheda non usa (`useful` 0)
+     nemmeno. La banda larga del soggetto no: la L viva in nessuna strada scritta e' la luminanza
+     che solo la LRGB generata usa, dove le strade scritte colorano soltanto le stelle e la L non ci
+     puo' stare (le planetarie, 18 novembre 2026). Sorvegliato da tools/gate-banda-larga-planetarie.js;
    - su una matrice, dove la L e l'RGB sono una ripresa sola, la banda larga e' una voce sola;
    - una classe non misurata non riceve niente, e lo dice.
 
@@ -9301,7 +9316,9 @@ function oreDallaFotometria(tg,dv,b,v,arch,sqm,tsub,modo){
       ...(utile?{}:{motivoUtile:'il fondo locale non è misurato',motivoUtileCodice:'fondo_non_misurato'}),
       elemento:{fwhm:el.fwhm,area:el.area,scala:'elemento'},snr:PAVIMENTO_SNR,alPiu:limite,sqm};
   }
-  if(strada==='riga') return famiglia(RIGHE_CON_DATO[b]||b==='SII'?'planetaria_dopo_il_cielo':'senza_misura');
+  /*  La L delle planetarie (18 novembre 2026) e' di famiglia per la stessa ragione delle righe: i suoi numeri vengono
+      dall'Hα della classe, non dalla fotometria dell'oggetto, che aspetta il cielo. */
+  if(strada==='riga') return famiglia(RIGHE_CON_DATO[b]||b==='SII'||b==='L'?'planetaria_dopo_il_cielo':'senza_misura');
   return famiglia(strada==='stelle_risolte'?'stelle_risolte':'senza_misura');
 }
 /*  Da dove vengono le ore di un canale, in una riga per la pagina e per gli strumenti. I codici viaggiano nel budget
@@ -17462,6 +17479,71 @@ function bloccoDellaProvenienza(pr,e){
   } }
   return righe.length?`<div class="pnprov small"><b>Da dove vengono le ore</b>${righe.join('')}</div>`:'';
 }
+/*  LA SEQUENZA PER N.I.N.A. NELLA TESTA DEI RISULTATI (Alessandro, 18 novembre 2026: «al posto della parte indicata
+    dalla freccia … vi fosse invece la vera sequenza che poi andra' a popolare il sequencer in NINA»). Al posto di «Da
+    dove vengono le ore», che si ripeteva canale per canale e adesso sta dentro «Posa e numero di sub» (`rxExpoHtml`), le
+    Smart Exposure della prima notte del piano, quella che «Manda a N.I.N.A.» manda: lette dal file che si manda
+    (`leSmartExposure` sul risultato di `ninaRender`), non rifatte, con le celle e i nomi del Sequencer. «Ordine» resta
+    dov'e' («sono utili»). Sorvegliato da tools/gate-sequenza-nei-risultati.js, che prende il file dall'esportazione su
+    disco e lo confronta riga per riga. */
+/*  Gli argomenti della sequenza di una notte: gli stessi pezzi che il servizio manda al Ponte — il modello e' uno solo,
+    e chi lo guarda vede le stesse cose. Li usano «Manda a N.I.N.A.» e la sequenza nella testa dei Risultati. */
+function argomentiDellaNotte(nt,sp){
+  const {pl,expo,t,dv,rot,off}=RXPLAN;
+  return [{n:nt.n,date:nt.date,from:nt.from,to:nt.to,availH:nt.availH,subs:sp.subs},pl,t,dv,SITE,
+    {rot,off,filterNames:nomiPerLaSequenza(),cap:NINACAP,ditherEvery:OPSET.ditherEvery,
+     poseCanale:MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET), serieCorta:MOTORE.posa.pezziDellaSerieCorta(expo), clockH:sp.clockH,
+     name:`${(t.names&&t.names[0])||t.id} — ASTROFOTO notte ${nt.n} (${fmtDate(nt.date)})`}];
+}
+/*  Le Smart Exposure di un file di N.I.N.A., nell'ordine del Sequencer: quello che arriva, campo per campo. */
+function leSmartExposure(root){
+  const tipo=(o,t)=>!!o&&typeof o.$type==='string'&&o.$type.indexOf(t)===0;
+  const out=[];
+  const giro=o=>{
+    if(!o||typeof o!=='object') return;
+    if(tipo(o,NN+'.SequenceItem.Imaging.SmartExposure,')){
+      const dentro=(o.Items&&o.Items.$values)||[], trig=(o.Triggers&&o.Triggers.$values)||[];
+      const te=dentro.find(x=>tipo(x,NN+'.SequenceItem.Imaging.TakeExposure,'))||{};
+      const sf=dentro.find(x=>tipo(x,NN+'.SequenceItem.FilterWheel.SwitchFilter,'));
+      const dt=trig.find(x=>tipo(x,NN+'.Trigger.Guider.DitherAfterExposures,'));
+      out.push({n:o.Iterations,sec:te.ExposureTime,tipo:te.ImageType||null,bin:te.Binning?te.Binning.X+'×'+te.Binning.Y:null,
+        gain:te.Gain,offset:te.Offset,filtro:sf?sf.ComboBoxText:null,dither:dt?dt.AfterExposures:null});
+      return;
+    }
+    for(const v of Object.values(o)) giro(v);
+  };
+  giro(root);
+  return out;
+}
+function sequenzaPerNinaHtml(){
+  if(!RXPLAN||!RXPLAN.pl||!RXPLAN.pl.ok||!RXPLAN.pl.nights||!RXPLAN.pl.nights.length) return '';
+  const {pl,expo}=RXPLAN, nt=pl.nights[0];
+  let sp,m,se;
+  try{
+    sp=MOTORE.posa.subPlan(nt.blocks,expo,Object.assign({},OPSET,{night:nt.n,notti:pl.nights}));
+    if(!sp.subs.length) return '';
+    m=sequenceModel.apply(null,argomentiDellaNotte(nt,sp));
+    se=leSmartExposure(ninaRender(m));
+  }catch(e){ return ''; }
+  if(!se.length) return '';
+  const n=x=>Number.isInteger(+x)?String(+x):fmt(+x,1);
+  const cella=(k,v)=>`<span class="nsq-c"><i>${k}</i><b>${esc(v)}</b></span>`;
+  const righe=se.map((s,i)=>{
+    const b=m.blocchi[i]||{};
+    /* senza ruota il file non cambia filtro: lo si mette a mano, e la sequenza si ferma a chiederlo */
+    const filtro=s.filtro!=null?s.filtro:(b.filtro||'?')+' a mano';
+    return `<div class="nsq-r"${b.ruolo==='nucleo'?' data-ruolo="nucleo"':''}><span class="nsq-n">Smart Exposure${b.ruolo==='nucleo'
+      ?` <span class="pill p-warn" style="font-size:10px" data-tip="${esc('La serie corta del nucleo, da fondere in HDR con la serie lunga dello stesso filtro.')}">nucleo</span>`:''}</span>`
+      +cella('#',n(s.n))+cella('Tempo',n(s.sec)+' s')+cella('Tipo',s.tipo||'—')+cella('Binning',s.bin||'—')
+      +cella('Guadagno',s.gain===-1?'della camera':n(s.gain))+cella('Offset',s.offset===-1?'della camera':n(s.offset))
+      +cella('Filtro',filtro)+(s.dither!=null?cella('Dither ogni # fotogrammi',n(s.dither)):'')+'</div>';
+  }).join('');
+  const altre=pl.nights.length>1?` Le altre ${pl.nights.length-1===1?'notte ha':pl.nights.length-1+' notti hanno'} la loro nel piano, col tasto N.I.N.A.`:'';
+  return `<div class="ninaseq small"><b>La sequenza per N.I.N.A.</b> <span class="muted">notte ${nt.n}, ${esc(fmtDate(nt.date))}: le Smart
+      Exposure che «Manda a N.I.N.A.» carica nel Sequencer</span>${righe}
+    <div class="nsq-piede muted">${hmDaSecondi(se.reduce((a,s)=>a+(+s.sec)*(+s.n),0))} di integrazione · ${hm(sp.clockH)} di orologio con
+      scarico e dithering${m.cap&&m.cap.raffredda?' · la camera raffredda a '+temperaturaDetta(+m.cap.tempC):''}.${altre}</div></div>`;
+}
 function oreScala(h,riquadri,scala,cifre){
   const t=fmt(h,cifre==null?1:cifre)+' h';
   if(!(riquadri>1)) return t;
@@ -17989,7 +18071,8 @@ function renderRx(np){
           ${Math.round(SITE.clearFrac*100)}% di notti serene`:'la finestra utile è troppo corta da qui'}</span>
         ${pr.avanzanoDaDire!=null?`<span class="pill p-dim" data-tip="Oltre la saturazione le ore in più rendono pochissimo: meglio spostarle su un altro oggetto.">ti avanzano ${fmt(pr.avanzanoDaDire,1)} h</span>`:''}
         ${arresti?`<div class="arresti small muted">${arresti}</div>`:''}</div>
-      ${bloccoDellaProvenienza(pr,e)}
+      ${/* la sequenza della prima notte al posto della provenienza, che va in «Posa e numero di sub»; senza piano, la
+           provenienza resta qui */ piano.strategia?sequenzaPerNinaHtml():bloccoDellaProvenienza(pr,e)}
       ${drop.length?`<div class="warnbox" style="margin-top:10px">
         Con queste ore <b>${drop.map(g=>esc(nomeGruppo(g))).join(' e ')}</b> ${drop.length>1?'restano':'resta'} fuori.
         ${(()=>{const w=drop.map(g=>e.budget[g.bands[0]]&&e.budget[g.bands[0]].warning).filter(Boolean)[0];
@@ -19111,7 +19194,7 @@ function rxPlanHtml(pr,e,dv,t){
      diagnostica (`renderRx`). Si sposta, non si ridisegna. Sorvegliato da tools/gate-ordine-dei-risultati.js. */
   return {
     /* la tecnica di ripresa sta nella Strategia dal 17 novembre 2026 (`mostraTecniche`) */
-    strategia:rxStrategyHtml(expo,dv,pr,panels)+rxExpoHtml(expo,dv,pr),
+    strategia:rxStrategyHtml(expo,dv,pr,panels)+rxExpoHtml(expo,dv,pr,e),
     cuore:head+mosNote+advice+modeSel+rows,
     dettaglio:`<p class="small muted" style="margin:14px 0 8px">${modeNote}
       Le ore per canale <b>non cambiano</b> in nessuna delle due, né con il numero di notti:
@@ -19576,7 +19659,7 @@ function perCheDellaSerieHtml(q){
 }
 /* La posa, con i tre tetti scoperti. Non basta dire "300 s": serve dire perché
    non 600, e cosa stai pagando per non essere arrivato al limite del cielo. */
-function rxExpoHtml(expo,dv,pr){
+function rxExpoHtml(expo,dv,pr,e){
   const rows=Object.keys(expo).filter(k=>k!=='__modes'&&k!=='__hdr').map(b=>{
     const x=expo[b], e=x.ex;
     const cap=e.tettoDiClasse;
@@ -19717,6 +19800,8 @@ function rxExpoHtml(expo,dv,pr){
     <div class="body"><table class="expo"><thead><tr>
       <th>canale</th><th>posa</th><th>guadagno</th><th></th><th>totale</th>
       <th>tetti</th><th>efficienza</th><th></th></tr></thead><tbody>${rows}${hdrRow}</tbody></table>
+    ${/* da dove vengono le ore: soglia, utile, tetto e provenienza per canale, qui dal 18 novembre 2026 (nella testa
+         dei Risultati c'e' la sequenza per N.I.N.A.) */ bloccoDellaProvenienza(pr,e)}
     <p class="small" style="margin-top:8px">${why}</p>
     <p class="small muted" style="margin-top:6px">Allungare la posa conviene finché rende:
       la frazione del limite del cielo e la frazione di notte che finisce nei fotoni crescono con
@@ -20573,11 +20658,8 @@ async function mandaANina(notte){
   if(!sp.subs.length){ dillo('<div class="warnbox">Questa notte non ha pose da mandare.</div>'); return; }
   /* La notte porta anche il proprio tempo: la sera e i due istanti utili. Prima qui
      passava un numero e delle pose, e la data restava indietro. */
-  const args=[{n:nt.n,date:nt.date,from:nt.from,to:nt.to,availH:nt.availH,subs:sp.subs},pl,t,dv,SITE,
-    {rot,off,filterNames:nomiPerLaSequenza(),cap:NINACAP,ditherEvery:OPSET.ditherEvery,
-     /* gli stessi pezzi che il servizio manda al Ponte: il modello e' uno solo, e chi lo guarda vede le stesse cose */
-     poseCanale:MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET), serieCorta:MOTORE.posa.pezziDellaSerieCorta(expo), clockH:sp.clockH,
-     name:`${(t.names&&t.names[0])||t.id} — ASTROFOTO notte ${nt.n} (${fmtDate(nt.date)})`}];
+  /* gli stessi argomenti della sequenza nella testa dei Risultati (`argomentiDellaNotte`) */
+  const args=argomentiDellaNotte(nt,sp);
   const root=ninaSequence.apply(null,args);
   const modello=sequenceModel.apply(null,args);
   const chk=MOTORE.esporta.ninaCheck(root);

@@ -479,13 +479,20 @@
       "hoo",
       "sho"
      ],
-     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
+     "soggetto": {
+      "floor": 0.5,
+      "useful": 1.5,
+      "saturates": 3,
+      "source": "il colore della nebulosa alla profondità della L, SNR 5 per filtro in 2×2 elementi (la soglia di Rose, come per le galassie), al riferimento costa 9′, 45′ e 1,9 h: meno del colore delle stelle, che gli stessi fotogrammi devono portare, e valgono i numeri delle stelle (18 novembre 2026)"
+     }
     },
     "L": {
-     "floor": 0,
-     "useful": 0,
-     "saturates": 0,
-     "note": "Non previsto per questo archetipo."
+     "floor": 0.25,
+     "useful": 1.2,
+     "saturates": 3,
+     "road": [],
+     "source": "la profondità che compra l'Hα della classe, in banda larga (Alessandro, 17 e 18 novembre 2026: le ore della banda larga quando riprende la nebulosa). Al riferimento, Tecnosky 115 0,80× e 2600MM a SQM 21,3, l'Hα da 3 nm porta a SNR 12 nell'elemento 292, 125 e 78 R in 0,5, 1,5 e 3 h; la L ci arriva in 0,25, 1,2 e 3 h coi fotoni di Hα, Hβ e Hγ (caso B) e dell'[O III] 5007 e 4959 (rapporto di Acker, mediana della classe 3,56: M27, NGC 1514, NGC 2392). Il [N II] non è contato: le ore sono un massimo. In nessuna strada scritta: la usa la LRGB generata. AstroBin, 18 novembre 2026: le immagini mono solo in banda larga, riportate al riferimento con la loro apertura e il loro cielo, chiedono 2,5 h di mediana in tutto (51 immagini), e alla L ne danno 0,37."
     }
    },
    "default_confidence": "bassa",
@@ -583,13 +590,20 @@
      "saturates": 3,
      "scala": "stelle",
      "road": "default",
-     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni."
+     "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
+     "soggetto": {
+      "floor": 2.6,
+      "useful": 5,
+      "saturates": 10,
+      "source": "il colore della nebulosa alla profondità della L, SNR 5 per filtro in 2×2 elementi (la soglia di Rose, come per le galassie), al riferimento: 2,6, 5 e 10 h, di cui il rosso 1,7, 3,3 e 6,7 h, perché vede solo l'Hα (il [N II] non è contato). Sopra il colore delle stelle (18 novembre 2026)"
+     }
     },
     "L": {
-     "floor": 0,
-     "useful": 0,
-     "saturates": 0,
-     "note": "Non previsto per questo archetipo."
+     "floor": 9.7,
+     "useful": 19,
+     "saturates": 38,
+     "road": [],
+     "source": "la profondità che compra l'Hα della classe, in banda larga (Alessandro, 17 e 18 novembre 2026: le ore della banda larga quando riprende la nebulosa). Al riferimento, Tecnosky 115 0,80× e 2600MM a SQM 21,3, l'Hα da 3 nm porta a SNR 12 nell'elemento 78, 56 e 39 R in 3, 5 e 9 h; la L ci arriva in 9,7, 19 e 38 h coi fotoni di Hα, Hβ e Hγ (caso B) e dell'[O III] 5007 e 4959 (rapporto di Acker, mediana della classe 1,48: M76, Abell 21, 33 e 61). Il [N II] non è contato: le ore sono un massimo. In nessuna strada scritta: la usa la LRGB generata. AstroBin, 18 novembre 2026: le immagini mono solo in banda larga, riportate al riferimento con la loro apertura e il loro cielo, chiedono 8,7 h di mediana in tutto (45 immagini, quasi tutte di M76, M97 e NGC 7293, più brillanti della classe), e alla L ne danno 0,39."
     }
    },
    "default_confidence": "bassa",
@@ -2159,6 +2173,20 @@
       "sho"
      ],
      "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
+     "confidence": "bassa",
+     "soggetto": {
+      "floor": 0.5,
+      "useful": 1.5,
+      "saturates": 3,
+      "source": "il colore della nebulosa alla profondità della L, SNR 5 per filtro in 2×2 elementi, al riferimento costa 9′, 44′ e 1,8 h: meno del colore delle stelle, che gli stessi fotogrammi devono portare, e valgono i numeri delle stelle (18 novembre 2026)"
+     }
+    },
+    "L": {
+     "floor": 0.2,
+     "useful": 0.93,
+     "saturates": 2.3,
+     "road": [],
+     "source": "come la classe delle planetarie brillanti, col rapporto [O III]/Hα misurato su M27, 4,22 (Acker 1992): alla profondità che compra l'Hα della scheda, 292, 125 e 78 R, la L ci arriva al riferimento in 0,2, 0,93 e 2,3 h. Il [N II] non è contato: le ore sono un massimo. In nessuna strada scritta: la usa la LRGB generata (18 novembre 2026)",
      "confidence": "bassa"
     }
    },
@@ -2263,13 +2291,20 @@
      "road": "hoo_rgbstars",
      "note": "Obbligatorio per le stelle: campo del Cigno",
      "source": "criterio unico delle stelle (Alessandro, 29 ottobre 2026): gli stessi numeri del colore dell'ammasso aperto — stelle fino alla 12ª e colore pieno —, 0.5/1.5/3 h al riferimento; prima 0,5/1/1,5, una stima editoriale senza misura. Controllo AstroBin del 29 ottobre 2026: nelle immagini mono con Hα, OIII e RGB le stelle prendono 2,4 h di mediana (234 immagini), negli ammassi aperti 1,65 h in tutto (519), dalla città quanto dai cieli buoni.",
-     "confidence": "media"
+     "confidence": "media",
+     "soggetto": {
+      "floor": 2.4,
+      "useful": 4.6,
+      "saturates": 9.4,
+      "source": "il colore della nebulosa alla profondità della L, SNR 5 per filtro in 2×2 elementi, col rapporto [O III]/Hα misurato su Abell 61: al riferimento 2,4, 4,6 e 9,4 h, sopra il colore delle stelle (18 novembre 2026)"
+     }
     },
     "L": {
-     "floor": 0,
-     "useful": 0,
-     "saturates": 0,
-     "source": "stima editoriale della scheda, calibrata sulla configurazione di riferimento; nessuna motivazione scritta per questo canale",
+     "floor": 8.3,
+     "useful": 16,
+     "saturates": 32,
+     "road": [],
+     "source": "come la classe delle planetarie deboli, col rapporto [O III]/Hα misurato su Abell 61, 1,70 (Acker 1992): alla profondità che compra l'Hα della scheda, 78, 56 e 39 R, la L ci arriva al riferimento in 8,3, 16 e 32 h. Il [N II] non è contato: le ore sono un massimo. In nessuna strada scritta: la usa la LRGB generata (18 novembre 2026)",
      "confidence": "bassa"
     }
    },
