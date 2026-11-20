@@ -1138,6 +1138,11 @@ td.archcell{max-width:120px}
 .bc-altri{display:flex;gap:var(--s2);flex-wrap:wrap;justify-content:center;margin-top:var(--s3)}
 .bc-sotto-titolo{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim2);font-weight:600;
   margin:var(--s4) 0 var(--s2)}
+/* l'oggetto scelto in «Cosa vuoi riprendere», in testa alla lista (20 novembre 2026): il titolo dice da dove viene e dove
+   starebbe nella lista */
+.bc-scelto{margin-bottom:var(--s4)}
+.bc-scelto .bc-sotto-titolo{margin-top:var(--s2);color:var(--acc)}
+.bc-scelto .bc-sotto-titolo span{text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim2)}
 .bc-legenda{margin-top:var(--s3)}
 /* il nome dell'oggetto dei light, scritto come in Strategia (27 ottobre 2026) */
 .light-oggetto{min-width:220px;flex:1 1 220px;max-width:360px}
@@ -16421,7 +16426,7 @@ function riquadroHtml(x,c,basso){
       :'da qui all’alba non resta mezz’ora utile, e la prima notte resterà vuota.'):' '+da.perche);
   const tipPrescrivi=c.ist?'Lo prescrivo e ti porto ai Risultati, sulla configurazione di adesso, con la prima notte da adesso: la prescrizione istantanea è accesa in testa alla lista.'
     :'Lo prescrivo e ti porto ai Risultati, sulla notte e sulla configurazione di adesso.';
-  return `<div class="bestcard${nome.toLowerCase()===c.scelto?' on':''}${basso?' basso':''}" role="button" tabindex="0"
+  return `<div class="bestcard${e.tg.id===c.sceltoId?' on':''}${basso?' basso':''}" role="button" tabindex="0"
      data-nome="${esc(nome)}" onclick="rxPick(${jsAttr(nome)})"
      onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();rxPick(${jsAttr(nome)})}">
      <span class="bc-top"><span class="bc-n${acc('nome')}">${esc(nome)}</span>${ore}</span>
@@ -16441,23 +16446,60 @@ function riquadroHtml(x,c,basso){
          onclick="event.stopPropagation();prescriviDaAdesso(${jsAttr(nome)})" data-tip="${esc(tipDa)}">Da adesso</button>
        <button type="button" class="bc-prescrivi" onclick="event.stopPropagation();rxPick(${jsAttr(nome)});go('risultati')"
          data-tip="${esc(tipPrescrivi)}">Prescrivi</button>
-       <button type="button" class="bc-scheda" onclick="event.stopPropagation();openSheet(${i})"
+       <button type="button" class="bc-scheda" onclick="event.stopPropagation();${i!=null?'openSheet('+i+')':'apriLaSchedaDelloScelto()'}"
          data-tip="La scheda dell'oggetto: le righe di emissione, le tecniche con pro e contro, le ore per canale.">Scheda</button></span>
      </span>
    </div>`;
 }
+/*  L'OGGETTO SCELTO STA FRA I RIQUADRI (20 novembre 2026, Alessandro, con «NGc1514» scritto in «Cosa vuoi riprendere»:
+    «lo stesso oggetto deve apparire nei riquadri "Gli oggetti di stanotte da qui" così posso interagire con il soggetto
+    scelto»). Ci stava solo se era fra i primi dodici della lista, ed era acceso solo se il nome scritto era il suo lettera
+    per lettera; un oggetto preso dal catalogo intero, fuori dallo strato curato, non ci stava mai. Adesso il nome si
+    risolve come lo risolve la prescrizione (`bersaglioDellaDomanda`), e il riquadro sta in testa alla lista, qualunque
+    siano i filtri e l'ordine: con la valutazione della lista se c'e' (`i` in EVAL), se no con la stessa `evaluate` sulla
+    notte e sulla configurazione della lista. Nella griglia sotto non si ripete, e i conti della lista — i primi dodici,
+    «mostra tutti», quelli con meno di mezz'ora — restano quelli. Una stella, o un oggetto senza classe, non ha riquadro:
+    non ce l'ha nemmeno nella lista. Sorvegliato da tools/gate-scelto-nei-riquadri.js. */
+let _scelto={q:null,ev:null,np:null,v:null};
+function oggettoScelto(){
+  const q=(($('rxTarget')||{}).value||'').trim();
+  if(!q||!EVAL.length) return null;
+  if(_scelto.q===q&&_scelto.ev===EVAL&&_scelto.np===NP_LISTA) return _scelto.v;
+  let v=null;
+  const r=bersaglioDellaDomanda(q,UTGT);
+  const t=(r&&r.scheda)||(r&&r.oggetto?MOTORE.scelta.synthTarget(r.oggetto):null);
+  if(t){
+    const i=EVAL.findIndex(e=>e.tg.id===t.id);
+    v=i>=0?{e:EVAL[i],i}
+      :NP_LISTA?{e:MOTORE.scelta.evaluate(t,derive(cfgMotore()),SITE,NP_LISTA,STATE,covIntent()),i:null}:null;
+  }
+  _scelto={q,ev:EVAL,np:NP_LISTA,v}; return v;
+}
+function apriLaSchedaDelloScelto(){ const s=oggettoScelto(); if(s) openSheet(s.i!=null?s.i:s.e); }
+/*  il riquadro in testa, col titolo che dice da dove viene e dove starebbe nella lista; sotto la soglia della lista, come
+    i suoi riquadri «meno di mezz'ora», si vede attenuato */
+function testaDelloScelto(sc,lista,griglia){
+  const k=lista.findIndex(x=>x.e===sc.e);
+  const dove=sc.i==null?'dal catalogo: non è fra gli oggetti della lista di stanotte'
+    :k<0?'i filtri lo toglierebbero dalla lista'
+    :'nell’ordine scelto è il '+(k+1)+'° di '+lista.length;
+  const basso=!MOTORE.scelta.riquadriDiStanotte([sc.e],1).length;
+  return `<div class="bc-scelto"><div class="bc-sotto-titolo" data-tip="${esc('L’oggetto scritto in «Cosa vuoi riprendere». Sta qui in testa qualunque siano i filtri e l’ordine, con le ore di questa notte e di questa configurazione, come gli altri riquadri; nella lista qui sotto non si ripete.')}">Scelto in «Cosa vuoi riprendere» <span>· ${esc(dove)}</span></div>${griglia([sc],basso)}</div>`;
+}
 function bestNightHtml(){
   /*  i riquadri seguono i filtri e l'ordine scelto; `i` resta l'indice in EVAL, che la scheda legge */
   const lista=ordinaLista(listaFiltrata()), ee=lista.map(x=>x.e);
-  if(!lista.length) return EVAL.length?`<p class="small muted">Nessun oggetto passa i filtri.
+  const sc=oggettoScelto(), idS=sc?sc.e.tg.id:null;
+  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), sceltoId:idS, ist:istantaneaAttiva(),
+    daAdesso:statoDaAdesso(NP_LISTA)};
+  const griglia=(xs,basso)=>`<div class="bestgrid">${xs.map(x=>riquadroHtml(x,c,basso)).join('')}</div>`;
+  const testa=sc?testaDelloScelto(sc,lista,griglia):'', nonLui=x=>x.e.tg.id!==idS;
+  if(!lista.length) return EVAL.length?testa+`<p class="small muted">Nessun oggetto passa i filtri.
     <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`:'';
   const primi=MOTORE.scelta.riquadriDiStanotte(ee), utili=MOTORE.scelta.riquadriDiStanotte(ee,Infinity);
   const conOre=new Set(utili.map(o=>o.i)), sotto=lista.filter((x,k)=>!conOre.has(k));
-  const c={np:NP_LISTA, RXH:rxHours(), DVX:derive(cfgMotore()), scelto:($('rxTarget').value||'').trim().toLowerCase(), ist:istantaneaAttiva(),
-    daAdesso:statoDaAdesso(NP_LISTA)};
-  const griglia=(xs,basso)=>`<div class="bestgrid">${xs.map(x=>riquadroHtml(x,c,basso)).join('')}</div>`;
   const mostrati=(RIQ_TUTTI?utili:primi).map(o=>lista[o.i]);
-  let h=mostrati.length?griglia(mostrati,false)
+  let h=mostrati.length?griglia(mostrati.filter(nonLui),false)
     : filtriAttivi()?`<p class="small muted">Con questi filtri nessun oggetto ha almeno mezz'ora utile stanotte.
       <button type="button" class="fn fn-cfg" onclick="togliFiltri()">togli i filtri</button></p>`
     : `<p class="small muted">Da qui, in questa notte, nessuno degli oggetti in catalogo sale abbastanza da valere un
@@ -16469,8 +16511,8 @@ function bestNightHtml(){
   if(sotto.length) tasti.push(`<button type="button" class="fn fn-cfg" onclick="riquadriSotto(${!RIQ_SOTTO})">${RIQ_SOTTO?'nascondi':'mostra'} ${
     sotto.length===1?'quello che stanotte ha':'i '+sotto.length+' che stanotte hanno'} meno di mezz’ora utile</button>`);
   if(tasti.length) h+=`<div class="bc-altri">${tasti.join('')}</div>`;
-  if(RIQ_SOTTO&&sotto.length) h+=`<div class="bc-sotto-titolo">Stanotte meno di mezz’ora utile</div>`+griglia(sotto,true);
-  return testaDellAdesso()+h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
+  if(RIQ_SOTTO&&sotto.length) h+=`<div class="bc-sotto-titolo">Stanotte meno di mezz’ora utile</div>`+griglia(sotto.filter(nonLui),true);
+  return testaDellAdesso()+testa+h+`<div class="tlkey bc-legenda"><span><i style="background:var(--oiii)"></i>sopra la quota buona del suo canale</span>
     <span><i style="background:var(--warn)"></i>più basso, ma sopra il tuo orizzonte</span>
     <span><i class="sotto"></i>sotto il tuo orizzonte: non si vede</span>${NP_LISTA&&NP_LISTA.da!=null?'<span><i class="ora"></i>adesso</span>':''}
     <span data-tip="La fascia chiara sopra la barra è la Luna sopra l’orizzonte, fra il buio e l’alba: più è chiara, più la Luna è piena. Il suggerimento di ogni barra dice quando sorge e tramonta, quanto è piena e quanto è lontana dall’oggetto."><i class="luna"></i>Luna</span>
