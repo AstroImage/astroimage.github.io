@@ -11394,6 +11394,46 @@ function sequenceModel(night,plan,tg,dv,site,opts){
     flip:true,
   };
 }
+/*  LA NOTTE IN QUATTRO GIRI (Alessandro, 20-21 novembre 2026). Le sequenze della 1ª, 2ª e 3ª notte «non le segue
+    nessuno perchè farraginose»; la sequenza a ciclo passa su ogni filtro almeno quattro volte per notte, perche' un velo
+    o una nuvola non pesi su un filtro solo. Deciso «Sì, forma B»: la notte del piano divisa in quattro giri, non tutti
+    uguali. Un giro uguale ripetuto, arrotondando, cambiava le pose che prescrizione e piano hanno deciso (su M27, con
+    2,9 h di finestra, 4 o 5 OIII invece di 7).
+    QUI NON SI DECIDE NESSUN NUMERO. Le pose di ogni blocco sono quelle del modello della notte (`sequenceModel`),
+    spartite il piu' pari possibile fra i giri; i resti vanno ai primi giri, cosi' se la notte si chiude prima quello
+    che si e' gia' preso e' di piu'. Dentro ogni giro l'ordine e' quello del modello, cioe' del piano: il critico apre,
+    poi la banda stretta, poi il colore (docs/motore.md §10.4). Un blocco con meno pose che giri passa tante volte quante
+    pose ha, nei primi giri, senza pose in piu'; se nessun blocco arriva a quattro pose i giri sono meno, e nessun
+    filtro si toglie («Meno giri»).
+    Nessun giro con «ottimizza sul progetto», dove le notti sono davvero diverse, e senza ruota, dove ogni giro vorrebbe
+    dire altri cambi a mano: la sequenza resta quella di oggi, una notte per volta (le due eccezioni, «sì» il 20
+    novembre). L'orologio di un giro e' quello della notte nella stessa proporzione delle sue pose: lo scarico e il
+    dither non cambiano fra i giri. Nessun tipo di N.I.N.A. qui: come il giro diventa un file lo decide chi scrive.
+    Sorvegliato da tools/gate-giri-della-notte.js. */
+const GIRI_PER_NOTTE=4;
+function giriDellaNotte(m,opts){
+  const o=opts||{};
+  const voluti=Math.max(1,Math.round(o.giriPerNotte||GIRI_PER_NOTTE));
+  const blocchi=(m&&Array.isArray(m.blocchi))?m.blocchi.filter(b=>b&&b.n>0):[];
+  const nessuno=perche=>({ciclo:false,perche,giriVoluti:voluti,menoGiri:null,giri:[],passaggi:[]});
+  if(!blocchi.length) return nessuno('vuoto');
+  if(o.politica==='progetto') return nessuno('progetto');
+  if(!(m.cap&&m.cap.ruota)) return nessuno('senzaRuota');
+  const quanti=Math.min(voluti,Math.max(...blocchi.map(b=>b.n)));
+  const integ=blocchi.reduce((a,b)=>a+b.sec*b.n,0);
+  const orologio=(m.totale&&m.totale.orologio!=null&&isFinite(m.totale.orologio))?m.totale.orologio:null;
+  const perSecondo=(orologio!=null&&integ>0)?orologio/integ:null;
+  const giri=[];
+  for(let j=0;j<quanti;j++){
+    const qui=blocchi.map(b=>{ const n=Math.floor(b.n/quanti)+(j<b.n%quanti?1:0); return Object.assign({},b,{n,ore:b.sec*n/3600}); })
+      .filter(b=>b.n>0);
+    const s=qui.reduce((a,b)=>a+b.sec*b.n,0);
+    giri.push({giro:j+1,blocchi:qui,ore:s/3600,oreHM:oreEMinutiDaSecondi(s),
+      orologio:perSecondo!=null?s*perSecondo:null,orologioHM:perSecondo!=null?oreEMinuti(s*perSecondo):null});
+  }
+  return {ciclo:true,perche:null,giriVoluti:voluti,menoGiri:quanti<voluti,giri,
+    passaggi:blocchi.map(b=>({filtro:b.filtro,sec:b.sec,ruolo:b.ruolo||null,pose:b.n,volte:Math.min(quanti,b.n)}))};
+}
 const NN='NINA.Sequencer', NC='NINA.Core', NA='NINA.Astrometry', SOM='System.ObjectModel';
 const T_ITEM=`System.Collections.ObjectModel.ObservableCollection\`1[[${NN}.SequenceItem.ISequenceItem, ${NN}]], ${SOM}`;
 const T_COND=`System.Collections.ObjectModel.ObservableCollection\`1[[${NN}.Conditions.ISequenceCondition, ${NN}]], ${SOM}`;
