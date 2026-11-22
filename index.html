@@ -22107,7 +22107,14 @@ async function avviaCopiaAuto(){
     file a chi li leggeva gia'; anche la copia sempre aggiornata si salva partendo da li'. Sorvegliato da
     tools/gate-cartella-di-nina.js. */
 let CARTELLA_NINA=null;
-const finestreModerne=()=>typeof window.showOpenFilePicker==='function'&&typeof window.showDirectoryPicker==='function';
+/*  IL BROWSER CHE APRE LA FINESTRA E NON LASCIA LEGGERE (22 novembre 2026, Alessandro, l'orizzonte caricato dal browser
+    interno dell'app di Claude: «mi dava file non riconosciuto»). Li' `showOpenFilePicker` c'e' e la finestra si apre, ma
+    `getFile` sul file scelto risponde NotAllowedError, «The request is not allowed by the user agent or the platform in
+    the current context». In quel browser la finestra moderna non serve: lo si ricorda per la pagina aperta, e dal clic
+    dopo si apre la casella di sempre, che il file lo legge. Non si ricorda fra un'apertura e l'altra: un permesso negato
+    una volta non deve togliere la finestra a un browser che la sa usare. Sorvegliato da tools/gate-cartella-di-nina.js. */
+let FINESTRE_MODERNE_NEGATE=false;
+const finestreModerne=()=>!FINESTRE_MODERNE_NEGATE&&typeof window.showOpenFilePicker==='function'&&typeof window.showDirectoryPicker==='function';
 const partenzaDeiCaricamenti=()=>CARTELLA_NINA||'documents';
 const idbScriviCartella=v=>idbCopia((db,ok,ko)=>{ const tx=db.transaction('file','readwrite'), s=tx.objectStore('file');
   if(v) s.put(v,'cartellaNina'); else s.delete('cartellaNina'); tx.oncomplete=()=>ok(); tx.onerror=()=>ko(tx.error); });
@@ -22144,7 +22151,13 @@ async function scegliDaNina(id){
   }
   let file;
   try{ file=c.cartella?await fileDellaCartella(scelto):await Promise.all(scelto.map(h=>h.getFile())); }
-  catch(e){ toast('I file scelti non si leggono: '+((e&&e.message)||e)+'.'); return; }
+  catch(e){
+    if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError')){
+      FINESTRE_MODERNE_NEGATE=true; renderCartellaNina();
+      toast('Questo browser apre la finestra ma non lascia leggere il file scelto. Clicca di nuovo: si apre la finestra «Sfoglia» di sempre, che lo legge.');
+      return;
+    }
+    toast('I file scelti non si leggono: '+((e&&e.message)||e)+'.'); return; }
   await c.fai(file);
 }
 /* indicare la cartella di N.I.N.A., una volta: la finestra parte dai Documenti, dove N.I.N.A. la mette di serie */
@@ -22163,6 +22176,7 @@ const doveSiApre=()=>!finestreModerne()?'Si apre la finestra del browser, che pa
 async function togliCartellaNina(){ CARTELLA_NINA=null; try{ await idbScriviCartella(null); }catch(e){} renderCartellaNina(); refresh(); }
 function renderCartellaNina(){
   const b=$('cartellaNina'); if(!b) return;
+  if(FINESTRE_MODERNE_NEGATE){ b.innerHTML='<span class="muted">Questo browser apre la finestra ma non lascia leggere i file: i caricamenti si aprono con la finestra di sempre, dove decide lui.</span>'; return; }
   if(!finestreModerne()){ b.innerHTML='<span class="muted">Con questo browser i caricamenti si aprono dove decide lui: la cartella di N.I.N.A. si indica su Edge o Chrome.</span>'; return; }
   const spiega='Ogni caricamento — l’orizzonte, i light, una copia, la tua sequenza — si apre in questa cartella, e da lì scegli la sottocartella. Di serie N.I.N.A. salva nei Documenti, in «N.I.N.A»: il browser non apre un percorso scritto, quindi la cartella si indica una volta e lui se la ricorda.';
   b.innerHTML=CARTELLA_NINA
