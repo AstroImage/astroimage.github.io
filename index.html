@@ -1394,7 +1394,7 @@ td.archcell{max-width:120px}
 
   <div class="navfoot">
     <div class="nf-name">AstroImage-Strategy</div>
-    <div class="nf-v">v2.1.0</div>
+    <div class="nf-v">v2.2.0</div>
     <div style="margin-top:6px">&copy; 2026 Alessandro Curci<br>Tutti i diritti riservati.</div>
   </div>
 </nav>
@@ -11434,6 +11434,54 @@ function giriDellaNotte(m,opts){
   return {ciclo:true,perche:null,giriVoluti:voluti,menoGiri:quanti<voluti,giri,
     passaggi:blocchi.map(b=>({filtro:b.filtro,sec:b.sec,ruolo:b.ruolo||null,pose:b.n,volte:Math.min(quanti,b.n)}))};
 }
+/*  LA SEQUENZA A CICLO, COME MODELLO (Alessandro, 21 novembre 2026: «Procedi con il file per NINA a ciclo
+    definitivamente»). Il modello della notte (`sequenceModel`) resta com'e' — lo usano il servizio e molte guardie — e
+    questo gli aggiunge `ciclo`: i giri della notte (`giriDellaNotte`) e quello che Alessandro ha deciso il 20 e 21
+    novembre, detto una volta qui e tradotto da `ninaRender` senza scegliere niente.
+    - Si comincia al crepuscolo astronomico, e se l'orizzonte del sito e' noto si aspetta che l'oggetto ci sia sopra.
+    - Il giro si ripete finche' non arriva l'alba astronomica, e con l'orizzonte noto finche' l'oggetto e' sopra
+      l'orizzonte: nessun numero massimo di giri, e nessuna ora fissa, che varrebbe una notte sola.
+    - Mai l'autofocus a ogni cambio filtro: col focheggiatore, quello sulla temperatura e quello sull'HFR, con le soglie
+      predefinite di N.I.N.A. («AIS è per tutti»: le soglie del banco di Alessandro non si scrivono nel file degli altri).
+    - «Salva sequenza» solo quando chi chiama conosce la cartella delle sequenze del profilo di N.I.N.A.: senza il banco
+      letto da N.I.N.A. resta fuori («Sì, lasciala fuori»), e la sequenza la salva chi riprende.
+    Senza giro — «esposizione in serie», «ottimizza sul progetto», senza ruota, con la ruota manuale, una notte vuota — il
+    modello resta quello di oggi con `ciclo.ciclo` falso e il perche', e `ninaRender` scrive il file di oggi byte per byte.
+    La ruota manuale («Manual Filter Wheel» di N.I.N.A.) e' come nessuna ruota: a ogni cambio N.I.N.A. si ferma e chiede il
+    filtro, e i giri moltiplicherebbero i cambi a mano (Alessandro, 21 novembre 2026: «Sì, in serie»). Il motore non la
+    vede, perche' e' del profilo di N.I.N.A.: la dice chi chiama, con `ruotaManuale`.
+    Sorvegliato da tools/gate-sequenza-a-ciclo.js. */
+/*  Le soglie predefinite di N.I.N.A. 3.3.0.1069 (commit 717ea13): `AutofocusAfterTemperatureChangeTrigger.Amount`, 5 °C;
+    `AutofocusAfterHFRIncreaseTrigger.Amount`, 5 %, e `SampleSize`, 10 pose; la tendenza per filtro accesa. */
+const AUTOFOCUS_DI_NINA={temperaturaC:5,hfrPercento:5,campione:10,perFiltro:true};
+/*  IL MODO DI ESPOSIZIONE (Alessandro, 21 novembre 2026: «aggiungi la scelta "esposizione in serie" o "esposizione
+    ciclica" (ciclica predefinita) la scelta "esposizione in serie" deve avere gli stessi contenitori di prima con le
+    medesime istruzioni, quelli già collaudati»). L'elenco sta qui una volta, come le politiche di sessione: `label` e
+    `nota` sono il testo dei due pulsanti della pagina. In serie il modello resta quello di oggi, e il file e' quello di
+    prima byte per byte. */
+const MODI_DI_ESPOSIZIONE=[
+  {id:'ciclica', label:'esposizione ciclica',
+   nota:'La notte del piano in quattro giri: ogni filtro passa quattro volte, e N.I.N.A. ripete i giri dal crepuscolo astronomico fino all’alba. Una sequenza sola, che vale anche le sere dopo.'},
+  {id:'serie', label:'esposizione in serie',
+   nota:'Un filtro dopo l’altro, una sequenza per notte: gli stessi contenitori e le stesse istruzioni di prima.'},
+];
+const ESPOSIZIONE_DI_SERIE='ciclica';
+function modelloDelCiclo(m,opts){
+  const o=opts||{};
+  if(o.esposizione==='serie') return Object.assign({},m,{ciclo:{ciclo:false,perche:'serie'}});
+  if(o.ruotaManuale) return Object.assign({},m,{ciclo:{ciclo:false,perche:'ruotaManuale'}});
+  const g=giriDellaNotte(m,{politica:o.politica});
+  if(!g.ciclo) return Object.assign({},m,{ciclo:{ciclo:false,perche:g.perche}});
+  /*  il percorso intero sulla macchina di N.I.N.A.: la cartella del profilo e il nome della sequenza, coi caratteri che
+      Windows non accetta in un nome di file tolti */
+  const cartella=typeof o.cartellaSequenze==='string'&&o.cartellaSequenze.trim()?o.cartellaSequenze.trim():null;
+  const nomeFile=String(m.nome||(m.bersaglio&&m.bersaglio.nome)||'sequenza').replace(/[<>:\x22\/\\|?*\u0000-\u001f]/g,' ')
+    .replace(/\s+/g,' ').trim()+'.json';
+  return Object.assign({},m,{ciclo:Object.assign({},g,{
+    inizio:'crepuscolo astronomico', fine:'alba astronomica', orizzonte:!!o.orizzonte,
+    autofocus:(m.cap&&m.cap.focheggiatore)?Object.assign({},AUTOFOCUS_DI_NINA):null,
+    salva:cartella?cartella.replace(/[\\/]+$/,'')+'\\'+nomeFile:null})});
+}
 const NN='NINA.Sequencer', NC='NINA.Core', NA='NINA.Astrometry', SOM='System.ObjectModel';
 const T_ITEM=`System.Collections.ObjectModel.ObservableCollection\`1[[${NN}.SequenceItem.ISequenceItem, ${NN}]], ${SOM}`;
 const T_COND=`System.Collections.ObjectModel.ObservableCollection\`1[[${NN}.Conditions.ISequenceCondition, ${NN}]], ${SOM}`;
@@ -11527,6 +11575,35 @@ function ninaRender(m){
   dso.Conditions=coll(T_COND); dso.IsExpanded=true;
 
   const items=[];
+  /*  LA SEQUENZA A CICLO (21 novembre 2026; il modello e' `modelloDelCiclo`). Le forme sono quelle che N.I.N.A. 3.3 salva,
+      campo per campo, nell'ordine in cui le scrive: tools/forme-nina-3.3.json, dalle sequenze del Minix. Le ore scritte
+      accanto al crepuscolo e all'alba sono un segnaposto: con un provider che non e' l'ora fissa N.I.N.A. le ricalcola
+      al caricamento e a ogni notte nuova (`UpdateTime`, letto in WaitForTime e TimeCondition). Le attese stanno nel
+      contenitore del bersaglio, e non nell'avvio, perche' li' l'attesa sull'orizzonte prende da se' le coordinate
+      dell'oggetto — nell'avvio aspetterebbe AR 0h e Dec 0°, come nella sequenza di prova del 21 novembre — e perche'
+      il contorno di chi riprende sostituisce l'avvio e la fine, non i bersagli. Senza giro qui non si scrive niente. */
+  const ciclo=m.ciclo&&m.ciclo.ciclo?m.ciclo:null;
+  const provider=nome=>({$id:id(),$type:`${NN}.Utility.DateTimeProvider.${nome}, ${NN}`});
+  const ora=iso=>{ const d=iso?new Date(iso):null;
+    return d&&isFinite(d.getTime())?{Hours:d.getHours(),Minutes:d.getMinutes(),Seconds:d.getSeconds()}:{Hours:0,Minutes:0,Seconds:0}; };
+  const vuota=()=>expr('');
+  if(ciclo){
+    const t=ora(m.quando&&m.quando.inizio);
+    items.push(seq(`${NN}.SequenceItem.Utility.WaitForTime, ${NN}`,{Hours:t.Hours,Minutes:t.Minutes,MinutesOffset:0,
+      Seconds:t.Seconds,SelectedProvider:provider('DuskProvider'),Parent:ref(dso),ErrorBehavior:0,Attempts:1}));
+    if(ciclo.orizzonte){
+      const w=seq(`${NN}.SequenceItem.Utility.WaitUntilAboveHorizon, ${NN}`);
+      w.usesRotation=false; w.Coordinates=coords();
+      w.Data=seq(`${NN}.SequenceItem.Utility.WaitLoopData, ${NN}`,{Coordinates:ref(w.Coordinates),Offset:0,Comparator:3});
+      /*  L'OFFSET SI SCRIVE NELL'ESPRESSIONE (21 novembre 2026, visto da Alessandro in N.I.N.A.: «Offset 30°»). Con
+          l'espressione vuota N.I.N.A. usa il suo valore di serie, che per questa attesa e' 30° (`Data.Offset = 30`): il
+          valore nudo a 0 non basta, e l'attesa sarebbe durata finche' l'oggetto stava 30° sopra l'orizzonte. */
+      w.Inherited=true; w.RaExpression=vuota(); w.DecExpression=vuota(); w.PositionAngleExpression=vuota(); w.OffsetExpression=expr(0);
+      Object.assign(w,{Parent:ref(dso),ErrorBehavior:0,Attempts:1,Ra:0,Dec:0,PositionAngle:0,Offset:0,
+        RaDefinition:'',DecDefinition:'',PositionAngleDefinition:'',OffsetDefinition:'0'});
+      items.push(w);
+    }
+  }
   // centratura: con rotatore se un angolo e' stato scelto, altrimenti solo centro
   const useRot=!!cap.rotatore;
   const cen=seq(useRot?`${NN}.SequenceItem.Platesolving.CenterAndRotate, ${NN}`
@@ -11559,8 +11636,24 @@ function ninaRender(m){
   // il contenitore delle riprese: un blocco per canale
   const imgC=seq(`${NN}.Container.SequentialContainer, ${NN}`);
   imgC.Strategy=strat(); imgC.Name='Target Imaging Instructions';
-  imgC.Conditions=coll(T_COND); imgC.IsExpanded=true;
-  const smarts=m.blocchi.map(s=>{
+  /*  col giro il contenitore si ripete finche' le sue condizioni sono vere: l'alba astronomica, che non fa partire una
+      posa che non finirebbe, e con l'orizzonte noto l'oggetto sopra l'orizzonte del profilo di N.I.N.A., di cui prende
+      da se' le coordinate dal contenitore del bersaglio. Nessun «Ripeti per numero di iterazioni»: nessun massimo. */
+  const condizioniDelGiro=()=>{
+    const t=ora(m.quando&&m.quando.fine);
+    const tc=seq(`${NN}.Conditions.TimeCondition, ${NN}`,{Hours:t.Hours,Minutes:t.Minutes,MinutesOffset:0,Seconds:t.Seconds,
+      SelectedProvider:provider('DawnProvider'),Parent:ref(imgC)});
+    if(!ciclo.orizzonte) return [tc];
+    const ac=seq(`${NN}.Conditions.AboveHorizonCondition, ${NN}`);
+    ac.usesRotation=false; ac.HasDsoParent=true;
+    ac.OffsetExpression=expr(0); ac.RaExpression=vuota(); ac.DecExpression=vuota(); ac.PositionAngleExpression=vuota();
+    ac.Data=seq(`${NN}.SequenceItem.Utility.WaitLoopData, ${NN}`,{Coordinates:coords(),Offset:0,Comparator:3});
+    Object.assign(ac,{Parent:ref(imgC),Ra:0,Dec:0,PositionAngle:0,RaDefinition:'',DecDefinition:'',PositionAngleDefinition:''});
+    return [tc,ac];
+  };
+  imgC.Conditions=ciclo?coll(T_COND,condizioniDelGiro()):coll(T_COND); imgC.IsExpanded=true;
+  /* col giro, le Smart Exposure dei giri in fila, giro dopo giro, nell'ordine della notte; senza, quelle della notte */
+  const smarts=(ciclo?ciclo.giri.flatMap(g=>g.blocchi):m.blocchi).map(s=>{
     const se=seq(`${NN}.SequenceItem.Imaging.SmartExposure, ${NN}`,
       {ErrorBehavior:0,Attempts:1});
     tre(se,'Iterations',s.n);
@@ -11623,9 +11716,36 @@ function ninaRender(m){
   mfr.Items=coll(T_ITEM); mfr.Triggers=coll(T_TRIG); mfr.Parent=null;
   mfr.ErrorBehavior=0; mfr.Attempts=1;
   mf.TriggerRunner=mfr;
-  imgC.Triggers=coll(T_TRIG,[mf]);
+  /*  col giro e col focheggiatore, accanto al flip: l'autofocus quando cambia la temperatura e quando sale l'HFR, con la
+      tendenza per filtro. Mai quello a ogni cambio filtro, che nel giro scatterebbe a ogni Smart Exposure: il fuoco fra un
+      filtro e l'altro lo tengono gli offset del profilo, e dove AIS non li vede la pagina lo dice. Il contenitore che
+      esegue l'autofocus ha la forma di quello del dither. */
+  const corridore=()=>{
+    const r=seq(`${NN}.Container.SequentialContainer, ${NN}`);
+    r.Strategy=strat(); r.Name=null; r.Conditions=coll(T_COND); r.IsExpanded=true;
+    r.Items=coll(T_ITEM,[seq(`${NN}.SequenceItem.Autofocus.RunAutofocus, ${NN}`,{Parent:null,ErrorBehavior:0,Attempts:1})]);
+    r.Triggers=coll(T_TRIG); r.Parent=null; r.ErrorBehavior=0; r.Attempts=1;
+    r.Items.$values[0].Parent=ref(r);
+    return r;
+  };
+  const autofocusDelGiro=()=>{
+    const a=ciclo.autofocus;
+    const tt=seq(`${NN}.Trigger.Autofocus.AutofocusAfterTemperatureChangeTrigger, ${NN}`);
+    tt.AmountExpression=expr(a.temperaturaC); tt.DeltaTExpression=expr(''); tt.Parent=ref(imgC); tt.TriggerRunner=corridore();
+    tt.Amount=a.temperaturaC; tt.DeltaT=0; tt.AmountDefinition=String(a.temperaturaC); tt.DeltaTDefinition='';
+    const th=seq(`${NN}.Trigger.Autofocus.AutofocusAfterHFRIncreaseTrigger, ${NN}`);
+    th.TrendPerFilter=!!a.perFiltro; th.AmountExpression=expr(a.hfrPercento); th.SampleSizeExpression=expr(a.campione);
+    th.Parent=ref(imgC); th.TriggerRunner=corridore();
+    th.Amount=a.hfrPercento; th.SampleSize=a.campione; th.AmountDefinition=String(a.hfrPercento); th.SampleSizeDefinition=String(a.campione);
+    return [tt,th];
+  };
+  imgC.Triggers=coll(T_TRIG,ciclo&&ciclo.autofocus?[mf,...autofocusDelGiro()]:[mf]);
   imgC.Parent=ref(dso); imgC.ErrorBehavior=0; imgC.Attempts=1;
   items.push(imgC);
+  /*  col giro e con la cartella delle sequenze del profilo: «Salva sequenza» dopo i giri, cosi' la sera dopo si ricarica
+      con i conti di N.I.N.A. — le pose per filtro del contenitore del bersaglio. Un percorso vuoto N.I.N.A. lo rifiuta. */
+  if(ciclo&&ciclo.salva) items.push(seq(`${NN}.SequenceItem.Utility.SaveSequence, ${NN}`,
+    {FilePath:ciclo.salva,Parent:ref(dso),ErrorBehavior:0,Attempts:1}));
 
   dso.Items=coll(T_ITEM,items);
   dso.Triggers=coll(T_TRIG); dso.Parent=ref(tgtC);
@@ -14092,7 +14212,9 @@ const MOTORE = {
              campoDeiLight, oreSulCampo },
   esporta: { ninaSequence, ninaCheck,                                 // che cosa esce verso N.I.N.A.
              /* e col contorno di chi riprende: il suo Startup, il suo End, i suoi inneschi globali, 27 ottobre 2026 */
-             contornoDaSequenza, conIlTuoContorno },
+             contornoDaSequenza, conIlTuoContorno,
+             /* e la sequenza a ciclo, la notte in quattro giri fino all'alba: 21 novembre 2026 */
+             modelloDelCiclo },
 };
 
 let DB=null, TG=null, CAT=[], CITIES=[], CFG=null, SITE=null, EVAL=[], STATE={}, SITES=[], UTGT=[], OWNED=[];
@@ -17577,6 +17699,39 @@ function argomentiDellaNotte(nt,sp){
      poseCanale:MOTORE.posa.poseDelCanale(pl.nights,expo,OPSET), serieCorta:MOTORE.posa.pezziDellaSerieCorta(expo), clockH:sp.clockH,
      name:`${(t.names&&t.names[0])||t.id} — ASTROFOTO notte ${nt.n} (${fmtDate(nt.date)})`}];
 }
+/*  LA SEQUENZA A CICLO NELLA PAGINA (21 novembre 2026, Alessandro: «Procedi con il file per NINA a ciclo
+    definitivamente»). Le tre strade verso N.I.N.A. — «Manda a N.I.N.A.», «Esporta» e la sequenza nella testa dei
+    Risultati — prendono lo stesso modello: quello della notte coi giri (`modelloDelCiclo`). La politica e' quella del
+    piano; l'orizzonte e' noto quando il sito ne ha uno, come lo disegna la barra della notte; la cartella delle sequenze
+    arriva solo dal profilo che «Manda a N.I.N.A.» legge al momento dell'invio (`P`), e senza resta fuori «Salva
+    sequenza». Con «esposizione in serie», con «ottimizza sul progetto», senza ruota e con la ruota manuale il modello e'
+    quello di oggi: una sequenza per notte, col suo tasto in ogni notte del piano. Sorvegliato da
+    tools/gate-sequenza-a-ciclo.js. */
+const orizzonteNoto=()=>!!(SITE&&Array.isArray(SITE.orizzonte)&&SITE.orizzonte.length>=2);
+/*  la scelta «esposizione ciclica» o «esposizione in serie», ciclica di serie, ricordata dal browser come la politica */
+let ESPOSIZIONE=(()=>{ try{ const v=localStorage.getItem('ap_esposizione'); return MODI_DI_ESPOSIZIONE.some(x=>x.id===v)?v:ESPOSIZIONE_DI_SERIE; }
+  catch(e){ return ESPOSIZIONE_DI_SERIE; } })();
+function setEsposizione(v){ ESPOSIZIONE=MODI_DI_ESPOSIZIONE.some(x=>x.id===v)?v:ESPOSIZIONE_DI_SERIE;
+  try{ localStorage.setItem('ap_esposizione',ESPOSIZIONE); }catch(e){} refresh(); }
+/*  la «Manual Filter Wheel» del profilo per cui la sequenza e' preparata (Alessandro, 21 novembre 2026: con la ruota
+    manuale «Sì, in serie»): dal profilo appena letto quando c'e', se no dalla postazione in uso, se no dall'ultimo
+    profilo visto. Lo stesso criterio della carta dell'invio. */
+function ruotaManuale(P){
+  if(P&&P.FilterWheelSettings) return /manual/i.test(String(P.FilterWheelSettings.Id||''));
+  try{
+    const v=POSTAZIONI_SPENTE?null:leggiPostazioni(), pz=v&&v.uso&&v.voci[v.uso];
+    if(pz) return !!pz.manuale;
+    return !!(NINA_ATTIVO&&NINA_ATTIVO.manuale);
+  }catch(e){ return false; }
+}
+const conGiri=()=>!!(RXPLAN&&RXPLAN.pl&&RXPLAN.pl.mode!=='progetto'&&ESPOSIZIONE!=='serie'&&Object.assign({},CAP_DEF,NINACAP).ruota
+  &&!ruotaManuale(null));
+function modelloPerNina(nt,sp,P,manuale){
+  const ss=P&&P.SequenceSettings;
+  return MOTORE.esporta.modelloDelCiclo(sequenceModel.apply(null,argomentiDellaNotte(nt,sp)),{politica:RXPLAN.pl.mode,esposizione:ESPOSIZIONE,
+    ruotaManuale:manuale==null?ruotaManuale(P):!!manuale,
+    orizzonte:orizzonteNoto(),cartellaSequenze:ss&&typeof ss.DefaultSequenceFolder==='string'?ss.DefaultSequenceFolder:null});
+}
 /*  Le Smart Exposure di un file di N.I.N.A., nell'ordine del Sequencer: quello che arriva, campo per campo. */
 function leSmartExposure(root){
   const tipo=(o,t)=>!!o&&typeof o.$type==='string'&&o.$type.indexOf(t)===0;
@@ -17604,25 +17759,35 @@ function sequenzaPerNinaHtml(){
   try{
     sp=MOTORE.posa.subPlan(nt.blocks,expo,Object.assign({},OPSET,{night:nt.n,notti:pl.nights}));
     if(!sp.subs.length) return '';
-    m=sequenceModel.apply(null,argomentiDellaNotte(nt,sp));
+    m=modelloPerNina(nt,sp,null);
     se=leSmartExposure(ninaRender(m));
   }catch(e){ return ''; }
   if(!se.length) return '';
   const n=x=>Number.isInteger(+x)?String(+x):fmt(+x,1);
   const cella=(k,v)=>`<span class="nsq-c"><i>${k}</i><b>${esc(v)}</b></span>`;
+  /* col giro le righe sono le Smart Exposure dei giri in fila, come nel file; senza, quelle della notte */
+  const giri=m.ciclo&&m.ciclo.ciclo?m.ciclo:null;
+  const inFila=giri?giri.giri.flatMap(g=>g.blocchi.map(b=>Object.assign({giro:g.giro},b))):m.blocchi;
   const righe=se.map((s,i)=>{
-    const b=m.blocchi[i]||{};
+    const b=inFila[i]||{};
     /* senza ruota il file non cambia filtro: lo si mette a mano, e la sequenza si ferma a chiederlo */
     const filtro=s.filtro!=null?s.filtro:(b.filtro||'?')+' a mano';
-    return `<div class="nsq-r"${b.ruolo==='nucleo'?' data-ruolo="nucleo"':''}><span class="nsq-n">Smart Exposure${b.ruolo==='nucleo'
+    return `<div class="nsq-r"${b.ruolo==='nucleo'?' data-ruolo="nucleo"':''}${b.giro?` data-giro="${b.giro}"`:''}><span class="nsq-n">Smart Exposure${b.giro?` <span class="muted">· giro ${b.giro}</span>`:''}${b.ruolo==='nucleo'
       ?` <span class="pill p-warn" style="font-size:10px" data-tip="${esc('La serie corta del nucleo, da fondere in HDR con la serie lunga dello stesso filtro.')}">nucleo</span>`:''}</span>`
       +cella('#',n(s.n))+cella('Tempo',n(s.sec)+' s')+cella('Tipo',s.tipo||'—')+cella('Binning',s.bin||'—')
       +cella('Guadagno',s.gain===-1?'della camera':n(s.gain))+cella('Offset',s.offset===-1?'della camera':n(s.offset))
       +cella('Filtro',filtro)+(s.dither!=null?cella('Dither ogni # fotogrammi',n(s.dither)):'')+'</div>';
   }).join('');
-  const altre=pl.nights.length>1?` Le altre ${pl.nights.length-1===1?'notte ha':pl.nights.length-1+' notti hanno'} la loro nel piano, col tasto N.I.N.A.`:'';
+  const quanteVolte=v=>v===1?'una volta':v+' volte';
+  const passaggi=giri?(giri.passaggi.every(p=>p.volte===giri.giri.length)?`ogni filtro passa ${quanteVolte(giri.giri.length)}`
+    :'i filtri passano '+giri.passaggi.map(p=>p.filtro+(p.ruolo==='nucleo'?' (nucleo)':'')+' '+quanteVolte(p.volte)).join(', ')):'';
+  /*  col giro la sequenza e' una sola: N.I.N.A. ripete i giri dal crepuscolo all'alba, e la si ricarica o la si rimanda le
+      sere dopo; senza, ogni notte ha la sua nel piano, col tasto N.I.N.A. */
+  const altre=giri?` In ${giri.giri.length} giri, ${passaggi}. N.I.N.A. comincia al crepuscolo astronomico e ripete i giri fino
+      all'alba astronomica${giri.orizzonte?', o finché l’oggetto è sopra l’orizzonte':''}; la stessa sequenza vale le sere dopo.`
+    :pl.nights.length>1?` Le altre ${pl.nights.length-1===1?'notte ha':pl.nights.length-1+' notti hanno'} la loro nel piano, col tasto N.I.N.A.`:'';
   return `<div class="ninaseq small"><b>La sequenza per N.I.N.A.</b> <span class="muted">notte ${nt.n}, ${esc(fmtDate(nt.date))}: le Smart
-      Exposure che «Manda a N.I.N.A.» carica nel Sequencer</span>${righe}
+      Exposure che «Manda a N.I.N.A.» carica nel Sequencer${giri?`, in ${giri.giri.length} giri`:''}</span>${righe}
     <div class="nsq-piede muted">${hmDaSecondi(se.reduce((a,s)=>a+(+s.sec)*(+s.n),0))} di integrazione · ${hm(sp.clockH)} di orologio con
       scarico e dithering${m.cap&&m.cap.raffredda?' · la camera raffredda a '+temperaturaDetta(+m.cap.tempC):''}.${altre}</div></div>`;
 }
@@ -19179,8 +19344,8 @@ function rxPlanHtml(pr,e,dv,t){
       </div>
       ${(x.penalizzazioneLunare||[]).filter(f=>!f.trascurabile).map(f=>`<div class="small ${f.limiteInferiore?'pnluna':'muted'}" data-tip="${esc(fraseDellaSogliaLuna(f))}">${esc(nomeGruppoStretto(pr.alloc.find(g=>g.id===f.id)||{id:f.id,bands:f.bande}))}: Luna ${frasettaLunare(f)}${f.limiteInferiore?` — sotto la soglia di ${fmt(f.soglia,0)}°: le ore non ricomprano il contrasto`:''}</div>`).join('')}
       ${lines||'<div class="small muted" style="padding:4px 0">niente in questa notte</div>'}
-      <div class="pnfoot"><button class="chip fn fn-exp" style="float:right;margin-left:8px"
-        onclick="ninaExportNight(${x.n})" title="Esporta solo questa notte">N.I.N.A.</button>
+      <div class="pnfoot">${conGiri()?'':`<button class="chip fn fn-exp" style="float:right;margin-left:8px"
+        onclick="ninaExportNight(${x.n})" title="Esporta solo questa notte">N.I.N.A.</button>`}
         totale <b>${hmDaSecondi(sp.subs.reduce((a,u)=>a+u.sec*u.n,0))}</b> di integrazione
         · ${hm(sp.clockH)} di orologio con scarico e dithering
         ${restanoDaDire(x)!=null?`· <span class="muted">restano ${hm(restanoDaDire(x))} se il cielo tiene</span>`:''}</div>
@@ -19248,10 +19413,18 @@ function rxPlanHtml(pr,e,dv,t){
     <div style="margin-top:10px"><button class="chip" onclick="resetCap()">Rimetti i valori di partenza</button></div>
   </details>`;
 
-  const dl=`<div class="rxact" style="margin-top:10px;align-items:center;flex-wrap:wrap;gap:10px">
+  /* la scelta fra ciclica e in serie: con «ottimizza sul progetto», senza ruota o con la ruota manuale la sequenza e'
+     comunque in serie */
+  const espSel=`<div class="modesel" id="espSel" style="margin-top:10px" data-tip="${esc(RXPLAN&&RXPLAN.pl&&RXPLAN.pl.mode==='progetto'
+      ?'Con «ottimizza sul progetto» le notti sono diverse: la sequenza è comunque in serie, una per notte.'
+      :!Object.assign({},CAP_DEF,NINACAP).ruota?'Senza ruota la sequenza è comunque in serie: ogni giro vorrebbe dire altri cambi a mano.'
+      :ruotaManuale(null)?'Con la ruota manuale la sequenza è comunque in serie: a ogni cambio N.I.N.A. chiede il filtro, e i giri moltiplicherebbero i cambi a mano.':'')}">
+      ${MODI_DI_ESPOSIZIONE.map(x=>`<button class="${ESPOSIZIONE===x.id?'on':''}" data-esposizione="${x.id}" onclick="setEsposizione('${x.id}')"
+        data-tip="${esc(x.nota)}">${esc(x.label)}</button>`).join('')}</div>`;
+  const dl=`${espSel}<div class="rxact" style="margin-top:10px;align-items:center;flex-wrap:wrap;gap:10px">
       <button class="fn hero-go" style="min-height:44px;font-size:14px"
         onclick="mandaANina(${pl.nights[0].n})">Manda a N.I.N.A.</button>
-      <button class="fn fn-exp solid" onclick="ninaExportAll()">Esporta le sequenze</button>
+      <button class="fn fn-exp solid" onclick="ninaExportAll()">${conGiri()?'Esporta la sequenza':'Esporta le sequenze'}</button>
       <span class="muted small">lo stesso file, per due strade: in rete se N.I.N.A. è aperto,
         su disco sempre</span>
     </div>
@@ -20740,21 +20913,21 @@ async function mandaANina(notte){
   if(!sp.subs.length){ dillo('<div class="warnbox">Questa notte non ha pose da mandare.</div>'); return; }
   /* La notte porta anche il proprio tempo: la sera e i due istanti utili. Prima qui
      passava un numero e delle pose, e la data restava indietro. */
-  /* gli stessi argomenti della sequenza nella testa dei Risultati (`argomentiDellaNotte`) */
-  const args=argomentiDellaNotte(nt,sp);
-  const root=ninaSequence.apply(null,args);
-  const modello=sequenceModel.apply(null,args);
-  const chk=MOTORE.esporta.ninaCheck(root);
-  if(!chk.ok){ dillo('<div class="warnbox">Il file non è coerente ('+
-    (chk.dup.length?'id duplicati':'riferimenti pendenti')+'): non lo mando. Segnalalo.</div>'); return; }
-
+  /*  lo stesso modello della sequenza nella testa dei Risultati (`modelloPerNina`), coi giri, e in piu' la cartella delle
+      sequenze del profilo appena letto: con quella, alla fine N.I.N.A. salva la sequenza da se' */
   /* la postazione per cui la sequenza e' preparata, e se N.I.N.A. ha attivo un altro profilo */
   const tutte=leggiPostazioni(), pz=tutte&&tutte.uso&&tutte.voci[tutte.uso]?Object.assign({id:tutte.uso},tutte.voci[tutte.uso]):null;
   const attivo=P?profiloDelDato(P):null, altro=!!(pz&&attivo&&pz.id!==attivo.id);
-  const diff=confrontoSetup(modello,P,altro?{altroProfilo:true,nome:pz.nome,ruotaDellaPostazione:pz.ruota}:null);
-  /* la ruota manuale del profilo per cui la sequenza e' preparata: dal profilo letto adesso, anche senza Id */
+  /* la ruota manuale del profilo per cui la sequenza e' preparata: dal profilo letto adesso, anche senza Id. Con quella
+     la sequenza e' in serie, come senza ruota */
   const manuale=altro?!!(pz&&pz.manuale):!!(P&&/manual/i.test(String((P.FilterWheelSettings||{}).Id||'')));
-  const carta=cartaDellInvio({nome:(t.names&&t.names[0])||t.id,nt,modello,attivo,pz,altro,dalPonte,manuale});
+  const modello=modelloPerNina(nt,sp,P,manuale);
+  const root=ninaRender(modello);
+  const chk=MOTORE.esporta.ninaCheck(root);
+  if(!chk.ok){ dillo('<div class="warnbox">Il file non è coerente ('+
+    (chk.dup.length?'id duplicati':'riferimenti pendenti')+'): non lo mando. Segnalalo.</div>'); return; }
+  const diff=confrontoSetup(modello,P,altro?{altroProfilo:true,nome:pz.nome,ruotaDellaPostazione:pz.ruota}:null);
+  const carta=cartaDellInvio({nome:(t.names&&t.names[0])||t.id,nt,modello,attivo,pz,altro,dalPonte,manuale,P});
   /*  DOVE VA (11 ottobre 2026): come sequenza nuova, o al posto di un bersaglio che il Sequenziatore ha gia' — il menu
       a tendina dell'Assistente di inquadratura, con `set-target` (nel motore, accanto a `bersagliNina`). I bersagli si
       leggono adesso per il menu, e si rileggono al clic. */
@@ -20877,7 +21050,7 @@ function quandoLaNotte(data,ora){
   const a=g(new Date(data)), b=g(sera);
   return a===b?'stanotte':a>b?'sessione futura':'notte passata';
 }
-function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte,manuale}){
+function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte,manuale,P}){
   const giorno=new Date(nt.date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const ora=x=>x?new Date(x).toTimeString().slice(0,5):null;
   const ore=ora(nt.from)&&ora(nt.to)?` · dalle ${ora(nt.from)} alle ${ora(nt.to)}`:'';
@@ -20895,10 +21068,35 @@ function cartaDellInvio({nome,nt,modello,attivo,pz,altro,dalPonte,manuale}){
     <div class="small">Preparata ${pz?'per la postazione <b>«'+esc(pz.nome)+'»</b>':'per il banco di adesso'}: ${banco} · ${esc(sito)}</div>
     <div class="small">Va a ${dove}${attivo?', profilo attivo <b>«'+esc(attivo.nome)+'»</b>':''}</div>
     ${cambiDiFiltroDetti(modello,nt,!!manuale)}
+    ${avvisiDelGiro(modello,P)}
     ${altro?`<div class="warnbox" style="margin-top:6px">In N.I.N.A. adesso è attivo un altro profilo. Se la stai preparando
       per un'altra sessione va bene: quando la esegui, attiva in N.I.N.A. il profilo <b>«${esc(pz.nome)}»</b>, perché i nomi
       dei filtri sono quelli della sua ruota. Il confronto qui sotto è col profilo attivo adesso.</div>`:''}
   </div>`;
+}
+/*  IL GIRO, NELLA CARTA (21 novembre 2026; gli avvisi li ha decisi Alessandro per chi non e' lui, «AIS è per tutti»).
+    Una riga dice quanti giri, da quando a quando, e dove N.I.N.A. salva la sequenza. Poi due avvisi:
+    - gli offset. Il giro cambia filtro molte volte e non fa l'autofocus a ogni cambio: dove AIS non vede gli offset nel
+      profilo appena letto — profilo illeggibile, oppure offset tutti a zero, che vuol dire filtri parafocali o offset
+      non impostati — lo dice («Sì, con l'avviso»);
+    - l'orizzonte. N.I.N.A. ferma il giro con l'orizzonte del suo profilo, AIS conta i giri sul suo: se quello del sito
+      non viene da N.I.N.A. (`orizzonteFonte`), lo dice. */
+function avvisiDelGiro(m,P){
+  const c=m&&m.ciclo&&m.ciclo.ciclo?m.ciclo:null;
+  if(!c) return '';
+  const filtri=(P&&P.FilterWheelSettings&&P.FilterWheelSettings.FilterWheelFilters)||[];
+  const offset=filtri.some(f=>f&&isFinite(+f.FocusOffset)&&+f.FocusOffset!==0);
+  const daNina=!!(SITE&&SITE.orizzonteFonte&&SITE.orizzonteFonte.da==='nina');
+  const righe=[`<div class="small" data-giro="${c.giri.length}"><b>A ciclo:</b> ${c.giri.length} giri, dal crepuscolo astronomico
+    all’alba astronomica${c.orizzonte?', finché l’oggetto è sopra l’orizzonte':''}; N.I.N.A. li ripete finché la notte lo
+    permette${c.salva?`, e alla fine salva la sequenza in «${esc(c.salva)}»`:''}.</div>`];
+  if(!offset) righe.push(`<div class="warnbox" data-avviso="offset" style="margin-top:6px">Il giro cambia filtro molte volte e
+    non fa l’autofocus a ogni cambio: funziona bene con gli offset dei filtri impostati in N.I.N.A., o con filtri parafocali.
+    ${P?'Nel profilo letto adesso gli offset dei filtri sono tutti a zero.':'Il profilo di N.I.N.A. non è leggibile, e gli offset non si vedono.'}</div>`);
+  if(c.orizzonte&&!daNina) righe.push(`<div class="warnbox" data-avviso="orizzonte" style="margin-top:6px">N.I.N.A. ferma il
+    giro con l’orizzonte del suo profilo, e AIS conta i giri sul suo: perché coincidano, carica in AIS lo stesso file
+    d’orizzonte che usa N.I.N.A., oppure leggi il banco da N.I.N.A., che lo porta con sé.</div>`);
+  return righe.join('');
 }
 /*  IL CAMBIO A MANO, NELLA CARTA (23 ottobre 2026): con quale filtro partire e quante volte si cambia a mano, dopo quante
     ore di riprese e verso che ora se la sequenza parte all'inizio della notte utile. Senza ruota si ferma la sequenza di
@@ -21229,15 +21427,17 @@ const CAP_LBL={raffredda:['camera raffreddata','Se la camera non raffredda, le i
 function ninaExportNight(n){ ninaExportAll(n); }
 function ninaExportAll(only){
   if(!RXPLAN||!RXPLAN.pl.ok) return;
-  const {pl,expo,t,dv,rot,off}=RXPLAN;
-  const names=nomiPerLaSequenza();
+  const {pl,expo,t}=RXPLAN;
   let done=0;
-  pl.nights.filter(x=>only==null||x.n===only).forEach(x=>{
+  /*  LA SEQUENZA A CICLO SU DISCO (21 novembre 2026): lo stesso modello di «Manda a N.I.N.A.» e della testa dei
+      Risultati (`modelloPerNina`), senza la cartella delle sequenze, che senza il profilo di N.I.N.A. non si conosce. Col
+      giro la sequenza e' una sola, quella della prima notte del piano: N.I.N.A. la ripete fino all'alba, e vale le sere
+      dopo. Senza giro, una per notte come prima, e lo stesso file di prima. */
+  const notti=pl.nights.filter(x=>only==null||x.n===only);
+  (only==null&&conGiri()?notti.slice(0,1):notti).forEach(x=>{
     const sp=MOTORE.posa.subPlan(x.blocks,expo,Object.assign({},OPSET,{night:x.n,notti:pl.nights}));
     if(!sp.subs.length) return;
-    const root=MOTORE.esporta.ninaSequence({n:x.n,date:x.date,from:x.from,to:x.to,availH:x.availH,subs:sp.subs},pl,t,dv,SITE,
-      {rot,off,filterNames:names,cap:NINACAP,ditherEvery:OPSET.ditherEvery,
-       name:`${(t.names&&t.names[0])||t.id} — ASTROFOTO notte ${x.n} (${fmtDate(x.date)})`});
+    const root=ninaRender(modelloPerNina(x,sp,null));
     const chk=MOTORE.esporta.ninaCheck(root);
     if(!chk.ok){ alert('Esportazione interrotta: N.I.N.A. non riuscirebbe a caricare il file ('+
       (chk.dup.length?'id duplicati':'riferimenti pendenti')+'). Segnalalo.'); return; }
