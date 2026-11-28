@@ -11442,7 +11442,7 @@ function giriDellaNotte(m,opts){
     - Il giro si ripete finche' non arriva l'alba astronomica, e con l'orizzonte noto finche' l'oggetto e' sopra
       l'orizzonte: nessun numero massimo di giri, e nessuna ora fissa, che varrebbe una notte sola.
     - Mai l'autofocus a ogni cambio filtro: col focheggiatore, quello sulla temperatura e quello sull'HFR, con le soglie
-      predefinite di N.I.N.A. («AIS è per tutti»: le soglie del banco di Alessandro non si scrivono nel file degli altri).
+      di `AUTOFOCUS_DEL_GIRO`, uguali per tutti («AIS è per tutti»): 1 °C dal 28 novembre, l'HFR quello di N.I.N.A.
     - «Salva sequenza» solo quando chi chiama conosce la cartella delle sequenze del profilo di N.I.N.A.: senza il banco
       letto da N.I.N.A. resta fuori («Sì, lasciala fuori»), e la sequenza la salva chi riprende.
     Senza giro — «esposizione in serie», «ottimizza sul progetto», senza ruota, con la ruota manuale, una notte vuota — il
@@ -11451,9 +11451,13 @@ function giriDellaNotte(m,opts){
     filtro, e i giri moltiplicherebbero i cambi a mano (Alessandro, 21 novembre 2026: «Sì, in serie»). Il motore non la
     vede, perche' e' del profilo di N.I.N.A.: la dice chi chiama, con `ruotaManuale`.
     Sorvegliato da tools/gate-sequenza-a-ciclo.js. */
-/*  Le soglie predefinite di N.I.N.A. 3.3.0.1069 (commit 717ea13): `AutofocusAfterTemperatureChangeTrigger.Amount`, 5 °C;
-    `AutofocusAfterHFRIncreaseTrigger.Amount`, 5 %, e `SampleSize`, 10 pose; la tendenza per filtro accesa. */
-const AUTOFOCUS_DI_NINA={temperaturaC:5,hfrPercento:5,campione:10,perFiltro:true};
+/*  LE SOGLIE DELL'AUTOFOCUS NEL GIRO, uguali per tutti. Fino al 28 novembre 2026 erano tutte quelle predefinite di
+    N.I.N.A. 3.3.0.1069 (commit 717ea13): 5 °C, +5 % su 10 pose, la tendenza per filtro. Poi NGC 7635 sull'RC8 a focale
+    piena: a novembre il fuoco derivato con la temperatura (FWHM da 2,9″ a 5–6″) senza un autofocus che lo correggesse.
+    Alessandro: «decido 1 gradi per la temperatura», e l'HFR «se è già 5% lascia pure così». Con pose lunghe l'HFR
+    interviene tardi (servono almeno 3 pose dello stesso filtro dall'ultimo autofocus): la temperatura fa da innesco
+    principale. Sorvegliato da tools/gate-sequenza-a-ciclo.js. */
+const AUTOFOCUS_DEL_GIRO={temperaturaC:1,hfrPercento:5,campione:10,perFiltro:true};
 /*  IL MODO DI ESPOSIZIONE (Alessandro, 21 novembre 2026: «aggiungi la scelta "esposizione in serie" o "esposizione
     ciclica" (ciclica predefinita) la scelta "esposizione in serie" deve avere gli stessi contenitori di prima con le
     medesime istruzioni, quelli già collaudati»). L'elenco sta qui una volta, come le politiche di sessione: `label` e
@@ -11479,7 +11483,7 @@ function modelloDelCiclo(m,opts){
     .replace(/\s+/g,' ').trim()+'.json';
   return Object.assign({},m,{ciclo:Object.assign({},g,{
     inizio:'crepuscolo astronomico', fine:'alba astronomica', orizzonte:!!o.orizzonte,
-    autofocus:(m.cap&&m.cap.focheggiatore)?Object.assign({},AUTOFOCUS_DI_NINA):null,
+    autofocus:(m.cap&&m.cap.focheggiatore)?Object.assign({},AUTOFOCUS_DEL_GIRO):null,
     salva:cartella?cartella.replace(/[\\/]+$/,'')+'\\'+nomeFile:null})});
 }
 const NN='NINA.Sequencer', NC='NINA.Core', NA='NINA.Astrometry', SOM='System.ObjectModel';
