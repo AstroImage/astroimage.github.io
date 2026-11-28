@@ -4377,7 +4377,7 @@ function roadChannels(budget,roadId){
     larga: il colore e la luminanza dell'ammasso aperto sono stelle come lo strato delle stelle di una nebulosa. */
 const CLASSI_DI_SOLE_STELLE=new Set(['cluster_open']), BANDE_DELLE_STELLE=new Set(['RGB','L']);
 const bandaDiSoleStelle=(tg,b)=>!!tg&&CLASSI_DI_SOLE_STELLE.has(tg.archetype)&&BANDE_DELLE_STELLE.has(b);
-function partiDellaStrada(budget,r,arch){
+function partiDellaStrada(budget,r,arch,dv){
   let out;
   if(r&&Array.isArray(r.canali)){
     out={};
@@ -4397,10 +4397,25 @@ function partiDellaStrada(budget,r,arch){
   else if(r&&r.banda_larga==='soggetto'&&c&&!c.nonValutabile&&c.scala==='stelle')
     out.RGB={...c,prestito:true};
   /*  LO STRATO DELLE STELLE si dice al riempimento (29 ottobre 2026): ha la sua parte protetta (`fillBudget`). */
-  else if(r&&r.banda_larga==='stelle'&&c&&!c.nonValutabile&&c.scala==='stelle')
-    out.RGB={...c,stratoDelleStelle:true};
+  else if(r&&r.banda_larga==='stelle'&&c&&!c.nonValutabile&&c.scala==='stelle'){
+    const m=minimoDelleStelle(dv);
+    out.RGB=m>0&&!(c.floor>=m&&tettoDi(c)>=m)
+      ?{...c,stratoDelleStelle:true,floor:Math.max(c.floor,m),useful:Math.max(c.useful,m),saturates:Math.max(tettoDi(c),m),
+        minimoPerFiltro:{oreDellaScheda:{floor:c.floor,useful:c.useful,saturates:tettoDi(c)},minimo:m}}
+      :{...c,stratoDelleStelle:true};
+  }
   return divisioneARiga(comandaLaL(out,arch),arch);
 }
+/*  IL COLORE DELLE STELLE, ALMENO 20 MINUTI PER FILTRO (Alessandro, 28 novembre 2026: «Metti almeno 20 minuti per
+    filtro»). Da NGC 7635 sull'RC8 a focale piena: 36 minuti di RGB in tutto, 7 sul B, e la giuria di AstroBin «stelle
+    povere di colore». Le ore della scheda per le stelle (`scala: 'stelle'`, riscalate sul banco) davano 0,26 / 0,78 /
+    1,56 h in tutto: all'utile 16 minuti per filtro. Il minimo vale per filtro di colore che si riprende: tre su una
+    mono con R, G e B (1 h), uno su una matrice, che ogni posa li prende tutti e tre (20 minuti) — `partiDelGruppo`.
+    Alza la soglia, l'utile e il tetto dell'RGB delle sole strade «stelle», mai le abbassa; le ore della scheda restano
+    accanto (`minimoPerFiltro`). Senza banco non si sa quanti filtri: niente minimo. Sorvegliato da
+    tools/gate-stelle-per-filtro.js. */
+const MINIMO_STELLE_PER_FILTRO_H=1/3;
+const minimoDelleStelle=dv=>dv&&dv.c?MINIMO_STELLE_PER_FILTRO_H*partiDelGruppo('RGB',dv.c).length:0;
 /*  DOVE COMANDA LA L, LA L NON RICEVE MAI MENO DI NESSUN ALTRO CANALE (regola di Alessandro, regia, 24 settembre 2026):
     dove conta il segnale di dettaglio della luminanza — le galassie, la L che la classe dichiara critica — comanda la L.
     Nell'HaRGB no: li' l'Ha rinforza il rosso e non fa da luminanza, e l'immagine e' l'RGB.
@@ -5025,14 +5040,14 @@ function stradeDellaScheda(tg,budget,dual,dv){
   /* LA STRADA DEL SOGGETTO SENZA LA SUA SCALA NON E' UNA VOCE (passo 6): esce da qui, e sta fra le non prezzabili col
      motivo — la stessa lista delle voci generate, che la pagina mostra «non disponibile». */
   const roads=tg.roads.filter(nelCampo).concat(gen.strade).filter(r0=>{
-    const p=partiDellaStrada(budget,r0,tg.archetype);
+    const p=partiDellaStrada(budget,r0,tg.archetype,dv);
     if(!(p.RGB&&p.RGB.prestito)) return true;
     gen.nonPrezzabili.push({id:r0.id,name:(sullaMatrice&&r0.nome_su_matrice)||r0.name,tecnica:r0.tecnica||null,variante:null,
       motivo:'scala_del_soggetto_non_dichiarata',canale:'RGB',dellaScheda:true});
     return false;
   }).map(r0=>{
     const r=(sullaMatrice&&r0.nome_su_matrice)?{...r0,name:r0.nome_su_matrice,nomeDellaScheda:r0.name}:r0;
-    const parts=partiDellaStrada(budget,r,tg.archetype);
+    const parts=partiDellaStrada(budget,r,tg.archetype,dv);
     const key=Object.keys(parts).sort().join(',');
     const dup=seen.has(key); seen.add(key);
     return {r,parts,key,distinct:!dup,
